@@ -41,6 +41,18 @@ public class AuthController {
     }
 
     /**
+     * POST /api/auth/verify
+     * Vérification du compte
+     */
+    @PostMapping("/verify")
+    @Operation(summary = "Vérification OTP", description = "Vérifie le code OTP envoyé par email")
+    public ResponseEntity<Void> verifyAccount(
+            @Valid @RequestBody com.example.the_guardian.dto.auth.VerifyAccountRequest request) {
+        authService.verifyAccount(request);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
      * GET /api/auth/health
      * Healthcheck
      */

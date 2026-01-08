@@ -45,15 +45,14 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Endpoints publics
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/debug/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
-                                "/swagger-ui.html"
-                        ).permitAll()
-
-
+                                "/swagger-ui.html")
+                        .permitAll()
 
                         // ✅ AJOUTE CETTE LIGNE POUR LE TEST
                         .requestMatchers("/api/children/ping").permitAll()
@@ -67,8 +66,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/activities").hasRole("CHILD")
 
                         // Tout le reste nécessite authentification
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         // Pour H2 Console
@@ -89,7 +87,6 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-
 
     @Bean
     public PasswordEncoder passwordEncoder() {

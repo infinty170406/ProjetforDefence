@@ -43,6 +43,12 @@ public class Parent {
     @Column(nullable = false)
     private boolean emailVerified;
 
+    @Column(name = "otp_code")
+    private String otpCode;
+
+    @Column(name = "otp_expiration")
+    private LocalDateTime otpExpiration;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;
