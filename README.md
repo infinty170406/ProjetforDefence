@@ -75,6 +75,68 @@ the_guardian:
    Once running, access Swagger UI at:
    `http://localhost:8081/swagger-ui/index.html`
 
+## 🐳 Docker Deployment
+
+### Quick Start with Docker Compose
+
+1. **Copy environment file**:
+   ```bash
+   cp .env.example .env
+   ```
+   
+2. **Customize environment variables** (optional):
+   Edit `.env` file to modify database passwords, JWT secrets, or email configuration.
+
+3. **Start all services**:
+   ```bash
+   docker-compose up -d
+   ```
+   This will start:
+   - PostgreSQL database (port 5432)
+   - Guardian Backend application (port 8081)
+
+4. **Verify services are running**:
+   ```bash
+   docker-compose ps
+   ```
+
+5. **Access the application**:
+   - API: `http://localhost:8081`
+   - Swagger UI: `http://localhost:8081/swagger-ui/index.html`
+
+### Useful Docker Commands
+
+```bash
+# View application logs
+docker-compose logs -f app
+
+# View database logs
+docker-compose logs -f db
+
+# Restart services
+docker-compose restart
+
+# Stop services
+docker-compose down
+
+# Stop services and remove volumes (deletes database data)
+docker-compose down -v
+
+# Rebuild and restart
+docker-compose up -d --build
+```
+
+### Environment Variables
+
+All configurable settings are in the `.env` file:
+- **Database**: `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`
+- **Application**: `APP_PORT`
+- **Security**: `JWT_SECRET`, `EXECUTE_API_KEY`
+- **Email**: `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`
+
+> [!WARNING]
+> **Production Security**: Before deploying to production, change all default passwords and secrets in the `.env` file!
+
 ## 📖 Security & API Usage
 
 ### Parent Auth (JWT)

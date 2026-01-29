@@ -42,3 +42,12 @@ the_guardian:
     apiKey: "CHANGE_ME_EXECUTE_API_KEY"
   otp:
     expirationMinutes: 10
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when-authorized
