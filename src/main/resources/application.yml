@@ -3,9 +3,9 @@ server:
 
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://127.0.0.1:5432/the_guardian_v1}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:ange}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://dpg-d5du6mqli9vc73dq412g-a:5432/the_guardian}
+    username: ${SPRING_DATASOURCE_USERNAME:the_guardian_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:M0I0BynjFVSiZbhqHPsVZrky4P4RHv55}
   jpa:
     hibernate:
       ddl-auto: update
