@@ -1,5 +1,5 @@
 server:
-  port: 8081
+  port: ${PORT:8081}
 
 spring:
   datasource:
@@ -19,10 +19,10 @@ spring:
       enabled: false
       path: /h2-console
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: theguardiancontrol.app@gmail.com
-    password: icnqupzwpaoesdgx
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:theguardiancontrol.app@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:icnqupzwpaoesdgx}
     properties:
       mail:
         smtp:
@@ -36,12 +36,16 @@ spring:
 
 the_guardian:
   jwt:
-    secret: "CHANGE_ME_SUPER_SECRET_KEY_32CHARS_MINIMUM"
+    secret: ${THE_GUARDIAN_JWT_SECRET:CHANGE_ME_SUPER_SECRET_KEY_32CHARS_MINIMUM}
     accessTokenTtlSeconds: 3600
   execute:
-    apiKey: "CHANGE_ME_EXECUTE_API_KEY"
+    apiKey: ${THE_GUARDIAN_EXECUTE_APIKEY:CHANGE_ME_EXECUTE_API_KEY}
   otp:
     expirationMinutes: 10
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
 
 management:
   endpoints:

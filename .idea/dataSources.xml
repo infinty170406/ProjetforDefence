@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="the_guardian_v1@127.0.0.1" uuid="02fb2731-297a-4f14-b808-ab95f4afc70e">
+    <data-source source="LOCAL" name="postgres@the_guardian_v1" uuid="2cc1a831-3719-4efc-aeec-938ca5c4cc8a">
       <driver-ref>postgresql</driver-ref>
       <synchronize>true</synchronize>
-      <imported>true</imported>
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
-      <jdbc-url>jdbc:postgresql://127.0.0.1:5432/the_guardian_v1</jdbc-url>
+      <jdbc-url>jdbc:postgresql://localhost:5432/the_guardian_v1</jdbc-url>
       <jdbc-additional-properties>
         <property name="com.intellij.clouds.kubernetes.db.host.port" />
         <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
