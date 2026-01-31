@@ -164,5 +164,45 @@ Endpoints under `/api/v1/execute/**` are designed for system integrations (like 
 }
 ```
 
+## 📱 Frontend Integration Guide
+
+This backend is pre-configured for easy local development with Flutter (Web & Mobile).
+
+### 1. Server Configuration
+The server runs on **port 8081** and listens on all interfaces (`0.0.0.0`).
+
+| Platform | Base URL |
+|----------|----------|
+| **Web (Localhost)** | `http://localhost:8081` |
+| **Android Emulator** | `http://10.0.2.2:8081` |
+| **Physical Device** | `http://<YOUR_PC_IP>:8081` |
+| **iOS Simulator** | `http://localhost:8081` |
+
+### 2. CORS & Network
+- **CORS**: The server is configured to accept requests from **ANY** origin (`*`) with credentials allowed. You do not need a proxy.
+- **Network**: Ensure your PC and mobile device are on the same Wi-Fi network if testing with a physical device.
+
+### 3. Recommended Flutter Config
+Create a helper class in your Flutter project to switch URLs automatically:
+
+```dart
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+
+class ApiConfig {
+  static String get baseUrl {
+    if (kIsWeb) return 'http://localhost:8081';
+    
+    if (Platform.isAndroid) {
+      // Use 10.0.2.2 for Android Emulator, otherwise use your PC's local IP
+      // return 'http://192.168.1.x:8081'; // For physical device
+      return 'http://10.0.2.2:8081'; // For Emulator
+    }
+    
+    return 'http://localhost:8081';
+  }
+}
+```
+
 ## 📝 License
 This project is private and for educational/defense purposes.
