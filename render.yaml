@@ -1,13 +1,6 @@
 # Render.com Blueprint Configuration
 # https://render.com/docs/blueprint-spec
 
-databases:
-  - name: guardian-db
-    databaseName: guardian_db
-    user: guardian_user
-    plan: free
-    region: frankfurt
-
 services:
   - type: web
     name: guardian-backend
@@ -21,17 +14,11 @@ services:
       - key: SERVER_PORT
         value: 8080
       - key: SPRING_DATASOURCE_URL
-        fromDatabase:
-          name: guardian-db
-          property: connectionString
+        sync: false
       - key: SPRING_DATASOURCE_USERNAME
-        fromDatabase:
-          name: guardian-db
-          property: user
+        sync: false
       - key: SPRING_DATASOURCE_PASSWORD
-        fromDatabase:
-          name: guardian-db
-          property: password
+        sync: false
       - key: THE_GUARDIAN_JWT_SECRET
         generateValue: true
       - key: THE_GUARDIAN_EXECUTE_APIKEY
