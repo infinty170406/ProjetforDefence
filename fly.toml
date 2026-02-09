@@ -1,6 +1,6 @@
 # fly.toml app configuration file generated for guardian-backend
 
-app = "app-polished-field-8415"
+app = "app-fragrant-sky-9298"
 primary_region = "cdg"
 
 [build]
