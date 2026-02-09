@@ -10,11 +10,17 @@ fi
 
 # 2. Fix Protocol: Change postgres:// to jdbc:postgresql://
 if [ -n "$SPRING_DATASOURCE_URL" ]; then
-    # Check if it starts with postgres:// (common in Render)
-    if echo "$SPRING_DATASOURCE_URL" | grep -q "^postgres://"; then
-        echo "Detected postgres:// protocol. Converting to jdbc:postgresql://..."
-        export SPRING_DATASOURCE_URL=$(echo "$SPRING_DATASOURCE_URL" | sed 's|^postgres://|jdbc:postgresql://|')
-    fi
+    # Check if it starts with postgres:// or postgresql:// (common in Render)
+    case "$SPRING_DATASOURCE_URL" in
+        postgres://*)
+            echo "Detected postgres:// protocol. Converting to jdbc:postgresql://..."
+            export SPRING_DATASOURCE_URL=$(echo "$SPRING_DATASOURCE_URL" | sed 's|^postgres://|jdbc:postgresql://|')
+            ;;
+        postgresql://*)
+            echo "Detected postgresql:// protocol. Converting to jdbc:postgresql://..."
+            export SPRING_DATASOURCE_URL=$(echo "$SPRING_DATASOURCE_URL" | sed 's|^postgresql://|jdbc:postgresql://|')
+            ;;
+    esac
     
     echo "SPRING_DATASOURCE_URL is valid."
 else
