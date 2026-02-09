@@ -38,4 +38,22 @@ public class ParentServiceImpl implements IParentService {
         .collect(Collectors.toList());
     return r;
   }
+
+  @Override
+  public ChildSummaryDto createChild(String name, Integer age) {
+    String parentId = authorizationService.getCurrentParentId();
+    return createChildForParent(parentId, name, age);
+  }
+
+  @Override
+  public ChildSummaryDto createChildForParent(String parentId, String name, Integer age) {
+    Child c = new Child();
+    c.setId(java.util.UUID.randomUUID().toString());
+    c.setParentId(parentId);
+    c.setDisplayName(name);
+    c.setAge(age);
+    c.setStatus("ACTIVE");
+    c = childRepository.save(c);
+    return MappingUtils.toDto(c);
+  }
 }

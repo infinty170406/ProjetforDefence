@@ -15,10 +15,12 @@ public class ExecuteServiceImpl implements IExecuteService {
 
   private final ObjectMapper objectMapper;
   private final IParentalService parentalService;
+  private final IParentService parentService;
 
-  public ExecuteServiceImpl(ObjectMapper objectMapper, IParentalService parentalService) {
+  public ExecuteServiceImpl(ObjectMapper objectMapper, IParentalService parentalService, IParentService parentService) {
     this.objectMapper = objectMapper;
     this.parentalService = parentalService;
+    this.parentService = parentService;
   }
 
   @Override
@@ -33,8 +35,11 @@ public class ExecuteServiceImpl implements IExecuteService {
         UpsertContentPolicyParams p = objectMapper.convertValue(request.parameters, UpsertContentPolicyParams.class);
 
         ContentCategory category;
-        try { category = ContentCategory.valueOf(p.category.trim().toUpperCase()); }
-        catch (Exception e) { throw new ValidationException("Invalid category: " + p.category); }
+        try {
+          category = ContentCategory.valueOf(p.category.trim().toUpperCase());
+        } catch (Exception e) {
+          throw new ValidationException("Invalid category: " + p.category);
+        }
 
         UpsertContentRuleRequest cr = new UpsertContentRuleRequest();
         cr.action = p.action;
@@ -51,8 +56,7 @@ public class ExecuteServiceImpl implements IExecuteService {
         resp.data = java.util.Map.of(
             "contentRule", ruleDto,
             "keywordsCount", keywords.size(),
-            "category", category.name()
-        );
+            "category", category.name());
       }
       case "UPDATE_PROFILE" -> {
         UpdateProfileParams p = objectMapper.convertValue(request.parameters, UpdateProfileParams.class);
@@ -79,6 +83,16 @@ public class ExecuteServiceImpl implements IExecuteService {
         resp.status = "SUCCESS";
         resp.message = "Schedule created";
         resp.data = java.util.Map.of("schedule", schedule);
+      }
+      case "CREATE_CHILD" -> {
+        CreateChildParams p = objectMapper.convertValue(request.parameters, CreateChildParams.class);
+        if (request.parentId == null || request.parentId.isBlank()) {
+          throw new ValidationException("parentId is required for CREATE_CHILD intent");
+        }
+        var child = parentService.createChildForParent(request.parentId, p.name, p.age);
+        resp.status = "SUCCESS";
+        resp.message = "Child profile created";
+        resp.data = java.util.Map.of("child", child);
       }
       default -> throw new ValidationException("Unknown intent: " + intent);
     }
