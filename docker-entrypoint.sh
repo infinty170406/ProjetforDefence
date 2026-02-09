@@ -34,4 +34,5 @@ else
 fi
 
 # Run the application
-exec java -jar app.jar
+# We pass it as a system property to ensure it has the highest priority over env vars
+exec java -Dspring.datasource.url="$SPRING_DATASOURCE_URL" -jar app.jar
