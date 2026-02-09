@@ -14,9 +14,19 @@ services:
       - key: PORT
         value: 8080
       - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - key: DB_HOST
         fromDatabase:
           name: guardian-db
-          property: connectionString
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: guardian-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: guardian-db
+          property: database
       - key: SPRING_DATASOURCE_USERNAME
         fromDatabase:
           name: guardian-db

@@ -8,28 +8,16 @@ if [ -z "$SPRING_DATASOURCE_URL" ] && [ -n "$DATABASE_URL" ]; then
     export SPRING_DATASOURCE_URL="$DATABASE_URL"
 fi
 
-# 2. Fix Protocol: Ensure it starts with jdbc:postgresql://
+# 2. Protocol Check: Spring Boot expects jdbc:postgresql://
 if [ -n "$SPRING_DATASOURCE_URL" ]; then
-    case "$SPRING_DATASOURCE_URL" in
-        jdbc:*)
-            echo "SPRING_DATASOURCE_URL already starts with jdbc:. Good."
-            ;;
-        postgres://*|postgresql://*)
-            echo "Detected non-JDBC postgres protocol. Converting..."
-            export SPRING_DATASOURCE_URL=$(echo "$SPRING_DATASOURCE_URL" | sed -E 's/^(postgresql|postgres):\/\//jdbc:postgresql:\/\//')
-            ;;
-        *)
-            echo "WARNING: SPRING_DATASOURCE_URL has an unrecognized format: $(echo $SPRING_DATASOURCE_URL | cut -c1-15)..."
-            ;;
-    esac
+    echo "SPRING_DATASOURCE_URL: $(echo $SPRING_DATASOURCE_URL | cut -c1-30)..."
     
-    # Final check
-    if echo "$SPRING_DATASOURCE_URL" | grep -q "^jdbc:postgresql://"; then
-        echo "Final SPRING_DATASOURCE_URL starts with jdbc:postgresql:// (OK)"
-    else
-        echo "ERROR: Final SPRING_DATASOURCE_URL does NOT start with jdbc:postgresql:// ($SPRING_DATASOURCE_URL)"
+    if ! echo "$SPRING_DATASOURCE_URL" | grep -q "^jdbc:"; then
+        echo "WARNING: SPRING_DATASOURCE_URL does not start with jdbc:. This might cause issues."
     fi
 else
+    echo "CRITICAL WARNING: SPRING_DATASOURCE_URL is NOT set!"
+fi
     echo "CRITICAL WARNING: SPRING_DATASOURCE_URL is NOT set. App will try localhost which will likely fail on Render!"
 fi
 
