@@ -1,0 +1,4 @@
+package com.example.the_guardian_v1.common.exception; 
+public class ForbiddenException extends RuntimeException {
+     public ForbiddenException(String m){super(m);} 
+    }

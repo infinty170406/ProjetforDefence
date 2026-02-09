@@ -1,0 +1,1 @@
+package com.example.the_guardian_v1.domain.enums; public enum ContentCategory { ADULT, VIOLENCE, GAMBLING, DRUGS, SOCIAL, OTHER }
