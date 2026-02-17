@@ -1,6 +1,8 @@
 package com.example.the_guardian_v1.controller;
 
+import com.example.the_guardian_v1.dto.parent.ChildSummaryDto;
 import com.example.the_guardian_v1.dto.parent.ChildrenListResponse;
+import com.example.the_guardian_v1.dto.parent.CreateChildRequest;
 import com.example.the_guardian_v1.dto.parent.LinkChildRequest;
 import com.example.the_guardian_v1.service.IParentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +24,25 @@ public class ParentController {
   @Operation(summary = "Lister mes enfants", description = "Retourne la liste des enfants associés au parent connecté.")
   public ChildrenListResponse myChildren() {
     return parentService.getMyChildren();
+  }
+
+  @PostMapping("/children")
+  @Operation(summary = "Créer un profil enfant", description = "Crée un nouveau profil enfant associé au parent connecté.")
+  public ChildSummaryDto createChild(@Valid @RequestBody CreateChildRequest request) {
+    return parentService.createChild(request);
+  }
+
+  @PutMapping("/children/{childId}")
+  @Operation(summary = "Modifier un profil enfant", description = "Met à jour les informations d'un enfant.")
+  public ChildSummaryDto updateChild(@PathVariable String childId, @Valid @RequestBody CreateChildRequest request) {
+    return parentService.updateChild(childId, request);
+  }
+
+  @DeleteMapping("/children/{childId}")
+  @Operation(summary = "Supprimer un profil enfant", description = "Supprime définitivement un profil enfant.")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void deleteChild(@PathVariable String childId) {
+    parentService.deleteChild(childId);
   }
 
   @PostMapping("/children/link")
