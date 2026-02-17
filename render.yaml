@@ -12,11 +12,17 @@ services:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
       - key: SPRING_DATASOURCE_URL
-        sync: false
+        fromDatabase:
+          name: guardian-db
+          property: connectionString
       - key: SPRING_DATASOURCE_USERNAME
-        sync: false
+        fromDatabase:
+          name: guardian-db
+          property: user
       - key: SPRING_DATASOURCE_PASSWORD
-        sync: false
+        fromDatabase:
+          name: guardian-db
+          property: password
       - key: THE_GUARDIAN_JWT_SECRET
         generateValue: true
       - key: THE_GUARDIAN_EXECUTE_APIKEY
@@ -31,3 +37,8 @@ services:
         sync: false
       - key: SPRING_MAIL_PASSWORD
         sync: false
+
+databases:
+  - name: guardian-db
+    region: frankfurt
+    plan: free
