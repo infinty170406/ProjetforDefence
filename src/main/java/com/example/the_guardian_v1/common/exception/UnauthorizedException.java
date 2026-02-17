@@ -1,0 +1,1 @@
+package com.example.the_guardian_v1.common.exception; public class UnauthorizedException extends RuntimeException { public UnauthorizedException(String m){super(m);} }

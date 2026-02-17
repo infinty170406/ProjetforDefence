@@ -1,0 +1,58 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: guardian-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-the_guardian_v1}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ange}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - guardian-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: guardian-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME:-the_guardian_v1}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-ange}
+      THE_GUARDIAN_JWT_SECRET: ${JWT_SECRET:-CHANGE_ME_SUPER_SECRET_KEY_32CHARS_MINIMUM}
+      THE_GUARDIAN_EXECUTE_APIKEY: ${EXECUTE_API_KEY:-CHANGE_ME_EXECUTE_API_KEY}
+      SPRING_MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      SPRING_MAIL_PORT: ${MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME:-theguardiancontrol.app@gmail.com}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD:-icnqupzwpaoesdgx}
+    ports:
+      - "${APP_PORT:-8081}:8081"
+    networks:
+      - guardian-network
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  guardian-network:
+    driver: bridge

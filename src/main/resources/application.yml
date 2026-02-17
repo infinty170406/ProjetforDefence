@@ -1,0 +1,58 @@
+server:
+  port: ${PORT:8080}
+  address: 0.0.0.0
+
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5432/the_guardian_v1
+    username: postgres
+    password: "ange"
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  h2:
+    console:
+      enabled: false
+      path: /h2-console
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:theguardiancontrol.app@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:CHANGE_ME}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+the_guardian:
+  jwt:
+    secret: ${THE_GUARDIAN_JWT_SECRET:CHANGE_ME_SUPER_SECRET_KEY_32CHARS_MINIMUM}
+    accessTokenTtlSeconds: 3600
+  execute:
+    apiKey: ${THE_GUARDIAN_EXECUTE_APIKEY:CHANGE_ME_EXECUTE_API_KEY}
+  otp:
+    expirationMinutes: 10
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:4200,http://localhost:5173,*}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when-authorized
