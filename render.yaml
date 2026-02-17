@@ -23,6 +23,10 @@ services:
         fromDatabase:
           name: guardian-db
           property: password
+      - key: DATABASE_URL
+        fromDatabase:
+          name: guardian-db
+          property: connectionString
       - key: THE_GUARDIAN_JWT_SECRET
         generateValue: true
       - key: THE_GUARDIAN_EXECUTE_APIKEY

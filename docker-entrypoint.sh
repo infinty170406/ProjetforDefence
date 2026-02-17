@@ -1,6 +1,10 @@
 #!/bin/sh
 
 echo "Entrypoint script starting..."
+echo "--- Environment Variables (Masked) ---"
+env | grep -E "SPRING_|DATABASE_|PORT" | sed 's/=\(.*\)/=********/'
+echo "--------------------------------------"
+
 
 # 1. Clean up SPRING_DATASOURCE_URL if it's a literal placeholder like ${DB_HOST}
 if echo "$SPRING_DATASOURCE_URL" | grep -q '\${'; then
