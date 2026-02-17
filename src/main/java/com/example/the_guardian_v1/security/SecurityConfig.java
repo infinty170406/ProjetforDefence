@@ -40,6 +40,7 @@ public class SecurityConfig {
             .requestMatchers("/api/v1/execute/**").permitAll() // protected by API key filter
             .requestMatchers("/h2-console/**").permitAll()
             .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+            .requestMatchers("/actuator/**").permitAll() // Allow health checks
             .anyRequest().authenticated())
         .addFilterBefore(executeApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
