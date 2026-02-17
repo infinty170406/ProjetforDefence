@@ -2,42 +2,35 @@
 
 echo "Entrypoint script starting..."
 echo "--- Environment Variables (Masked) ---"
-env | grep -E "SPRING_|DATABASE_|PORT" | sed 's/=\(.*\)/=********/'
+env | grep -E "SPRING_|DATABASE_|DB_|PORT" | sed 's/=\(.*\)/=********/'
 echo "--------------------------------------"
+echo ""
 
-
-# 1. Clean up SPRING_DATASOURCE_URL if it's a literal placeholder like ${DB_HOST}
-if echo "$SPRING_DATASOURCE_URL" | grep -q '\${'; then
-    echo "SPRING_DATASOURCE_URL contains unresolved placeholders. Clearing it to force fallback."
-    export SPRING_DATASOURCE_URL=""
-fi
-
-# 2. Fallback: If SPRING_DATASOURCE_URL is empty, use Render's default DATABASE_URL
-if [ -z "$SPRING_DATASOURCE_URL" ] && [ -n "$DATABASE_URL" ]; then
-    echo "SPRING_DATASOURCE_URL is empty or invalid. Using DATABASE_URL provided by Render."
+# 1. Construct JDBC URL from individual database components if available
+if [ -n "$DB_HOST" ] && [ -n "$DB_PORT" ] && [ -n "$DB_NAME" ]; then
+    echo "Constructing JDBC URL from individual database components..."
+    export SPRING_DATASOURCE_URL="jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}"
+    echo "JDBC URL constructed from DB_HOST, DB_PORT, DB_NAME"
+elif [ -z "$SPRING_DATASOURCE_URL" ] && [ -n "$DATABASE_URL" ]; then
+    # Fallback: If individual components not available, use DATABASE_URL
+    echo "Individual DB components not found. Using DATABASE_URL provided by Render."
     export SPRING_DATASOURCE_URL="$DATABASE_URL"
-fi
-
-# 3. Fix Protocol: Change postgres:// or postgresql:// to jdbc:postgresql://
-if [ -n "$SPRING_DATASOURCE_URL" ]; then
-    # Handle both postgres:// and postgresql://
+    
+    # Fix Protocol: Change postgres:// or postgresql:// to jdbc:postgresql://
     case "$SPRING_DATASOURCE_URL" in
         postgres://*) 
             echo "Detected postgres:// protocol. Converting to jdbc:postgresql://..."
             export SPRING_DATASOURCE_URL=$(echo "$SPRING_DATASOURCE_URL" | sed 's|^postgres://|jdbc:postgresql://|')
             ;;
-        postgresql://*)
+        postgresql://*) 
             echo "Detected postgresql:// protocol. Converting to jdbc:postgresql://..."
             export SPRING_DATASOURCE_URL=$(echo "$SPRING_DATASOURCE_URL" | sed 's|^postgresql://|jdbc:postgresql://|')
             ;;
     esac
+fi
 
-    
-    # Final check: ensure it starts with jdbc:postgresql://
-    if ! echo "$SPRING_DATASOURCE_URL" | grep -q "^jdbc:postgresql://"; then
-        echo "WARNING: SPRING_DATASOURCE_URL does not start with jdbc:postgresql://. Current value: $(echo "$SPRING_DATASOURCE_URL" | cut -c 1-20)..."
-    fi
-    
+# Final check and logging
+if [ -n "$SPRING_DATASOURCE_URL" ]; then
     # Masking password for logging
     MASKED_URL=$(echo "$SPRING_DATASOURCE_URL" | sed 's|:[^:@]*@|:****@|')
     echo "Final SPRING_DATASOURCE_URL: $MASKED_URL"

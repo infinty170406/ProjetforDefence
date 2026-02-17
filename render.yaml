@@ -11,10 +11,18 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: SPRING_DATASOURCE_URL
+      - key: DB_HOST
         fromDatabase:
           name: guardian-db
-          property: connectionString
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: guardian-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: guardian-db
+          property: database
       - key: SPRING_DATASOURCE_USERNAME
         fromDatabase:
           name: guardian-db
