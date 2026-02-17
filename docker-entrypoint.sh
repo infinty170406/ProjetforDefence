@@ -18,12 +18,20 @@ if [ -z "$SPRING_DATASOURCE_URL" ] && [ -n "$DATABASE_URL" ]; then
     export SPRING_DATASOURCE_URL="$DATABASE_URL"
 fi
 
-# 3. Fix Protocol: Change postgres:// to jdbc:postgresql://
+# 3. Fix Protocol: Change postgres:// or postgresql:// to jdbc:postgresql://
 if [ -n "$SPRING_DATASOURCE_URL" ]; then
-    if echo "$SPRING_DATASOURCE_URL" | grep -q "^postgres://"; then
-        echo "Detected postgres:// protocol. Converting to jdbc:postgresql://..."
-        export SPRING_DATASOURCE_URL=$(echo "$SPRING_DATASOURCE_URL" | sed 's|^postgres://|jdbc:postgresql://|')
-    fi
+    # Handle both postgres:// and postgresql://
+    case "$SPRING_DATASOURCE_URL" in
+        postgres://*) 
+            echo "Detected postgres:// protocol. Converting to jdbc:postgresql://..."
+            export SPRING_DATASOURCE_URL=$(echo "$SPRING_DATASOURCE_URL" | sed 's|^postgres://|jdbc:postgresql://|')
+            ;;
+        postgresql://*)
+            echo "Detected postgresql:// protocol. Converting to jdbc:postgresql://..."
+            export SPRING_DATASOURCE_URL=$(echo "$SPRING_DATASOURCE_URL" | sed 's|^postgresql://|jdbc:postgresql://|')
+            ;;
+    esac
+
     
     # Final check: ensure it starts with jdbc:postgresql://
     if ! echo "$SPRING_DATASOURCE_URL" | grep -q "^jdbc:postgresql://"; then
