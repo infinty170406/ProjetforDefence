@@ -4,26 +4,25 @@ spring:
     port: ${SPRING_MAIL_PORT:465}
     username: ${SPRING_MAIL_USERNAME}
     password: ${SPRING_MAIL_PASSWORD}
+    protocol: smtps
     properties:
       mail:
-        transport:
-          protocol: smtps
         smtps:
           auth: true
-          starttls:
+          ssl:
             enable: true
-            required: true
+            checkserveridentity: true
           timeout: 10000
           connectiontimeout: 10000
           writetimeout: 10000
+        smtp:
           ssl:
-            checkserveridentity: true
-            trust: "*"
+            enable: true
 
 management:
   health:
     mail:
-      enabled: true # Re-enable check in prod if configured
+      enabled: true
 
 logging:
   level:
