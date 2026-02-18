@@ -23,12 +23,13 @@ spring:
       path: /h2-console
   mail:
     host: ${SPRING_MAIL_HOST:smtp.gmail.com}
-    port: ${SPRING_MAIL_PORT:587}
+    port: ${SPRING_MAIL_PORT:465}
     username: ${SPRING_MAIL_USERNAME:theguardiancontrol.app@gmail.com}
     password: ${SPRING_MAIL_PASSWORD:CHANGE_ME}
     properties:
       mail:
-        smtp:
+        protocol: smtps
+        smtps:
           auth: true
           starttls:
             enable: true
