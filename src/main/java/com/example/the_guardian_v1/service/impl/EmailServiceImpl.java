@@ -1,11 +1,9 @@
 package com.example.the_guardian_v1.service.impl;
 
 import com.example.the_guardian_v1.service.IEmailService;
-import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,25 +21,28 @@ public class EmailServiceImpl implements IEmailService {
 
     @Override
     public void sendOtpEmail(String toEmail, String otpCode) {
-        log.info("Tentative d'envoi d'OTP par email à : {}", toEmail);
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom(fromEmail);
-            helper.setTo(toEmail);
-            helper.setSubject("The Guardian - Votre code de vérification");
-
-            String htmlContent = buildOtpEmailHtml(otpCode);
-            helper.setText(htmlContent, true);
-
-            mailSender.send(message);
-            log.info("✅ Email OTP envoyé avec succès à {}", toEmail);
-        } catch (Exception e) {
-            log.error("❌ Échec de l'envoi de l'email OTP à {}. Erreur : {}", toEmail, e.getMessage());
-            log.error("Détails de l'erreur : ", e);
-            throw new RuntimeException("Erreur lors de l'envoi de l'email de vérification", e);
-        }
+        log.info("📢 [OTP BYPASS] Tentative d'envoi d'OTP par email à : {}", toEmail);
+        log.info("⚠️ Le service d'envoi d'email est temporairement désactivé pour éviter les timeouts SMTP.");
+        // try {
+        // MimeMessage message = mailSender.createMimeMessage();
+        // MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        //
+        // helper.setFrom(fromEmail);
+        // helper.setTo(toEmail);
+        // helper.setSubject("The Guardian - Votre code de vérification");
+        //
+        // String htmlContent = buildOtpEmailHtml(otpCode);
+        // helper.setText(htmlContent, true);
+        //
+        // mailSender.send(message);
+        // log.info("✅ Email OTP envoyé avec succès à {}", toEmail);
+        // } catch (Exception e) {
+        // log.error("❌ Échec de l'envoi de l'email OTP à {}. Erreur : {}", toEmail,
+        // e.getMessage());
+        // log.error("Détails de l'erreur : ", e);
+        // throw new RuntimeException("Erreur lors de l'envoi de l'email de
+        // vérification", e);
+        // }
     }
 
     private String buildOtpEmailHtml(String otpCode) {

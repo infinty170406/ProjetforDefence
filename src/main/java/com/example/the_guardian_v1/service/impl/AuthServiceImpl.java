@@ -83,22 +83,24 @@ public class AuthServiceImpl implements IAuthService {
     java.util.Optional<Parent> existingParent = parentRepository.findByEmail(request.email);
     if (existingParent.isPresent()) {
       Parent p = existingParent.get();
-      log.info("L'email {} existe déjà. Mise à jour du compte (OTP bypassed).", request.email);
+      log.info("L'email {} existe déjà. Mise à jour du compte (OTP BYPASSED).", request.email);
 
       p.setName(request.name);
       p.setPasswordHash(passwordEncoder.encode(request.password));
       p.setVerified(true);
       p.setStatus("ACTIVE");
+      p.setOtpCode(null);
+      p.setOtpExpiresAt(null);
       parentRepository.save(p);
 
       RegisterResponse response = new RegisterResponse();
       response.parentId = p.getId();
       response.email = p.getEmail();
-      response.message = "Compte existant mis à jour et activé (OTP désactivé).";
+      response.message = "Compte mis à jour (OTP désactivé).";
       return response;
     }
 
-    // Create parent (Verified by default)
+    // Create parent (Verified by default - OTP BYPASS)
     Parent parent = new Parent();
     parent.setId(UUID.randomUUID().toString());
     parent.setName(request.name);
@@ -111,12 +113,12 @@ public class AuthServiceImpl implements IAuthService {
     parent.setOtpExpiresAt(null);
 
     parentRepository.save(parent);
-    log.info("Parent créé et ACTIVÉ directement pour {}", request.email);
+    log.info("Parent créé et ACTIVÉ directement (OTP BYPASS) pour {}", request.email);
 
     RegisterResponse response = new RegisterResponse();
     response.parentId = parent.getId();
     response.email = parent.getEmail();
-    response.message = "Inscription réussie. OTP désactivé, vous pouvez vous connecter.";
+    response.message = "Inscription réussie (OTP désactivé).";
     return response;
   }
 
