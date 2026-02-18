@@ -12,4 +12,6 @@ public interface IParentService {
     ChildSummaryDto updateChild(String childId, CreateChildRequest request);
 
     void deleteChild(String childId);
+
+    ChildSummaryDto activateChild(String token);
 }

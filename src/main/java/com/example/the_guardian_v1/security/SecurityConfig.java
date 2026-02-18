@@ -47,6 +47,7 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
             .requestMatchers("/api/v1/auth/**").permitAll()
             .requestMatchers("/api/v1/execute/**").permitAll() // protected by API key filter
+            .requestMatchers("/api/v1/children/activate").permitAll()
             .requestMatchers("/h2-console/**").permitAll()
             .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
             .requestMatchers("/actuator/**").permitAll() // Allow health checks

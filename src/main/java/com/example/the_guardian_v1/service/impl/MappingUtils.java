@@ -72,6 +72,8 @@ public class MappingUtils {
     d.age = c.getAge();
     d.deviceStatus = "UNKNOWN";
     d.lastSeenAt = iso(c.getLastSeenAt());
+    d.invitationToken = c.getInvitationToken();
+    d.expiresAt = iso(c.getInvitationExpiresAt());
     return d;
   }
 

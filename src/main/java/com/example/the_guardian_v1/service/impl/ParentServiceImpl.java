@@ -8,6 +8,8 @@ import com.example.the_guardian_v1.repository.ChildRepository;
 import com.example.the_guardian_v1.service.*;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -50,6 +52,28 @@ public class ParentServiceImpl implements IParentService {
     c.setDisplayName(request.getDisplayName());
     c.setAge(request.getAge());
     c.setStatus("OFFLINE");
+
+    // Generate invitation token
+    c.setInvitationToken(UUID.randomUUID().toString().replace("-", ""));
+    c.setInvitationExpiresAt(Instant.now().plus(24, ChronoUnit.HOURS));
+
+    Child saved = childRepository.save(c);
+    return MappingUtils.toDto(saved);
+  }
+
+  @Override
+  public ChildSummaryDto activateChild(String token) {
+    Child c = childRepository.findByInvitationToken(token)
+        .orElseThrow(() -> new NotFoundException("Invitation invalide ou introuvable"));
+
+    if (c.getInvitationExpiresAt().isBefore(Instant.now())) {
+      throw new ForbiddenException("L'invitation a expiré");
+    }
+
+    // Link device or update status
+    c.setStatus("ACTIVE");
+    c.setInvitationToken(null); // Consume token
+    c.setInvitationExpiresAt(null);
 
     Child saved = childRepository.save(c);
     return MappingUtils.toDto(saved);
