@@ -77,9 +77,34 @@ public class AuthServiceImpl implements IAuthService {
     log.info("Tentative d'inscription pour l'email : {}", request.email);
 
     // Check if email already exists
-    if (parentRepository.findByEmail(request.email).isPresent()) {
-      log.warn("Inscription échouée : l'email {} est déjà enregistré", request.email);
-      throw new ConflictException("Email already registered");
+    java.util.Optional<Parent> existingParent = parentRepository.findByEmail(request.email);
+    if (existingParent.isPresent()) {
+      Parent p = existingParent.get();
+      if (p.getVerified()) {
+        log.warn("Inscription échouée : l'email {} est déjà enregistré et vérifié", request.email);
+        throw new ConflictException("Email already registered");
+      } else {
+        log.info("L'email {} existe déjà mais n'est pas vérifié. Renvoi d'un nouvel OTP.", request.email);
+        // On réutilise le compte existant
+        String otpCode = generateOtp();
+        p.setOtpCode(otpCode);
+        p.setOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
+        p.setName(request.name); // Mise à jour éventuelle du nom
+        p.setPasswordHash(passwordEncoder.encode(request.password)); // Mise à jour éventuelle du mot de passe
+        parentRepository.save(p);
+
+        try {
+          emailService.sendOtpEmail(p.getEmail(), otpCode);
+        } catch (Exception e) {
+          log.error("❌ Erreur lors du renvoi de l'email OTP à {} : {}", request.email, e.getMessage());
+        }
+
+        RegisterResponse response = new RegisterResponse();
+        response.parentId = p.getId();
+        response.email = p.getEmail();
+        response.message = "Compte non vérifié trouvé. Un nouveau code de vérification a été envoyé.";
+        return response;
+      }
     }
 
     // Generate OTP
