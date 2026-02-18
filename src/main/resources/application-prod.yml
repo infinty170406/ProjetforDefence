@@ -1,17 +1,23 @@
 spring:
   mail:
-    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
-    port: ${SPRING_MAIL_PORT:465}
+    host: smtp.gmail.com
+    port: 465
     username: ${SPRING_MAIL_USERNAME}
     password: ${SPRING_MAIL_PASSWORD}
-    protocol: smtps
     properties:
       mail:
+        transport:
+          protocol: smtps
         smtps:
           auth: true
           ssl:
             enable: true
             checkserveridentity: true
+            trust: "*"
+          socketFactory:
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+            fallback: false
           timeout: 10000
           connectiontimeout: 10000
           writetimeout: 10000
@@ -22,9 +28,10 @@ spring:
 management:
   health:
     mail:
-      enabled: true
+      enabled: false
 
 logging:
   level:
     org.springframework.mail: DEBUG
     org.eclipse.angus.mail: DEBUG
+    com.example.the_guardian_v1: INFO
