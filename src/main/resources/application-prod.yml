@@ -1,6 +1,6 @@
 spring:
   mail:
-    host: smtp.gmail.com
+    host: smtp-relay.brevo.com
     port: 587
     username: ${SPRING_MAIL_USERNAME}
     password: ${SPRING_MAIL_PASSWORD}
@@ -12,10 +12,10 @@ spring:
             enable: true
             required: true
           ssl:
-            trust: smtp.gmail.com
-          connectiontimeout: 30000
-          timeout: 30000
-          writetimeout: 30000
+            trust: smtp-relay.brevo.com
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
 
 management:
   health:
