@@ -16,6 +16,7 @@ import java.util.List;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import java.util.Collections;
+import org.springframework.security.config.Customizer;
 
 @Configuration
 public class SecurityConfig {
