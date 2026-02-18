@@ -48,9 +48,12 @@ public class AuthServiceImpl implements IAuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
+    // Auto-verify if not verified (OTP bypass)
     if (!p.getVerified()) {
-      log.warn("Tentative de connexion échouée : compte non vérifié {}", request.email);
-      throw new UnauthorizedException("Account not verified. Please verify your email first.");
+      log.info("Activation automatique du compte non vérifié pendant le login pour {}", request.email);
+      p.setVerified(true);
+      p.setStatus("ACTIVE");
+      parentRepository.save(p);
     }
 
     if (p.getStatus() != null && !"ACTIVE".equalsIgnoreCase(p.getStatus())) {
@@ -74,72 +77,46 @@ public class AuthServiceImpl implements IAuthService {
 
   @Override
   public RegisterResponse register(RegisterRequest request) {
-    log.info("Tentative d'inscription pour l'email : {}", request.email);
+    log.info("Tentative d'inscription pour l'email (OTP désactivé) : {}", request.email);
 
     // Check if email already exists
     java.util.Optional<Parent> existingParent = parentRepository.findByEmail(request.email);
     if (existingParent.isPresent()) {
       Parent p = existingParent.get();
-      if (p.getVerified()) {
-        log.warn("Inscription échouée : l'email {} est déjà enregistré et vérifié", request.email);
-        throw new ConflictException("Email already registered");
-      } else {
-        log.info("L'email {} existe déjà mais n'est pas vérifié. Renvoi d'un nouvel OTP.", request.email);
-        // On réutilise le compte existant
-        String otpCode = generateOtp();
-        p.setOtpCode(otpCode);
-        p.setOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
-        p.setName(request.name); // Mise à jour éventuelle du nom
-        p.setPasswordHash(passwordEncoder.encode(request.password)); // Mise à jour éventuelle du mot de passe
-        parentRepository.save(p);
+      log.info("L'email {} existe déjà. Mise à jour du compte (OTP bypassed).", request.email);
 
-        try {
-          emailService.sendOtpEmail(p.getEmail(), otpCode);
-        } catch (Exception e) {
-          log.error("❌ Erreur lors du renvoi de l'email OTP à {} : {}", request.email, e.getMessage());
-        }
+      p.setName(request.name);
+      p.setPasswordHash(passwordEncoder.encode(request.password));
+      p.setVerified(true);
+      p.setStatus("ACTIVE");
+      parentRepository.save(p);
 
-        RegisterResponse response = new RegisterResponse();
-        response.parentId = p.getId();
-        response.email = p.getEmail();
-        response.message = "Compte non vérifié trouvé. Un nouveau code de vérification a été envoyé.";
-        return response;
-      }
+      RegisterResponse response = new RegisterResponse();
+      response.parentId = p.getId();
+      response.email = p.getEmail();
+      response.message = "Compte existant mis à jour et activé (OTP désactivé).";
+      return response;
     }
 
-    // Generate OTP
-    String otpCode = generateOtp();
-    LocalDateTime otpExpiresAt = LocalDateTime.now().plusMinutes(10);
-
-    // Create parent
+    // Create parent (Verified by default)
     Parent parent = new Parent();
     parent.setId(UUID.randomUUID().toString());
     parent.setName(request.name);
     parent.setEmail(request.email);
     parent.setPasswordHash(passwordEncoder.encode(request.password));
     parent.setPhoneNumber(request.phoneNumber);
-    parent.setStatus("PENDING");
-    parent.setVerified(false);
-    parent.setOtpCode(otpCode);
-    parent.setOtpExpiresAt(otpExpiresAt);
+    parent.setVerified(true);
+    parent.setStatus("ACTIVE");
+    parent.setOtpCode(null);
+    parent.setOtpExpiresAt(null);
 
     parentRepository.save(parent);
-    log.info("Parent créé en base avec le statut PENDING pour {}", request.email);
-
-    // Send OTP email
-    try {
-      emailService.sendOtpEmail(parent.getEmail(), otpCode);
-    } catch (Exception e) {
-      log.error("❌ Erreur critique lors de l'inscription de {} : impossible d'envoyer l'email OTP", request.email);
-      log.error("Détails de l'erreur d'envoi mail : ", e);
-      // On ne lève pas d'exception ici pour permettre à l'utilisateur de réessayer
-      // plus tard
-    }
+    log.info("Parent créé et ACTIVÉ directement pour {}", request.email);
 
     RegisterResponse response = new RegisterResponse();
     response.parentId = parent.getId();
     response.email = parent.getEmail();
-    response.message = "Registration successful. Please check your email for the verification code.";
+    response.message = "Inscription réussie. OTP désactivé, vous pouvez vous connecter.";
     return response;
   }
 
