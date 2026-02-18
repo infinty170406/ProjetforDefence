@@ -61,3 +61,8 @@ management:
   health:
     mail:
       enabled: false
+
+logging:
+  level:
+    org.springframework.mail: DEBUG
+    org.springframework.mail.javamail: DEBUG
