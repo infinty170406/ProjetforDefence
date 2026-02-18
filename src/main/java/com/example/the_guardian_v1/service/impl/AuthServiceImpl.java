@@ -9,6 +9,7 @@ import com.example.the_guardian_v1.repository.ParentRepository;
 import com.example.the_guardian_v1.security.JwtService;
 import com.example.the_guardian_v1.service.IAuthService;
 import com.example.the_guardian_v1.service.IEmailService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ import java.util.Random;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class AuthServiceImpl implements IAuthService {
 
   private final ParentRepository parentRepository;
@@ -34,22 +36,31 @@ public class AuthServiceImpl implements IAuthService {
 
   @Override
   public LoginResponse login(LoginRequest request) {
+    log.info("Tentative de connexion pour l'email : {}", request.email);
     Parent p = parentRepository.findByEmail(request.email)
-        .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
+        .orElseThrow(() -> {
+          log.warn("Tentative de connexion échouée : email non trouvé {}", request.email);
+          return new UnauthorizedException("Invalid credentials");
+        });
 
     if (!passwordEncoder.matches(request.password, p.getPasswordHash())) {
+      log.warn("Tentative de connexion échouée : mot de passe incorrect pour {}", request.email);
       throw new UnauthorizedException("Invalid credentials");
     }
 
     if (!p.getVerified()) {
+      log.warn("Tentative de connexion échouée : compte non vérifié {}", request.email);
       throw new UnauthorizedException("Account not verified. Please verify your email first.");
     }
 
     if (p.getStatus() != null && !"ACTIVE".equalsIgnoreCase(p.getStatus())) {
+      log.warn("Tentative de connexion échouée : compte inactif {}", request.email);
       throw new UnauthorizedException("Account is not active");
     }
 
     String token = jwtService.generateAccessToken(p.getId(), Map.of("email", p.getEmail()));
+    log.info("Connexion réussie pour {}", request.email);
+
     LoginResponse resp = new LoginResponse();
     resp.accessToken = token;
     resp.expiresInSeconds = jwtService.getTtlSeconds();
@@ -63,8 +74,11 @@ public class AuthServiceImpl implements IAuthService {
 
   @Override
   public RegisterResponse register(RegisterRequest request) {
+    log.info("Tentative d'inscription pour l'email : {}", request.email);
+
     // Check if email already exists
     if (parentRepository.findByEmail(request.email).isPresent()) {
+      log.warn("Inscription échouée : l'email {} est déjà enregistré", request.email);
       throw new ConflictException("Email already registered");
     }
 
@@ -85,13 +99,16 @@ public class AuthServiceImpl implements IAuthService {
     parent.setOtpExpiresAt(otpExpiresAt);
 
     parentRepository.save(parent);
+    log.info("Parent créé en base avec le statut PENDING pour {}", request.email);
 
     // Send OTP email
     try {
       emailService.sendOtpEmail(parent.getEmail(), otpCode);
     } catch (Exception e) {
-      // Log error but don't fail registration
-      System.err.println("Failed to send OTP email: " + e.getMessage());
+      log.error("❌ Erreur critique lors de l'inscription de {} : impossible d'envoyer l'email OTP", request.email);
+      log.error("Détails de l'erreur d'envoi mail : ", e);
+      // On ne lève pas d'exception ici pour permettre à l'utilisateur de réessayer
+      // plus tard
     }
 
     RegisterResponse response = new RegisterResponse();
@@ -103,6 +120,8 @@ public class AuthServiceImpl implements IAuthService {
 
   @Override
   public VerifyOtpResponse verifyOtp(VerifyOtpRequest request) {
+    log.info("Tentative de vérification OTP pour l'email : {}", request.email);
+
     Parent parent = parentRepository.findByEmail(request.email)
         .orElseThrow(() -> new ValidationException("Invalid email or OTP code"));
 
@@ -113,11 +132,13 @@ public class AuthServiceImpl implements IAuthService {
 
     // Check OTP code
     if (parent.getOtpCode() == null || !parent.getOtpCode().equals(request.otpCode)) {
+      log.warn("OTP invalide pour l'email : {}", request.email);
       throw new ValidationException("Invalid email or OTP code");
     }
 
     // Check OTP expiration
     if (parent.getOtpExpiresAt() == null || LocalDateTime.now().isAfter(parent.getOtpExpiresAt())) {
+      log.warn("OTP expiré pour l'email : {}", request.email);
       throw new ValidationException("OTP code has expired. Please request a new one.");
     }
 
@@ -127,6 +148,7 @@ public class AuthServiceImpl implements IAuthService {
     parent.setOtpCode(null);
     parent.setOtpExpiresAt(null);
     parentRepository.save(parent);
+    log.info("Compte vérifié et activé avec succès pour {}", request.email);
 
     // Generate JWT token
     String token = jwtService.generateAccessToken(parent.getId(), Map.of("email", parent.getEmail()));

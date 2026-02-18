@@ -1,16 +1,21 @@
 package com.example.the_guardian_v1.service.impl;
 
 import com.example.the_guardian_v1.service.IEmailService;
-import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 public class EmailServiceImpl implements IEmailService {
 
     private final JavaMailSender mailSender;
+
+    @Value("${spring.mail.username}")
+    private String fromEmail;
 
     public EmailServiceImpl(JavaMailSender mailSender) {
         this.mailSender = mailSender;
@@ -18,10 +23,12 @@ public class EmailServiceImpl implements IEmailService {
 
     @Override
     public void sendOtpEmail(String toEmail, String otpCode) {
+        log.info("Tentative d'envoi d'OTP par email à : {}", toEmail);
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
+            helper.setFrom(fromEmail);
             helper.setTo(toEmail);
             helper.setSubject("The Guardian - Votre code de vérification");
 
@@ -29,8 +36,11 @@ public class EmailServiceImpl implements IEmailService {
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
-        } catch (MessagingException e) {
-            throw new RuntimeException("Failed to send OTP email to " + toEmail, e);
+            log.info("✅ Email OTP envoyé avec succès à {}", toEmail);
+        } catch (Exception e) {
+            log.error("❌ Échec de l'envoi de l'email OTP à {}. Erreur : {}", toEmail, e.getMessage());
+            log.error("Détails de l'erreur : ", e);
+            throw new RuntimeException("Erreur lors de l'envoi de l'email de vérification", e);
         }
     }
 
@@ -61,7 +71,6 @@ public class EmailServiceImpl implements IEmailService {
                             <h2 style="color: #1f2937;">Vérification de votre compte</h2>
                             <p>Bonjour,</p>
                             <p>Merci de vous être inscrit à The Guardian. Pour compléter votre inscription, veuillez utiliser le code de vérification ci-dessous :</p>
-
                             <div class="otp-box">
                                 <p style="margin: 0; font-size: 14px; color: #6b7280;">Votre code de vérification</p>
                                 <div class="otp-code">"""
@@ -70,7 +79,6 @@ public class EmailServiceImpl implements IEmailService {
                                         </div>
                                         <p style="margin: 0; font-size: 12px; color: #6b7280;">Ce code expire dans 10 minutes</p>
                                     </div>
-
                                     <p>Si vous n'avez pas demandé ce code, veuillez ignorer cet email.</p>
                                     <p>Cordialement,<br>L'équipe The Guardian</p>
                                 </div>

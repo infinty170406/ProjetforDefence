@@ -13,7 +13,9 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.beans.factory.annotation.Value;
 import java.util.List;
-import org.springframework.security.config.Customizer;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import java.util.Collections;
 
 @Configuration
 public class SecurityConfig {
@@ -27,6 +29,12 @@ public class SecurityConfig {
   public SecurityConfig(JwtAuthFilter jwtAuthFilter, ExecuteApiKeyFilter executeApiKeyFilter) {
     this.jwtAuthFilter = jwtAuthFilter;
     this.executeApiKeyFilter = executeApiKeyFilter;
+  }
+
+  @Bean
+  public UserDetailsService userDetailsService() {
+    // Return empty manager to avoid "Using generated security password"
+    return new InMemoryUserDetailsManager(Collections.emptyList());
   }
 
   @Bean
