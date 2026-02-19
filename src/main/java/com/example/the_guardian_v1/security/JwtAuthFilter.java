@@ -15,23 +15,35 @@ import java.util.Collections;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
   private final JwtService jwtService;
-  public JwtAuthFilter(JwtService jwtService){ this.jwtService = jwtService; }
+
+  public JwtAuthFilter(JwtService jwtService) {
+    this.jwtService = jwtService;
+  }
 
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
     String auth = request.getHeader("Authorization");
+    String token = null;
+
     if (auth != null && auth.startsWith("Bearer ")) {
-      String token = auth.substring(7);
+      token = auth.substring(7);
+    } else if (request.getParameter("token") != null) {
+      token = request.getParameter("token");
+    }
+
+    if (token != null) {
       try {
         Jws<Claims> parsed = jwtService.parseAndValidate(token);
         String parentId = parsed.getBody().getSubject();
         if (parentId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-          UsernamePasswordAuthenticationToken a = new UsernamePasswordAuthenticationToken(parentId, null, Collections.emptyList());
+          UsernamePasswordAuthenticationToken a = new UsernamePasswordAuthenticationToken(parentId, null,
+              Collections.emptyList());
           a.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
           SecurityContextHolder.getContext().setAuthentication(a);
         }
-      } catch (Exception ignored) {}
+      } catch (Exception ignored) {
+      }
     }
     chain.doFilter(request, response);
   }
