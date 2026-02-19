@@ -39,7 +39,11 @@ else
 fi
 
 # Log the port
-echo "Application will start on port: ${PORT:-8080}"
+FINAL_PORT=${PORT:-8080}
+echo "Application will start on port: $FINAL_PORT"
 
-# Run the application
-exec java -jar app.jar
+# Run the application with optimizations for Render Free plan
+# -Xmx384m: Limit heap memory
+# -XX:+UseSerialGC: Use lower memory GC
+# -XX:TieredStopAtLevel=1: Faster startup
+exec java -Xmx384m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -jar app.jar --server.port=$FINAL_PORT
