@@ -6,6 +6,7 @@ import com.example.the_guardian_v1.domain.model.Child;
 import com.example.the_guardian_v1.dto.parent.*;
 import com.example.the_guardian_v1.repository.ChildRepository;
 import com.example.the_guardian_v1.service.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -14,6 +15,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class ParentServiceImpl implements IParentService {
   private final IAuthorizationService authorizationService;
   private final ChildRepository childRepository;
@@ -46,6 +48,13 @@ public class ParentServiceImpl implements IParentService {
   @Override
   public ChildSummaryDto createChild(CreateChildRequest request) {
     String parentId = authorizationService.getCurrentParentId();
+    log.info("Creating child for parentId: '{}'. DisplayName: '{}'", parentId, request.getDisplayName());
+
+    if (parentId == null) {
+      log.error("Failed to create child: parentId is null (User not properly authenticated)");
+      throw new ForbiddenException("Authentication error: parent profile not identified");
+    }
+
     Child c = new Child();
     c.setId(UUID.randomUUID().toString());
     c.setParentId(parentId);
@@ -57,8 +66,14 @@ public class ParentServiceImpl implements IParentService {
     c.setInvitationToken(UUID.randomUUID().toString().replace("-", ""));
     c.setInvitationExpiresAt(Instant.now().plus(24, ChronoUnit.HOURS));
 
-    Child saved = childRepository.save(c);
-    return MappingUtils.toDto(saved);
+    try {
+      Child saved = childRepository.save(c);
+      log.info("Child created successfully: id={}, parentId={}", saved.getId(), saved.getParentId());
+      return MappingUtils.toDto(saved);
+    } catch (Exception ex) {
+      log.error("Database error while saving child: {}", ex.getMessage(), ex);
+      throw ex;
+    }
   }
 
   @Override
