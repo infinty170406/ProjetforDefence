@@ -6,10 +6,12 @@ import org.springframework.http.*;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
+import lombok.extern.slf4j.Slf4j;
 import java.time.Instant;
 import java.util.*;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -55,6 +57,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex, HttpServletRequest req) {
+    log.error("Unexpected error on path {}: {}", req.getRequestURI(), ex.getMessage(), ex);
     return ResponseEntity.status(500).body(base(500, "INTERNAL_ERROR", "Unexpected error", req));
   }
 
