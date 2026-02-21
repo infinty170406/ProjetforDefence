@@ -4,9 +4,9 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://127.0.0.1:5432/the_guardian_v1
-    username: postgres
-    password: "ange"
+    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:the_guardian_v1}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:ange}
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
