@@ -160,4 +160,3 @@ logging:
 guardian:
   location:
     max-requests-per-minute: 60
->>>>>>> 48343ca (Implement full backend architecture: Auth/KYC, Gemini AI Orchestration, Real-time Alerts, and Redis configuration for Render)
