@@ -6,6 +6,7 @@ import com.example.the_guardian_v1.domain.model.*;
 import com.example.the_guardian_v1.dto.parental.*;
 import com.example.the_guardian_v1.repository.*;
 import com.example.the_guardian_v1.service.*;
+import com.example.the_guardian_v1.service.location.NotificationPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
