@@ -23,18 +23,25 @@ public class ParentalServiceImpl implements IParentalService {
   private final BlockedKeywordRepository keywordRepo;
   private final EnforcementEventRepository eventRepo;
 
+  private final ChildRepository childRepo;
+  private final NotificationPublisher notificationPublisher;
+
   public ParentalServiceImpl(IAuthorizationService authorizationService,
       ParentalProfileRepository profileRepo,
       ScheduleRuleRepository scheduleRepo,
       ContentRuleRepository contentRepo,
       BlockedKeywordRepository keywordRepo,
-      EnforcementEventRepository eventRepo) {
+      EnforcementEventRepository eventRepo,
+      ChildRepository childRepo,
+      NotificationPublisher notificationPublisher) {
     this.authorizationService = authorizationService;
     this.profileRepo = profileRepo;
     this.scheduleRepo = scheduleRepo;
     this.contentRepo = contentRepo;
     this.keywordRepo = keywordRepo;
     this.eventRepo = eventRepo;
+    this.childRepo = childRepo;
+    this.notificationPublisher = notificationPublisher;
   }
 
   @Override
@@ -248,6 +255,30 @@ public class ParentalServiceImpl implements IParentalService {
         .stream()
         .map(MappingUtils::toDto)
         .collect(Collectors.toList());
+  }
+
+  @Override
+  public void logViolation(String childId, String title, String message, String type) {
+    // 1. Record in DB
+    recordEvent(childId, EventType.valueOf(type), ActorType.SYSTEM,
+        "{\"title\":\"" + title + "\", \"message\":\"" + message + "\"}");
+
+    // 2. Find child to get parentId
+    com.example.the_guardian_v1.domain.model.Child child = childRepo.findById(childId)
+        .orElseThrow(() -> new NotFoundException("Child not found: " + childId));
+
+    // 3. Broadcast via WebSocket
+    com.example.the_guardian_v1.dto.location.NotificationMessage wsMsg = com.example.the_guardian_v1.dto.location.NotificationMessage
+        .builder()
+        .title(title)
+        .message(message)
+        .type(type)
+        .childId(childId)
+        .parentId(child.getParentId())
+        .occurredAt(Instant.now())
+        .build();
+
+    notificationPublisher.pushNotification(wsMsg);
   }
 
   private void recordEvent(String childId, EventType type, ActorType actor, String payloadJson) {

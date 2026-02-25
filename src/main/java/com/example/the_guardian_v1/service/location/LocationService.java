@@ -41,7 +41,7 @@ public class LocationService {
     private final ChildGeofenceStateRepository stateRepo;
     private final RedisLocationCache cache;
     private final HaversineUtil haversine;
-    private final GeofenceAlertPublisher alertPublisher;
+    private final NotificationPublisher notificationPublisher;
 
     // We need the Child repository to verify ownership.
     private final com.example.the_guardian_v1.repository.ChildRepository childRepo;
@@ -148,7 +148,7 @@ public class LocationService {
                     .longitude(lon)
                     .occurredAt(occurredAt)
                     .build();
-            alertPublisher.pushAlert(alert);
+            notificationPublisher.pushGeofenceAlert(alert);
 
             triggered.add(transition.name() + ":" + fence.getName());
             log.info("Geofence transition {} child={} fence={}", transition, child.getId(), fence.getName());

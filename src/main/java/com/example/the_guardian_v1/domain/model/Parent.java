@@ -38,4 +38,12 @@ public class Parent extends Auditable {
   @Column(nullable = false, columnDefinition = "boolean default false")
   private Boolean verified = false;
 
+  @Column(nullable = false, columnDefinition = "boolean default false")
+  private Boolean kycVerified = false;
+
+  @Column(length = 50)
+  private String kycDocumentType;
+
+  @Column(length = 50)
+  private String kycDocumentNumber;
 }

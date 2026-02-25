@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 server:
   port: ${PORT:8080}
   address: 0.0.0.0
@@ -76,3 +77,87 @@ logging:
 guardian:
   location:
     max-requests-per-minute: 60
+=======
+server:
+  port: ${PORT:8080}
+  address: 0.0.0.0
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:the_guardian_v1}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:ange}
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  h2:
+    console:
+      enabled: false
+      path: /h2-console
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:theguardiancontrol.app@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:icnqupzwpaoesdgx}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+the_guardian:
+  jwt:
+    secret: ${THE_GUARDIAN_JWT_SECRET:CHANGE_ME_SUPER_SECRET_KEY_32CHARS_MINIMUM}
+    accessTokenTtlSeconds: 3600
+  execute:
+    apiKey: ${THE_GUARDIAN_EXECUTE_APIKEY:CHANGE_ME_EXECUTE_API_KEY}
+  otp:
+    expirationMinutes: 10
+
+google:
+  api:
+    key: ${GOOGLE_API_KEY:REPLACE_WITH_YOUR_GEMINI_KEY}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8080,http://localhost:5000,http://localhost:3000,http://localhost:5173,https://guardian-backend-v1-complet.onrender.com}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    mail:
+      enabled: false
+
+logging:
+  level:
+    org.springframework.mail: DEBUG
+    org.springframework.mail.javamail: DEBUG
+
+
+guardian:
+  location:
+    max-requests-per-minute: 60
+>>>>>>> 48343ca (Implement full backend architecture: Auth/KYC, Gemini AI Orchestration, Real-time Alerts, and Redis configuration for Render)

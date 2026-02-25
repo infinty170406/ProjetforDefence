@@ -50,4 +50,14 @@ public class AuthController {
   public VerifyOtpResponse verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
     return authService.verifyOtp(request);
   }
+
+  @PostMapping("/kyc/verify")
+  @Operation(summary = "Vérification d'identité (KYC)", description = "Soumet les informations d'identité pour vérification.")
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "200", description = "KYC soumis avec succès"),
+      @ApiResponse(responseCode = "400", description = "Données KYC invalides")
+  })
+  public void verifyKyc(@Valid @RequestBody KycRequest request) {
+    authService.verifyKyc(request);
+  }
 }

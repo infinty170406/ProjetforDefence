@@ -23,4 +23,6 @@ public interface IParentalService {
 
   List<EnforcementEventDto> getChildHistory(String childId);
 
+  void logViolation(String childId, String title, String message, String type);
+
 }

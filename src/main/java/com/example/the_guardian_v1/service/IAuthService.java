@@ -8,4 +8,6 @@ public interface IAuthService {
     RegisterResponse register(RegisterRequest request);
 
     VerifyOtpResponse verifyOtp(VerifyOtpRequest request);
+
+    void verifyKyc(KycRequest request);
 }

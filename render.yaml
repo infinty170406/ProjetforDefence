@@ -41,16 +41,33 @@ services:
         generateValue: true
       - key: CORS_ALLOWED_ORIGINS
         value: "*"
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: guardian-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: guardian-redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          type: redis
+          name: guardian-redis
+          property: password
       - key: SPRING_MAIL_HOST
-        sync: false
-      - key: SPRING_MAIL_PORT
-        sync: false
-      - key: SPRING_MAIL_USERNAME
-        sync: false
-      - key: SPRING_MAIL_PASSWORD
         sync: false
 
 databases:
   - name: guardian-db
     region: frankfurt
     plan: free
+
+redis:
+  - name: guardian-redis
+    region: frankfurt
+    plan: free
+    ipAllowList: [] # Only allow internal access

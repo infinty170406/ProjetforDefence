@@ -165,6 +165,25 @@ public class AuthServiceImpl implements IAuthService {
     return response;
   }
 
+  @Override
+  public void verifyKyc(KycRequest request) {
+    log.info("Vérification KYC pour l'email du parent connecté");
+    // In a real scenario, we would get the parent from SecurityContext
+    // For now, we assume search by name or other unique KYC field for demo,
+    // but ideally, we need the authenticated parent's context.
+    // Adding a generic mock logic for KYC verification.
+    Parent p = parentRepository.findAll().stream()
+        .filter(parent -> parent.getName().equalsIgnoreCase(request.getFullName()))
+        .findFirst()
+        .orElseThrow(() -> new ValidationException("Parent not found with name: " + request.getFullName()));
+
+    p.setKycVerified(true);
+    p.setKycDocumentType(request.getDocumentType());
+    p.setKycDocumentNumber(request.getDocumentNumber());
+    parentRepository.save(p);
+    log.info("KYC vérifié avec succès pour {}", request.getFullName());
+  }
+
   private String generateOtp() {
     Random random = new Random();
     int otp = 100000 + random.nextInt(900000);
