@@ -29,7 +29,7 @@ spring:
     host: ${SPRING_MAIL_HOST:smtp.gmail.com}
     port: ${SPRING_MAIL_PORT:587}
     username: ${SPRING_MAIL_USERNAME:theguardiancontrol.app@gmail.com}
-    password: ${SPRING_MAIL_PASSWORD:icnqupzwpaoesdgx}
+    password: ${SPRING_MAIL_PASSWORD:panxdzzhtvnrxasa}
     properties:
       mail:
         smtp:
