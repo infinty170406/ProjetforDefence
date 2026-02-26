@@ -51,12 +51,10 @@ public class AuthServiceImpl implements IAuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    // Auto-verify if not verified (OTP bypass)
+    // Check if verified
     if (!p.getVerified()) {
-      log.info("Activation automatique du compte non vérifié pendant le login pour {}", request.email);
-      p.setVerified(true);
-      p.setStatus("ACTIVE");
-      parentRepository.save(p);
+      log.warn("Tentative de connexion échouée : compte non vérifié {}", request.email);
+      throw new UnauthorizedException("Account is not verified. Please verify your OTP.");
     }
 
     if (p.getStatus() != null && !"ACTIVE".equalsIgnoreCase(p.getStatus())) {
