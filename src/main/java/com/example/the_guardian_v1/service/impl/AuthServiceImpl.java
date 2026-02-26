@@ -86,42 +86,66 @@ public class AuthServiceImpl implements IAuthService {
     java.util.Optional<Parent> existingParent = parentRepository.findByEmail(request.email);
     if (existingParent.isPresent()) {
       Parent p = existingParent.get();
-      log.info("L'email {} existe déjà. Mise à jour du compte (OTP BYPASSED).", request.email);
+
+      if (p.getVerified()) {
+        log.info("L'email {} est déjà inscrit et vérifié.", request.email);
+        throw new ConflictException("L'email est déjà utilisé et vérifié.");
+      }
+
+      log.info("L'email {} existe déjà mais n'est pas vérifié. Renvoi d'un nouvel OTP.", request.email);
 
       p.setName(request.name);
       p.setPasswordHash(passwordEncoder.encode(request.password));
-      p.setVerified(true);
-      p.setStatus("ACTIVE");
-      p.setOtpCode(null);
-      p.setOtpExpiresAt(null);
+      p.setVerified(false);
+      p.setStatus("PENDING");
+
+      String otp = generateOtp();
+      p.setOtpCode(otp);
+      p.setOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
       parentRepository.save(p);
+
+      try {
+        emailService.sendOtpEmail(p.getEmail(), otp);
+        log.info("Nouvel OTP envoyé par email à {}", request.email);
+      } catch (Exception e) {
+        log.error("Erreur lors de l'envoi du nouvel OTP par email", e);
+      }
 
       RegisterResponse response = new RegisterResponse();
       response.parentId = p.getId();
       response.email = p.getEmail();
-      response.message = "Compte mis à jour (OTP désactivé).";
+      response.message = "Compte mis à jour. Nouveau code OTP envoyé.";
       return response;
     }
 
-    // Create parent (Verified by default - OTP BYPASS)
+    // Create parent
     Parent parent = new Parent();
     parent.setId(UUID.randomUUID().toString());
     parent.setName(request.name);
     parent.setEmail(request.email);
     parent.setPasswordHash(passwordEncoder.encode(request.password));
     parent.setPhoneNumber(request.phoneNumber);
-    parent.setVerified(true);
-    parent.setStatus("ACTIVE");
-    parent.setOtpCode(null);
-    parent.setOtpExpiresAt(null);
+    parent.setVerified(false);
+    parent.setStatus("PENDING");
+
+    String otp = generateOtp();
+    parent.setOtpCode(otp);
+    parent.setOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
 
     parentRepository.save(parent);
-    log.info("Parent créé et ACTIVÉ directement (OTP BYPASS) pour {}", request.email);
+    log.info("Parent créé (PENDING) avec OTP généré pour {}", request.email);
+
+    try {
+      emailService.sendOtpEmail(parent.getEmail(), otp);
+      log.info("OTP envoyé par email à {}", request.email);
+    } catch (Exception e) {
+      log.error("Erreur lors de l'envoi de l'OTP par email", e);
+    }
 
     RegisterResponse response = new RegisterResponse();
     response.parentId = parent.getId();
     response.email = parent.getEmail();
-    response.message = "Inscription réussie (OTP désactivé).";
+    response.message = "Inscription réussie. Code OTP envoyé par email.";
     return response;
   }
 

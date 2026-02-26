@@ -9,9 +9,13 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:ange}
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
+    defer-datasource-initialization: true
     hibernate:
       ddl-auto: update
     open-in-view: false
+  sql:
+    init:
+      mode: always
     show-sql: true
     properties:
       hibernate:

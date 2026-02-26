@@ -1,0 +1,2 @@
+ALTER TABLE parents ADD COLUMN IF NOT EXISTS kyc_document_type VARCHAR(50);
+ALTER TABLE parents ADD COLUMN IF NOT EXISTS kyc_document_number VARCHAR(50);
