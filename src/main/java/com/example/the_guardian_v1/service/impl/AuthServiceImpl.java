@@ -27,14 +27,18 @@ public class AuthServiceImpl implements IAuthService {
   private final JwtService jwtService;
   private final IEmailService emailService;
   private final IKycService kycService;
+  private final org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
+  private static final String PENDING_PARENT_KEY_PREFIX = "pending_parent:";
 
   public AuthServiceImpl(ParentRepository parentRepository, PasswordEncoder passwordEncoder,
-      JwtService jwtService, IEmailService emailService, IKycService kycService) {
+      JwtService jwtService, IEmailService emailService, IKycService kycService,
+      org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate) {
     this.parentRepository = parentRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
     this.emailService = emailService;
     this.kycService = kycService;
+    this.redisTemplate = redisTemplate;
   }
 
   @Override
@@ -78,45 +82,21 @@ public class AuthServiceImpl implements IAuthService {
 
   @Override
   public RegisterResponse register(RegisterRequest request) {
-    log.info("Tentative d'inscription pour l'email (OTP désactivé) : {}", request.email);
+    log.info("Tentative d'inscription pour l'email : {}", request.email);
 
-    // Check if email already exists
+    // Check if email already exists in DB
     java.util.Optional<Parent> existingParent = parentRepository.findByEmail(request.email);
     if (existingParent.isPresent()) {
       Parent p = existingParent.get();
-
       if (p.getVerified()) {
         log.info("L'email {} est déjà inscrit et vérifié.", request.email);
         throw new ConflictException("L'email est déjà utilisé et vérifié.");
       }
-
-      log.info("L'email {} existe déjà mais n'est pas vérifié. Renvoi d'un nouvel OTP.", request.email);
-
-      p.setName(request.name);
-      p.setPasswordHash(passwordEncoder.encode(request.password));
-      p.setVerified(false);
-      p.setStatus("PENDING");
-
-      String otp = generateOtp();
-      p.setOtpCode(otp);
-      p.setOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
-      parentRepository.save(p);
-
-      try {
-        emailService.sendOtpEmail(p.getEmail(), otp);
-        log.info("Nouvel OTP envoyé par email à {}", request.email);
-      } catch (Exception e) {
-        log.error("Erreur lors de l'envoi du nouvel OTP par email", e);
-      }
-
-      RegisterResponse response = new RegisterResponse();
-      response.parentId = p.getId();
-      response.email = p.getEmail();
-      response.message = "Compte mis à jour. Nouveau code OTP envoyé.";
-      return response;
+      log.info("L'email {} existe déjà en DB mais n'est pas vérifié. Nous allons écraser la demande en Redis.",
+          request.email);
     }
 
-    // Create parent
+    // Create parent object (but don't save to DB yet)
     Parent parent = new Parent();
     parent.setId(UUID.randomUUID().toString());
     parent.setName(request.name);
@@ -130,8 +110,10 @@ public class AuthServiceImpl implements IAuthService {
     parent.setOtpCode(otp);
     parent.setOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
 
-    parentRepository.save(parent);
-    log.info("Parent créé (PENDING) avec OTP généré pour {}", request.email);
+    // Store in Redis instead of DB
+    String redisKey = PENDING_PARENT_KEY_PREFIX + request.email;
+    redisTemplate.opsForValue().set(redisKey, parent, 10, java.util.concurrent.TimeUnit.MINUTES);
+    log.info("Parent stocké temporairement en Redis pour {}", request.email);
 
     try {
       emailService.sendOtpEmail(parent.getEmail(), otp);
@@ -143,7 +125,7 @@ public class AuthServiceImpl implements IAuthService {
     RegisterResponse response = new RegisterResponse();
     response.parentId = parent.getId();
     response.email = parent.getEmail();
-    response.message = "Inscription réussie. Code OTP envoyé par email.";
+    response.message = "Inscription initiée. Veuillez vérifier votre email pour le code OTP.";
     return response;
   }
 
@@ -151,40 +133,56 @@ public class AuthServiceImpl implements IAuthService {
   public VerifyOtpResponse verifyOtp(VerifyOtpRequest request) {
     log.info("Tentative de vérification OTP pour l'email : {}", request.email);
 
-    Parent parent = parentRepository.findByEmail(request.email)
-        .orElseThrow(() -> new ValidationException("Invalid email or OTP code"));
+    String redisKey = PENDING_PARENT_KEY_PREFIX + request.email;
+    Object pendingObj = redisTemplate.opsForValue().get(redisKey);
+    Parent parent;
 
-    // Check if already verified
-    if (parent.getVerified()) {
-      throw new ValidationException("Account already verified");
+    if (pendingObj instanceof Parent) {
+      parent = (Parent) pendingObj;
+      log.info("Parent trouvé en Redis pour {}", request.email);
+    } else {
+      // Fallback to DB for already registered but unverified users (legacy)
+      parent = parentRepository.findByEmail(request.email)
+          .orElseThrow(() -> new ValidationException("Demande d'inscription non trouvée ou expirée."));
+      log.info("Parent trouvé en DB pour conversion (fallback) pour {}", request.email);
+    }
+
+    // Check if already verified (only if found in DB)
+    if (Boolean.TRUE.equals(parent.getVerified()) && parent.getId() != null) {
+      // Check if it's already in DB by ID
+      if (parentRepository.existsById(parent.getId())) {
+        throw new ValidationException("Account already verified");
+      }
     }
 
     // Check OTP code
     if (parent.getOtpCode() == null || !parent.getOtpCode().equals(request.otpCode)) {
       log.warn("OTP invalide pour l'email : {}", request.email);
-      throw new ValidationException("Invalid email or OTP code");
+      throw new ValidationException("Code OTP invalide.");
     }
 
     // Check OTP expiration
     if (parent.getOtpExpiresAt() == null || LocalDateTime.now().isAfter(parent.getOtpExpiresAt())) {
       log.warn("OTP expiré pour l'email : {}", request.email);
-      throw new ValidationException("OTP code has expired. Please request a new one.");
+      throw new ValidationException("Le code OTP a expiré.");
     }
 
-    // Activate account
+    // Activate and SAVE to DB
     parent.setVerified(true);
     parent.setStatus("ACTIVE");
     parent.setOtpCode(null);
     parent.setOtpExpiresAt(null);
+
     parentRepository.save(parent);
-    log.info("Compte vérifié et activé avec succès pour {}", request.email);
+    redisTemplate.delete(redisKey); // Clean up Redis
+    log.info("Compte vérifié, enregistré en DB et activé pour {}", request.email);
 
     // Generate JWT token
     String token = jwtService.generateAccessToken(parent.getId(), Map.of("email", parent.getEmail()));
 
     VerifyOtpResponse response = new VerifyOtpResponse();
     response.success = true;
-    response.message = "Account verified successfully";
+    response.message = "Compte vérifié avec succès";
     response.accessToken = token;
     response.expiresInSeconds = jwtService.getTtlSeconds();
     return response;

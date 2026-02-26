@@ -22,6 +22,13 @@ public class EmailServiceImpl implements IEmailService {
     @Override
     public void sendOtpEmail(String toEmail, String otpCode) {
         try {
+            if (fromEmail != null)
+                fromEmail = fromEmail.trim();
+            if (toEmail != null)
+                toEmail = toEmail.trim();
+
+            log.info("📧 Tentative d'envoi d'email de {} à {}", fromEmail, toEmail);
+
             jakarta.mail.internet.MimeMessage message = mailSender.createMimeMessage();
             org.springframework.mail.javamail.MimeMessageHelper helper = new org.springframework.mail.javamail.MimeMessageHelper(
                     message, true, "UTF-8");
