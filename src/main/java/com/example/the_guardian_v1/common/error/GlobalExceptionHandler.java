@@ -58,7 +58,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex, HttpServletRequest req) {
     log.error("Unexpected error on path {}: {}", req.getRequestURI(), ex.getMessage(), ex);
-    return ResponseEntity.status(500).body(base(500, "INTERNAL_ERROR", "Unexpected error", req));
+    ApiErrorResponse r = base(500, "INTERNAL_ERROR", "Unexpected error", req);
+    Map<String, Object> details = new HashMap<>();
+    details.put("exceptionMessage", ex.getMessage());
+    details.put("exceptionClass", ex.getClass().getName());
+    r.details = details;
+    return ResponseEntity.status(500).body(r);
   }
 
   private ApiErrorResponse base(int status, String error, String message, HttpServletRequest req) {
