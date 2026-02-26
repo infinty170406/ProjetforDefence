@@ -9,5 +9,5 @@ public interface IAuthService {
 
     VerifyOtpResponse verifyOtp(VerifyOtpRequest request);
 
-    void verifyKyc(KycRequest request);
+    KycResponse verifyKyc(KycSubmissionRequest request);
 }

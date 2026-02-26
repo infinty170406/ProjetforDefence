@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -51,13 +52,13 @@ public class AuthController {
     return authService.verifyOtp(request);
   }
 
-  @PostMapping("/kyc/verify")
-  @Operation(summary = "Vérification d'identité (KYC)", description = "Soumet les informations d'identité pour vérification.")
+  @PostMapping(value = "/kyc/verify", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @Operation(summary = "Vérification d'identité (KYC)", description = "Soumet les informations d'identité et les images pour vérification.")
   @ApiResponses(value = {
-      @ApiResponse(responseCode = "200", description = "KYC soumis avec succès"),
+      @ApiResponse(responseCode = "200", description = "KYC traité avec succès", content = @Content(schema = @Schema(implementation = KycResponse.class))),
       @ApiResponse(responseCode = "400", description = "Données KYC invalides")
   })
-  public void verifyKyc(@Valid @RequestBody KycRequest request) {
-    authService.verifyKyc(request);
+  public KycResponse verifyKyc(@Valid @ModelAttribute KycSubmissionRequest request) {
+    return authService.verifyKyc(request);
   }
 }
