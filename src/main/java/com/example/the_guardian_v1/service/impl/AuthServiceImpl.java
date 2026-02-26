@@ -85,15 +85,8 @@ public class AuthServiceImpl implements IAuthService {
     log.info("Tentative d'inscription pour l'email : {}", request.email);
 
     // Check if email already exists in DB
-    java.util.Optional<Parent> existingParent = parentRepository.findByEmail(request.email);
-    if (existingParent.isPresent()) {
-      Parent p = existingParent.get();
-      if (p.getVerified()) {
-        log.info("L'email {} est déjà inscrit et vérifié.", request.email);
-        throw new ConflictException("L'email est déjà utilisé et vérifié.");
-      }
-      log.info("L'email {} existe déjà en DB mais n'est pas vérifié. Nous allons écraser la demande en Redis.",
-          request.email);
+    if (parentRepository.findByEmail(request.email).isPresent()) {
+      throw new ConflictException("L'email est déjà utilisé.");
     }
 
     // Create parent object (but don't save to DB yet)
@@ -104,119 +97,75 @@ public class AuthServiceImpl implements IAuthService {
     parent.setPasswordHash(passwordEncoder.encode(request.password));
     parent.setPhoneNumber(request.phoneNumber);
     parent.setVerified(false);
-    parent.setStatus("PENDING");
-
-    String otp = generateOtp();
-    parent.setOtpCode(otp);
-    parent.setOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
+    parent.setKycVerified(false);
+    parent.setStatus("PENDING_KYC");
 
     // Store in Redis instead of DB
-    String redisKey = PENDING_PARENT_KEY_PREFIX + request.email;
-    redisTemplate.opsForValue().set(redisKey, parent, 10, java.util.concurrent.TimeUnit.MINUTES);
-    log.info("Parent stocké temporairement en Redis pour {}", request.email);
-
-    try {
-      emailService.sendOtpEmail(parent.getEmail(), otp);
-      log.info("OTP envoyé par email à {}", request.email);
-    } catch (Exception e) {
-      log.error("Erreur lors de l'envoi de l'OTP par email", e);
-    }
+    // Use Name as key for KYC matching as requested (Risk of collision noted in
+    // plan)
+    String redisKey = PENDING_PARENT_KEY_PREFIX + request.name;
+    redisTemplate.opsForValue().set(redisKey, parent, 30, java.util.concurrent.TimeUnit.MINUTES);
+    log.info("Parent stocké temporairement en Redis (clé: {}) pour {}", redisKey, request.email);
 
     RegisterResponse response = new RegisterResponse();
     response.parentId = parent.getId();
     response.email = parent.getEmail();
-    response.message = "Inscription initiée. Veuillez vérifier votre email pour le code OTP.";
+    response.message = "Inscription reçue. Veuillez maintenant procéder à la vérification KYC pour activer votre compte.";
     return response;
   }
 
   @Override
   public VerifyOtpResponse verifyOtp(VerifyOtpRequest request) {
-    log.info("Tentative de vérification OTP pour l'email : {}", request.email);
-
-    String redisKey = PENDING_PARENT_KEY_PREFIX + request.email;
-    Object pendingObj = redisTemplate.opsForValue().get(redisKey);
-    Parent parent;
-
-    if (pendingObj instanceof Parent) {
-      parent = (Parent) pendingObj;
-      log.info("Parent trouvé en Redis pour {}", request.email);
-    } else {
-      // Fallback to DB for already registered but unverified users (legacy)
-      parent = parentRepository.findByEmail(request.email)
-          .orElseThrow(() -> new ValidationException("Demande d'inscription non trouvée ou expirée."));
-      log.info("Parent trouvé en DB pour conversion (fallback) pour {}", request.email);
-    }
-
-    // Check if already verified (only if found in DB)
-    if (Boolean.TRUE.equals(parent.getVerified()) && parent.getId() != null) {
-      // Check if it's already in DB by ID
-      if (parentRepository.existsById(parent.getId())) {
-        throw new ValidationException("Account already verified");
-      }
-    }
-
-    // Check OTP code
-    if (parent.getOtpCode() == null || !parent.getOtpCode().equals(request.otpCode)) {
-      log.warn("OTP invalide pour l'email : {}", request.email);
-      throw new ValidationException("Code OTP invalide.");
-    }
-
-    // Check OTP expiration
-    if (parent.getOtpExpiresAt() == null || LocalDateTime.now().isAfter(parent.getOtpExpiresAt())) {
-      log.warn("OTP expiré pour l'email : {}", request.email);
-      throw new ValidationException("Le code OTP a expiré.");
-    }
-
-    // Activate and SAVE to DB
-    parent.setVerified(true);
-    parent.setStatus("ACTIVE");
-    parent.setOtpCode(null);
-    parent.setOtpExpiresAt(null);
-
-    parentRepository.save(parent);
-    redisTemplate.delete(redisKey); // Clean up Redis
-    log.info("Compte vérifié, enregistré en DB et activé pour {}", request.email);
-
-    // Generate JWT token
-    String token = jwtService.generateAccessToken(parent.getId(), Map.of("email", parent.getEmail()));
-
-    VerifyOtpResponse response = new VerifyOtpResponse();
-    response.success = true;
-    response.message = "Compte vérifié avec succès";
-    response.accessToken = token;
-    response.expiresInSeconds = jwtService.getTtlSeconds();
-    return response;
+    // This method is now deactivated as per user request
+    log.warn("Tentative d'appel à verifyOtp (service désactivé)");
+    throw new ValidationException("Le service OTP est désactivé. Veuillez utiliser le KYC pour valider votre compte.");
   }
 
   @Override
   public KycResponse verifyKyc(KycSubmissionRequest request) {
-    log.info("Processing KYC submission for: {}", request.getFullName());
+    log.info("Traitement de la soumission KYC pour : {}", request.getFullName());
 
     // 1. Basic Security Validations (File types)
     validateImageFile(request.getDocumentImage());
     validateImageFile(request.getSelfieImage());
 
-    // 2. Identify the parent
-    // In production, this would use the authenticated user (SecurityContextHolder)
-    Parent p = parentRepository.findByNameIgnoreCase(request.getFullName())
-        .orElseThrow(() -> new ValidationException("User not found: " + request.getFullName()));
+    // 2. Identify the parent (Check Redis first, then fallback to DB)
+    String redisKey = PENDING_PARENT_KEY_PREFIX + request.getFullName();
+    Object pendingObj = redisTemplate.opsForValue().get(redisKey);
+    Parent p;
+
+    if (pendingObj instanceof Parent) {
+      p = (Parent) pendingObj;
+      log.info("Parent en attente trouvé en Redis pour {}", request.getFullName());
+    } else {
+      p = parentRepository.findByNameIgnoreCase(request.getFullName())
+          .orElseThrow(() -> new ValidationException("Utilisateur non trouvé : " + request.getFullName()));
+      log.info("Parent trouvé en DB pour KYC (cas existant) pour {}", request.getFullName());
+    }
 
     // 3. Call the external KYC service
     KycResponse kycResponse = kycService.verifyKyc(request);
 
-    // 4. Update Parent entity based on result (including Age check requirement)
+    // 4. Update Parent entity based on result
     if (kycResponse.getStatus() == KycResponse.Status.APPROVED) {
-      // Business Rule: Age >= 18 is assumed to be verified by the OCR microservice
-      // if it returns APPROVED. If confidence is high, we proceed.
       p.setKycVerified(true);
+      p.setVerified(true); // Account is verified only after KYC approval
       p.setKycDocumentType(request.getDocumentType());
       p.setKycDocumentNumber(request.getDocumentNumber());
+      p.setStatus("ACTIVE");
+
       parentRepository.save(p);
-      log.info("KYC APPROVED and saved for {}", request.getFullName());
+      if (pendingObj != null) {
+        redisTemplate.delete(redisKey);
+      }
+      log.info("KYC APPROUVÉ et parent enregistré en DB pour {}", request.getFullName());
     } else {
       p.setKycVerified(false);
-      parentRepository.save(p);
-      log.warn("KYC REJECTED for {}: {}", request.getFullName(), kycResponse.getReason());
+      // If it was already in DB, update status
+      if (p.getId() != null && parentRepository.existsById(p.getId())) {
+        parentRepository.save(p);
+      }
+      log.warn("KYC REJETÉ pour {} : {}", request.getFullName(), kycResponse.getReason());
     }
 
     return kycResponse;
