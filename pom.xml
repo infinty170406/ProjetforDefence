@@ -21,7 +21,6 @@
 
     <properties>
         <java.version>17</java.version>
-        <jjwt.version>0.11.5</jjwt.version>
     </properties>
 
     <dependencies>
@@ -50,16 +49,14 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
+        <!-- Firebase Admin SDK -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>9.3.0</version>
         </dependency>
 
-        <!-- Mail -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
-        </dependency>
+
 
         <!-- PostgreSQL -->
         <dependency>

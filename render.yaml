@@ -35,14 +35,12 @@ services:
         fromDatabase:
           name: guardian-db
           property: connectionString
-      - key: SUPABASE_URL
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
         sync: false
-      - key: SUPABASE_ANON_KEY
-        sync: false
-      - key: SUPABASE_JWT_SECRET
-        sync: false
-      - key: SUPABASE_STORAGE_BUCKET
-        value: guardian-files
+      - key: FIREBASE_SERVICE_ACCOUNT_PATH
+        value: /app/firebase-service-account.json
+      - key: STORAGE_BASE_DIR
+        value: /app/data/kyc
       - key: CORS_ALLOWED_ORIGINS
         value: "*"
       - key: GOOGLE_API_KEY
@@ -62,8 +60,7 @@ services:
           type: redis
           name: guardian-redis
           property: password
-      - key: SPRING_MAIL_HOST
-        sync: false
+
 
 databases:
   - name: guardian-db

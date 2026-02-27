@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@Tag(name = "Authentication", description = "Endpoints pour l'authentification des parents")
+@Tag(name = "Authentication", description = "Endpoints for parent authentication and OTP")
 public class AuthController {
   private final IAuthService authService;
 
@@ -23,12 +23,24 @@ public class AuthController {
   }
 
   @PostMapping(value = "/kyc/verify", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @Operation(summary = "Vérification d'identité (KYC)", description = "Soumet les informations d'identité et les images pour vérification.")
+  @Operation(summary = "Identity Verification (KYC)", description = "Submit identity information and images for verification.")
   @ApiResponses(value = {
-      @ApiResponse(responseCode = "200", description = "KYC traité avec succès", content = @Content(schema = @Schema(implementation = KycResponse.class))),
-      @ApiResponse(responseCode = "400", description = "Données KYC invalides")
+      @ApiResponse(responseCode = "200", description = "KYC processed successfully", content = @Content(schema = @Schema(implementation = KycResponse.class))),
+      @ApiResponse(responseCode = "400", description = "Invalid KYC data")
   })
   public KycResponse verifyKyc(@Valid @ModelAttribute KycSubmissionRequest request) {
     return authService.verifyKyc(request);
+  }
+
+  @PostMapping("/otp/send")
+  @Operation(summary = "Send OTP", description = "Generates and sends an OTP to the user's email.")
+  public void sendOtp(@RequestParam String email) {
+    authService.sendOtp(email);
+  }
+
+  @PostMapping("/otp/verify")
+  @Operation(summary = "Verify OTP", description = "Verifies the OTP provided by the user.")
+  public VerifyOtpResponse verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+    return authService.verifyOtp(request);
   }
 }
