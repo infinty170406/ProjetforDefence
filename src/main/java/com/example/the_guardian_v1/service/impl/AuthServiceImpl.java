@@ -4,6 +4,7 @@ import com.example.the_guardian_v1.common.exception.ValidationException;
 import com.example.the_guardian_v1.domain.model.Parent;
 import com.example.the_guardian_v1.dto.auth.*;
 import com.example.the_guardian_v1.repository.ParentRepository;
+import com.example.the_guardian_v1.service.IAuthService;
 import com.example.the_guardian_v1.service.IKycService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
