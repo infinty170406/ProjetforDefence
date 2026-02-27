@@ -17,9 +17,6 @@ public class Parent extends Auditable {
   @Column(nullable = false, length = 320, unique = true)
   private String email;
 
-  @Column(nullable = false, length = 100)
-  private String passwordHash;
-
   @Column(nullable = false, length = 120)
   private String name;
 
@@ -28,12 +25,6 @@ public class Parent extends Auditable {
 
   @Column(nullable = false, length = 20)
   private String status;
-
-  @Column(length = 6)
-  private String otpCode;
-
-  @Column
-  private java.time.LocalDateTime otpExpiresAt;
 
   @Column(nullable = false, columnDefinition = "boolean default false")
   private Boolean verified = false;

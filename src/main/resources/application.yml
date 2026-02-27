@@ -52,10 +52,21 @@ spring:
       max-file-size: 10MB
       max-request-size: 20MB
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jws-algorithms: HS256
+          secret-key: ${SUPABASE_JWT_SECRET:CHANGE_ME_SUPABASE_JWT_SECRET}
+
+supabase:
+  url: ${SUPABASE_URL:https://xyz.supabase.co}
+  anon-key: ${SUPABASE_ANON_KEY:CHANGE_ME_ANON_KEY}
+  jwt-secret: ${SUPABASE_JWT_SECRET:CHANGE_ME_SUPABASE_JWT_SECRET}
+  storage:
+    bucket: ${SUPABASE_STORAGE_BUCKET:guardian-files}
+
 the_guardian:
-  jwt:
-    secret: ${THE_GUARDIAN_JWT_SECRET:CHANGE_ME_SUPER_SECRET_KEY_32CHARS_MINIMUM}
-    accessTokenTtlSeconds: 3600
   execute:
     apiKey: ${THE_GUARDIAN_EXECUTE_APIKEY:CHANGE_ME_EXECUTE_API_KEY}
   otp:
