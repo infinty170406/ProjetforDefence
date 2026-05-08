@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">The Guardian Child</string>
+    <string name="accessibility_service_description">
+        The Guardian utilise ce service pour détecter les applications au premier plan
+        et appliquer les règles de contrôle parental configurées par vos parents.
+        Aucune donnée personnelle du contenu des écrans n\'est collectée.
+    </string>
+</resources>

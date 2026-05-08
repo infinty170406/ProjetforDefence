@@ -1,0 +1,76 @@
+name: the_guardian_child
+description: The Guardian Child - Protector of Digital Freedom
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # storage
+  shared_preferences: ^2.2.2
+  flutter_secure_storage: ^9.0.0
+
+  # state management
+  provider: ^6.1.2
+
+  # UI
+  google_fonts: ^6.2.0
+
+  # biometrics
+  local_auth: ^2.2.0
+
+  # permissions
+  permission_handler: ^11.3.0
+
+  # network
+  http: ^1.2.0
+  connectivity_plus: ^6.0.3
+
+  # GPS tracking
+  geolocator: ^10.1.1
+
+  # background tracking
+  flutter_background_service: ^5.0.5
+  flutter_local_notifications: ^17.2.1
+
+  # monitoring
+  usage_stats: ^1.2.0
+  battery_plus: ^6.0.2
+
+  # scanning / links
+  mobile_scanner: ^5.1.0
+  app_links: ^6.1.0
+
+  # firebase
+  firebase_core: ^3.3.0
+  firebase_auth: ^5.1.0
+  cloud_firestore: ^5.2.0
+  firebase_messaging: ^15.0.4
+
+  # google services
+  google_api_availability: ^5.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.2
+  flutter_launcher_icons: ^0.13.1
+  image: ^4.8.0
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/Rectangle 69.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "assets/images/Rectangle 69.png"
+  adaptive_icon_foreground: "assets/images/empty.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/

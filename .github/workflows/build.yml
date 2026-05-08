@@ -1,0 +1,45 @@
+name: Flutter Build
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Decode Keystore and Google Services
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 --decode --ignore-garbage > android/app/google-services.json
+          echo "${{ secrets.KEYSTORE_JKS_BASE64 }}" | base64 --decode --ignore-garbage > android/guardian-release.jks
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Android Release APK
+        run: flutter build apk --release
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: guardian-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
