@@ -89,22 +89,27 @@ class LinkHandlerService {
     );
 
     final result = await _authService.activateDevice(link);
-
-    if (!context.mounted) return;
+    
+    // Vérifier si le widget est toujours présent
+    final currentContext = navigatorKey.currentContext;
+    if (currentContext == null || !currentContext.mounted) {
+      debugPrint('LinkHandler: Context lost after activation.');
+      return;
+    }
 
     // Cacher le snackbar de chargement
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(currentContext).hideCurrentSnackBar();
 
     switch (result.status) {
       case LinkStatus.success:
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(currentContext).showSnackBar(
           const SnackBar(
             content: Text('✅ Device paired successfully!'),
             backgroundColor: Colors.green,
           ),
         );
         Navigator.pushAndRemoveUntil(
-          context,
+          currentContext,
           MaterialPageRoute(builder: (_) => const ConnectingScreen()),
           (route) => false,
         );
@@ -112,7 +117,7 @@ class LinkHandlerService {
 
       case LinkStatus.invalid:
         Navigator.push(
-          context,
+          currentContext,
           MaterialPageRoute(
             builder: (_) => InvalidLinkScreen(status: result.status),
           ),
@@ -121,13 +126,13 @@ class LinkHandlerService {
 
       case LinkStatus.expired:
         Navigator.push(
-          context,
+          currentContext,
           MaterialPageRoute(builder: (_) => const ExpiredLinkScreen()),
         );
         break;
 
       case LinkStatus.networkError:
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(currentContext).showSnackBar(
           SnackBar(
             content: Text(result.errorMessage ?? 'Network error during activation.'),
             backgroundColor: Colors.redAccent,

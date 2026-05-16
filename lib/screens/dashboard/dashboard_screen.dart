@@ -8,6 +8,7 @@ import '../../widgets/sos_notification.dart';
 import '../../services/sos_service.dart';
 import '../../services/monitoring_service.dart';
 import '../../services/background_service.dart';
+import '../../services/package_service.dart';
 import '../restrictions/blocking_screen.dart';
 
 /// DashboardScreen
@@ -46,6 +47,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final pending = BlockEventService.consumePending();
       if (pending != null) _navigateToBlock(pending);
+
+      // Force la synchronisation des applications installées pour que 
+      // l'application parente puisse recevoir les vrais noms et icônes
+      // juste après l'appairage. (Appelé sur le main thread)
+      PackageService().syncInstalledApps();
     });
 
     // Écouter les blocages en temps réel

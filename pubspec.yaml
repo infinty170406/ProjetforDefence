@@ -53,6 +53,7 @@ dependencies:
   # google services
   google_api_availability: ^5.0.1
 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

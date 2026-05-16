@@ -31,30 +31,121 @@ class EnforcementService {
   final RulesService _rulesService = RulesService();
 
   static const _methodChannel = MethodChannel('app.theguardian.child/system');
-  static const _webEventChannel = EventChannel('app.theguardian.child/web_events');
-  static const _keywordEventChannel = EventChannel('app.theguardian.child/keyword_events');
+  static const _webEventChannel = EventChannel(
+    'app.theguardian.child/web_events',
+  );
+  static const _keywordEventChannel = EventChannel(
+    'app.theguardian.child/keyword_events',
+  );
 
   // ── Packages par catégorie ───────────────────────────────────────────────
   static const socialMedia = {
-    'com.zhiliaoapp.musically', 'com.tiktok',
-    'com.instagram.android', 'com.snapchat.android',
-    'com.twitter.android', 'com.facebook.katana',
-    'com.facebook.lite', 'com.pinterest',
+    'com.zhiliaoapp.musically',
+    'com.tiktok',
+    'com.instagram.android',
+    'com.snapchat.android',
+    'com.twitter.android',
+    'com.facebook.katana',
+    'com.facebook.lite',
+    'com.pinterest',
     'com.reddit.frontpage',
   };
   static const gaming = {
-    'com.roblox.client', 'com.epicgames.fortnite',
-    'com.mojang.minecraftpe', 'com.supercell.clashofclans',
-    'com.supercell.brawlstars', 'com.king.candycrushsaga',
+    'com.roblox.client',
+    'com.epicgames.fortnite',
+    'com.mojang.minecraftpe',
+    'com.supercell.clashofclans',
+    'com.supercell.brawlstars',
+    'com.king.candycrushsaga',
     'com.gameloft.android.ANMP.GloftA9HM',
   };
   static const _socialMedia = socialMedia;
   static const _gaming = gaming;
 
   // ── Filtres de contenu (mots-clés) ───────────────────────────────────────
-  static const _adultKeywords = {'porn', 'sex', 'xhamster', 'xvideos', 'pornhub', 'adult'};
-  static const _violenceKeywords = {'violence', 'gore', 'suicide', 'death', 'blood', 'killing'};
-  static const _gamblingKeywords = {'gambling', 'casino', 'bet', 'poker', 'slots', 'lottery'};
+  static const _adultKeywords = {
+    'porn',
+    'sex',
+    'xhamster',
+    'xvideos',
+    'pornhub',
+    'adult',
+    'hentai',
+    'brazzers',
+  };
+  static const _violenceKeywords = {
+    'violence',
+    'gore',
+    'suicide',
+    'death',
+    'blood',
+    'killing',
+    'murder',
+    'stab',
+    'gun',
+    'shooting',
+  };
+  static const _gamblingKeywords = {
+    'gambling',
+    'casino',
+    'bet',
+    'poker',
+    'slots',
+    'lottery',
+    'roulette',
+    'blackjack',
+    'betting',
+  };
+  static const _drugsKeywords = {
+    'drugs',
+    'cocaine',
+    'heroin',
+    'meth',
+    'weed',
+    'cannabis',
+    'fentanyl',
+    'pill',
+    'ecstasy',
+    'overdose',
+  };
+  static const _predatorsKeywords = {
+    'omegle',
+    'chatroulette',
+    'dating',
+    'tinder',
+    'bumble',
+    'grindr',
+    'meetup',
+    'strangers',
+  };
+  static const _selfHarmKeywords = {
+    'cut',
+    'harm',
+    'suicide',
+    'kill myself',
+    'cutting',
+    'self-harm',
+    'razor',
+    'bleeding',
+  };
+  static const _bullyingKeywords = {
+    'ugly',
+    'fat',
+    'loser',
+    'kill yourself',
+    'stupid',
+    'hate you',
+    'freak',
+  };
+  static const _eatingKeywords = {
+    'pro-ana',
+    'anorexia',
+    'bulimia',
+    'thinspo',
+    'weight loss',
+    'diet pill',
+    'laxative',
+  };
 
   Timer? _checkTimer;
   bool _isRunning = false;
@@ -65,6 +156,16 @@ class EnforcementService {
   DateTime? _lastUiUpdate;
   StreamSubscription? _webSubscription;
   StreamSubscription? _keywordSubscription;
+  int _lastReportedMinutes = 0;
+
+  // ── Throttling d'alertes ─────────────────────────────────────────────────
+  DateTime? _lastOutsideHoursAlert;
+  DateTime? _lastTimeLimitAlert;
+  // final Map<String, DateTime> _lastAppLimitAlerts = {}; // Unused
+  
+  // Anti-drain : Compteurs pour les vérifications lourdes
+  int _ticksSinceLastFullSync = 0;
+  static const int fullSyncIntervalTicks = 60; // Toutes les 60 secondes
 
   // Instance du service de background (pour communication inter-isolate)
   ServiceInstance? _backgroundService;
@@ -78,6 +179,7 @@ class EnforcementService {
     required void Function(String reason) onBlock,
     ServiceInstance? service,
   }) async {
+    debugPrint('EnforcementService: start() called.');
     if (_isRunning) return;
     _isRunning = true;
     onBlockRequired = onBlock;
@@ -122,20 +224,33 @@ class EnforcementService {
     _updateNativeBlockedPackages(blocked);
     _updateNativeCustomKeywords(rules.customKeywords);
 
-    final needsVpn = rules.blockedWebsites.isNotEmpty || 
-        rules.blockAdultContent || 
-        rules.blockViolence || 
+    // Le VPN est désactivé au profit de l'Accessibilité
+    /*
+    final needsVpn =
+        rules.blockedWebsites.isNotEmpty ||
+        rules.blockAdultContent ||
+        rules.blockViolence ||
         rules.blockGambling;
     _updateNativeVpnState(needsVpn);
+    */
 
-    debugPrint('EnforcementService: Rules updated. ${blocked.length} apps blocked. VPN needed: $needsVpn');
-    
+    debugPrint(
+      'EnforcementService: Rules updated. ${blocked.length} apps blocked.',
+    );
+
     // Déclencher une vérification immédiate sans attendre le prochain tick
     _tick();
   }
 
+  /*
   Future<void> _updateNativeVpnState(bool start) async {
     if (!Platform.isAndroid) return;
+
+    if (_backgroundService != null) {
+      _backgroundService!.invoke('updateNativeVpnState', {'start': start});
+      return;
+    }
+
     try {
       if (start) {
         await _methodChannel.invokeMethod('startVpn');
@@ -146,13 +261,16 @@ class EnforcementService {
       debugPrint('EnforcementService: VPN update error: $e');
     }
   }
+  */
 
   Future<void> _updateNativeBlockedPackages(Set<String> packages) async {
     if (!Platform.isAndroid) return;
     final packageList = packages.toList();
 
     if (_backgroundService != null) {
-      _backgroundService!.invoke('updateNativeBlockedPackages', {'packages': packageList});
+      _backgroundService!.invoke('updateNativeBlockedPackages', {
+        'packages': packageList,
+      });
       return;
     }
 
@@ -168,7 +286,9 @@ class EnforcementService {
     final keywordList = keywords.toList();
 
     if (_backgroundService != null) {
-      _backgroundService!.invoke('updateNativeCustomKeywords', {'keywords': keywordList});
+      _backgroundService!.invoke('updateNativeCustomKeywords', {
+        'keywords': keywordList,
+      });
       return;
     }
 
@@ -182,60 +302,90 @@ class EnforcementService {
   // ── Tick de vérification (toutes les 5s) ─────────────────────────────────
 
   Future<void> _tick() async {
+    debugPrint('EnforcementService: _tick() executing...');
     if (!Platform.isAndroid) return;
     final rules = _rulesService.current;
-
-    // Temps d'écran utilisé
-    final usedMinutes = await _getTodayUsedMinutes();
     final now = DateTime.now();
 
-    // Mettre à jour l'UI toutes les minutes
-    if (_lastUiUpdate == null || now.difference(_lastUiUpdate!) >= const Duration(minutes: 1)) {
+    // ── VÉRIFICATION RAPIDE (Toutes les secondes) ──
+    // Déterminer si l'enfant tente activement d'utiliser une application
+    final frontPackage = await _getForegroundPackage();
+    final bool isActivelyTrying = frontPackage != null && !_isSystemApp(frontPackage);
+
+    // ── VÉRIFICATION LOURDE (Toutes les 60 secondes) ──
+    _ticksSinceLastFullSync++;
+    bool isFullSyncTick = _ticksSinceLastFullSync >= fullSyncIntervalTicks;
+    
+    int usedMinutes = 0;
+    debugPrint('EnforcementService: Tick - Front: $frontPackage, isActivelyTrying: $isActivelyTrying');
+    if (isFullSyncTick || _lastScreenTimeReport == null) {
+      _ticksSinceLastFullSync = 0;
+      usedMinutes = await _getTodayUsedMinutes();
+      _lastReportedMinutes = usedMinutes;
+      
+      // Mettre à jour l'UI (Dashboard)
       _backgroundService?.invoke('screenTimeUpdate', {'minutes': usedMinutes});
-      _lastUiUpdate = now;
+      
+      // Reporter à Firestore toutes les 2 minutes
+      if (_lastScreenTimeReport == null || now.difference(_lastScreenTimeReport!) >= const Duration(minutes: 2)) {
+        await _reportScreenTime(usedMinutes);
+        _lastScreenTimeReport = now;
+      }
+    } else {
+      // Entre deux syncs, on utilise la dernière valeur connue (approximation)
+      usedMinutes = _lastReportedMinutes; 
     }
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload(); // IMPORTANT: Obligatoire pour voir les changements de l'autre isolate
     final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
 
-    // 1. Plage horaire
+    // 1. Plage horaire (Prioritaire)
+    debugPrint('EnforcementService: Checking Hours - Current: ${now.hour}:${now.minute}, Allowed: ${rules.allowedTimeStart}-${rules.allowedTimeEnd}');
     if (_isOutsideAllowedHours(rules)) {
+      debugPrint('EnforcementService: BLOCK -> Outside allowed hours');
       final start = rules.allowedTimeStart ?? '';
       final end = rules.allowedTimeEnd ?? '';
-      
+
       if (onboardingComplete) {
-        await _alertService.sendAlert(
-          type: AlertType.outsideHours,
-          detail: 'Hors plage autorisée ($start – $end)',
+        if (isActivelyTrying &&
+            (_lastOutsideHoursAlert == null ||
+                now.difference(_lastOutsideHoursAlert!).inMinutes >= 10)) {
+          _lastOutsideHoursAlert = now;
+          await _alertService.sendAlert(
+            type: AlertType.outsideHours,
+            detail:
+                'Alerte d\'activité : Votre enfant a tenté d\'utiliser son téléphone en dehors des heures autorisées (de $start à $end).',
+          );
+        }
+        onBlockRequired?.call(
+          'Utilisation hors heures autorisées ($start – $end).',
         );
-        onBlockRequired?.call('Utilisation hors heures autorisées ($start – $end).');
         return;
       }
     }
 
     // 2. Limite journalière globale
-    if (rules.dailyLimitMinutes > 0) {
-      if (usedMinutes >= rules.dailyLimitMinutes && onboardingComplete) {
-        await _alertService.sendAlert(
-          type: AlertType.timeLimit,
-          detail: 'Limite de ${rules.dailyLimitMinutes} min atteinte',
-        );
+    debugPrint('EnforcementService: Checking Daily Limit - Used: $usedMinutes min, Limit: ${rules.dailyLimitMinutes} min');
+    if (rules.dailyLimitMinutes > 0 && usedMinutes >= rules.dailyLimitMinutes) {
+      debugPrint('EnforcementService: BLOCK -> Daily limit reached');
+      if (onboardingComplete) {
+        if (isActivelyTrying &&
+            (_lastTimeLimitAlert == null ||
+                now.difference(_lastTimeLimitAlert!).inMinutes >= 10)) {
+          _lastTimeLimitAlert = now;
+          await _alertService.sendAlert(
+            type: AlertType.timeLimit,
+            detail:
+                'Alerte de limite : Votre enfant a tenté d\'utiliser son téléphone alors que sa limite de temps d\'écran journalière (${rules.dailyLimitMinutes} minutes) est déjà épuisée.',
+          );
+        }
         onBlockRequired?.call('Temps d\'écran journalier écoulé.');
-      }
-
-      if (_lastScreenTimeReport == null || now.difference(_lastScreenTimeReport!) >= const Duration(minutes: 5)) {
-        await _reportScreenTime(usedMinutes);
-        _lastScreenTimeReport = now;
-      }
-
-      if (usedMinutes >= rules.dailyLimitMinutes) {
         return;
       }
     }
 
     // 3. App au premier plan
-    final frontPackage = await _getForegroundPackage();
     if (frontPackage == null) return;
 
     // 3a. Vérifier les limites par application
@@ -243,14 +393,21 @@ class EnforcementService {
     if (appLimit != null && appLimit > 0) {
       final appUsedMinutes = await _getAppUsedMinutes(frontPackage);
       if (appUsedMinutes >= appLimit) {
-      if (onboardingComplete) {
-        await _alertService.sendAlert(
-          type: AlertType.appTimeLimit,
-          detail: 'Limite pour $frontPackage atteinte ($appLimit min)',
-        );
-        onBlockRequired?.call('Limite de temps pour cette application atteinte.');
-        return;
-      }
+        if (onboardingComplete) {
+          await _alertService.sendAlert(
+            type: AlertType.appTimeLimit,
+            detail:
+                'Alerte de temps : Votre enfant a essayé d\'ouvrir l\'application $frontPackage, mais sa limite d\'utilisation pour cette application ($appLimit minutes) est atteinte.',
+          );
+          onBlockRequired?.call(
+            'Limite de temps pour cette application atteinte.',
+          );
+          return;
+        } else {
+          debugPrint(
+            'EnforcementService: Rule matched (AppLimit for $frontPackage) but onboarding_complete=false. Ignoring block.',
+          );
+        }
       }
     }
 
@@ -261,14 +418,20 @@ class EnforcementService {
     );
 
     if (blocked.contains(frontPackage) && frontPackage != _lastPackage) {
+      debugPrint('EnforcementService: BLOCK -> App is in blocked list: $frontPackage');
       _lastPackage = frontPackage;
-      
+
       if (onboardingComplete) {
         await _alertService.sendAlert(
           type: AlertType.blockedApp,
-          detail: 'App bloquée : $frontPackage',
+          detail:
+              'Alerte de sécurité : Votre enfant a tenté d\'ouvrir l\'application $frontPackage, qui fait partie des applications que vous avez bloquées.',
         );
         onBlockRequired?.call('Cette application est bloquée par vos parents.');
+      } else {
+        debugPrint(
+          'EnforcementService: Rule matched (BlockedApp: $frontPackage) but onboarding_complete=false. Ignoring block.',
+        );
       }
     } else if (!blocked.contains(frontPackage)) {
       _lastPackage = null;
@@ -295,8 +458,8 @@ class EnforcementService {
 
     if (url.isEmpty) return;
 
-    // Historique
-    if (url != _lastReportedUrl && url.startsWith('http')) {
+    // Historique (Supporte maintenant les URLs "nues" sans http)
+    if (url != _lastReportedUrl) {
       _lastReportedUrl = url;
       _reportUrlHistory(url, pkg);
     }
@@ -304,22 +467,67 @@ class EnforcementService {
     // Blocage par domaine
     for (final blocked in rules.blockedWebsites) {
       if (url.contains(blocked.toLowerCase())) {
-        _triggerWebBlock(url, 'Ce site web ($blocked) est bloqué par vos parents.');
+        _triggerWebBlock(
+          url,
+          'Ce site web ($blocked) est bloqué par vos parents.',
+        );
         return;
       }
     }
 
     // Blocage par catégorie
     if (rules.blockAdultContent && _matchesKeywords(url, _adultKeywords)) {
-      _triggerWebBlock(url, 'Contenu bloqué par le filtre parental (Contenu Adulte).');
+      _triggerWebBlock(
+        url,
+        'Contenu bloqué par le filtre parental (Contenu Adulte).',
+      );
       return;
     }
     if (rules.blockViolence && _matchesKeywords(url, _violenceKeywords)) {
-      _triggerWebBlock(url, 'Contenu bloqué par le filtre parental (Violence).');
+      _triggerWebBlock(
+        url,
+        'Contenu bloqué par le filtre parental (Violence).',
+      );
       return;
     }
     if (rules.blockGambling && _matchesKeywords(url, _gamblingKeywords)) {
-      _triggerWebBlock(url, 'Contenu bloqué par le filtre parental (Jeux d\'argent).');
+      _triggerWebBlock(
+        url,
+        'Contenu bloqué par le filtre parental (Jeux d\'argent).',
+      );
+      return;
+    }
+    if (rules.blockDrugs && _matchesKeywords(url, _drugsKeywords)) {
+      _triggerWebBlock(url, 'Contenu bloqué par le filtre parental (Drogues).');
+      return;
+    }
+    if (rules.blockSexualPredators &&
+        _matchesKeywords(url, _predatorsKeywords)) {
+      _triggerWebBlock(
+        url,
+        'Contenu bloqué par le filtre parental (Rencontres/Prédateurs).',
+      );
+      return;
+    }
+    if (rules.blockSelfHarm && _matchesKeywords(url, _selfHarmKeywords)) {
+      _triggerWebBlock(
+        url,
+        'Contenu bloqué par le filtre parental (Auto-mutilation).',
+      );
+      return;
+    }
+    if (rules.blockCyberbullying && _matchesKeywords(url, _bullyingKeywords)) {
+      _triggerWebBlock(
+        url,
+        'Contenu bloqué par le filtre parental (Cyber-harcèlement).',
+      );
+      return;
+    }
+    if (rules.blockEatingDisorders && _matchesKeywords(url, _eatingKeywords)) {
+      _triggerWebBlock(
+        url,
+        'Contenu bloqué par le filtre parental (Troubles alimentaires).',
+      );
       return;
     }
   }
@@ -344,17 +552,18 @@ class EnforcementService {
       await _firestore.doc(webStatsPath).set({
         'totalMinutes': 0, // Optionnel, le parent additionne
         'websites': {
-          domain.replaceAll('.', '_'): { // Firestore n'aime pas les points dans les clés
+          domain.replaceAll('.', '_'): {
+            // Firestore n'aime pas les points dans les clés
             'domain': domain,
             'lastVisit': FieldValue.serverTimestamp(),
             'visits': FieldValue.increment(1),
-          }
+          },
         },
         'lastSync': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      // On garde aussi l'historique linéaire pour le debug
-      await _firestore.collection('$childPath/webHistory').add({
+      // On garde aussi l'historique linéaire pour le parent (chemin corrigé)
+      await _firestore.collection('$childPath/inventory/websites/history').add({
         'url': url,
         'domain': domain,
         'timestamp': FieldValue.serverTimestamp(),
@@ -369,7 +578,12 @@ class EnforcementService {
   Future<void> _triggerWebBlock(String url, String reason) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
-    if (!(prefs.getBool('onboarding_complete') ?? false)) return;
+    if (!(prefs.getBool('onboarding_complete') ?? false)) {
+      debugPrint(
+        'EnforcementService: Web block triggered ($url) but onboarding_complete=false. Ignoring block.',
+      );
+      return;
+    }
 
     final domain = Uri.tryParse(url)?.host ?? url;
     if (domain == _lastUrl) return;
@@ -377,7 +591,8 @@ class EnforcementService {
 
     await _alertService.sendAlert(
       type: AlertType.blockedApp,
-      detail: 'Site bloqué : $url',
+      detail:
+          'Alerte de navigation : Votre enfant a tenté de visiter le site web restreint suivant : $url',
     );
 
     onBlockRequired?.call(reason);
@@ -390,10 +605,15 @@ class EnforcementService {
 
   Future<void> _onKeywordDetected(Map<dynamic, dynamic> event) async {
     if (!_isRunning) return;
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
-    if (!(prefs.getBool('onboarding_complete') ?? false)) return;
+    if (!(prefs.getBool('onboarding_complete') ?? false)) {
+      debugPrint(
+        'EnforcementService: Keyword detected but onboarding_complete=false. Ignoring.',
+      );
+      return;
+    }
 
     final keyword = event['keyword'] as String? ?? '';
     final pkg = event['package'] as String? ?? '';
@@ -402,8 +622,12 @@ class EnforcementService {
 
     await _alertService.sendAlert(
       type: AlertType.keywordDetected,
-      detail: 'Mot-clé détecté : "$keyword" (dans $pkg)',
+      detail:
+          'Alerte de contenu : Le mot-clé sensible "$keyword" a été détecté pendant l\'utilisation de l\'application $pkg.',
     );
+
+    // Déclencher le blocage immédiat pour les mots-clés
+    _triggerWebBlock(pkg, 'Contenu inapproprié détecté ("$keyword").');
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -456,6 +680,7 @@ class EnforcementService {
   }
 
   Future<void> _reportScreenTime(int minutes) async {
+    _lastReportedMinutes = minutes;
     try {
       final prefs = await SharedPreferences.getInstance();
       final childPath = prefs.getString('child_path');
@@ -463,24 +688,25 @@ class EnforcementService {
       final parentId = prefs.getString('parent_id');
       if (childPath == null || childId == null) return;
 
-      final today = _todayString();
+      final now = DateTime.now();
+      final today = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      
       final data = {
         'childId': childId,
         'parentId': parentId,
-        'totalScreenMinutes': minutes,
+        'usedMinutes': minutes,
         'totalMinutes': minutes,
         'lastSync': FieldValue.serverTimestamp(),
+        'lastUpdate': FieldValue.serverTimestamp(),
       };
 
-      // Synchro multi-chemins
-      await _firestore.doc('$childPath/alerts/usage/apps/$today').set(data, SetOptions(merge: true));
-      await _firestore.doc('$childPath/usage/$today').set(data, SetOptions(merge: true));
-      await _firestore.doc('usageStats/$childId-$today').set(data, SetOptions(merge: true));
+      // Path principal utilisé par le Dashboard Parent
+      final parentPath = '$childPath/alerts/usage/apps/$today';
+      await _firestore
+          .doc(parentPath)
+          .set(data, SetOptions(merge: true));
 
-      await _firestore.doc(childPath).update({
-        'todayScreenMinutes': minutes,
-        'lastUsageSync': FieldValue.serverTimestamp(),
-      });
+      debugPrint('EnforcementService: 📤 Real-time stats synced ($minutes min)');
     } catch (e) {
       debugPrint('EnforcementService: _reportScreenTime error: $e');
     }
@@ -513,7 +739,28 @@ class EnforcementService {
   bool _isSystemApp(String pkg) =>
       pkg.startsWith('com.android.') ||
       pkg.startsWith('com.google.android.') ||
+      pkg.startsWith('com.miui.') ||
+      pkg.startsWith('com.xiaomi.') ||
+      pkg.startsWith('com.qualcomm.') ||
+      pkg.startsWith('com.mediatek.') ||
+      pkg.startsWith('com.samsung.') ||
+      pkg.startsWith('com.huawei.') ||
+      pkg.startsWith('com.oppo.') ||
+      pkg.startsWith('com.vivo.') ||
+      pkg.startsWith('com.oneplus.') ||
+      pkg.startsWith('com.coloros.') ||
+      pkg.startsWith('com.heytap.') ||
+      pkg.startsWith('com.bbk.') ||
       pkg == 'android' ||
+      pkg == 'com.miui.home' ||
+      pkg == 'com.miui.securitycenter' ||
+      pkg == 'com.miui.msa.global' ||
+      pkg == 'com.miui.bugreport' ||
+      pkg == 'com.miui.daemon' ||
+      pkg == 'com.miui.analytics' ||
+      pkg == 'com.xiaomi.market' ||
+      pkg == 'com.xiaomi.simactivate.service' ||
+      pkg == 'com.lbe.security.miui' ||
       pkg == 'app.theguardian.child';
 
   String _todayString() {

@@ -1,0 +1,28 @@
+Analyzing ProjetforDefence-feature-child-app-restructuring...     
+
+  error • Target of URI doesn't exist: 'services/child_rules_enforcement_service.dart' • lib/main.dart:10:8 • uri_does_not_exist
+  error • The function 'ChildRulesEnforcementService' isn't defined • lib/main.dart:64:13 • undefined_function
+warning • The value of the field '_usageTimer' isn't used • lib/providers/app_state.dart:32:10 • unused_field
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/auth/connection_success_screen.dart:112:55 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/auth/welcome_screen.dart:41:58 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/auth/welcome_screen.dart:47:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/help/persistence_help_screen.dart:67:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/help/persistence_help_screen.dart:70:54 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/permissions_onboarding_screen.dart:201:29 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/permissions_onboarding_screen.dart:204:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/permissions_onboarding_screen.dart:204:75 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/permissions_onboarding_screen.dart:214:47 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/permissions_onboarding_screen.dart:214:84 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/screens/permissions_onboarding_screen.dart:251:52 • deprecated_member_use
+  error • Undefined class 'ActiveRules' • lib/screens/restrictions/blocking_screen.dart:34:8 • undefined_class
+   info • Don't use 'BuildContext's across async gaps • lib/screens/splash_screen.dart:70:35 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/screens/splash_screen.dart:79:9 • use_build_context_synchronously
+   info • The type of the right operand ('ConnectivityResult') isn't a subtype or a supertype of the left operand ('List<ConnectivityResult>') • lib/services/auth_service.dart:74:30 • unrelated_type_equality_checks
+warning • Unused import: 'package:firebase_auth/firebase_auth.dart' • lib/services/background_service.dart:8:8 • unused_import
+warning • The value of the field '_webEventChannel' isn't used • lib/services/enforcement_service.dart:34:16 • unused_field
+warning • The value of the field '_keywordEventChannel' isn't used • lib/services/enforcement_service.dart:35:16 • unused_field
+   info • The parameter name 'sum' matches a visible type name • lib/services/enforcement_service.dart:452:43 • avoid_types_as_parameter_names
+   info • Don't use 'BuildContext's across async gaps • lib/services/link_handler_service.dart:73:26 • use_build_context_synchronously
+   info • The constant name 'MIN_DISTANCE' isn't a lowerCamelCase identifier • lib/services/location_service.dart:39:23 • constant_identifier_names
+   info • The constant name 'MIN_TIME' isn't a lowerCamelCase identifier • lib/services/location_service.dart:40:20 • constant_identifier_names
+

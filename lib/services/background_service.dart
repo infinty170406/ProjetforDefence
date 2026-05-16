@@ -82,6 +82,17 @@ class BackgroundService {
       }
     });
 
+    service.on('updateNativeVpnState').listen((data) {
+      if (data != null && data.containsKey('start')) {
+        final start = data['start'] as bool;
+        if (start) {
+          const MethodChannel('app.theguardian.child/system').invokeMethod('startVpn');
+        } else {
+          const MethodChannel('app.theguardian.child/system').invokeMethod('stopVpn');
+        }
+      }
+    });
+
     service.on('scheduleWatchdog').listen((_) {
       const MethodChannel('app.theguardian.child/system')
           .invokeMethod('scheduleWatchdog');
@@ -96,13 +107,13 @@ class BackgroundService {
     int initRetries = 0;
     bool firebaseInitialized = false;
 
-    // Retry loop for Firebase initialization
     while (!firebaseInitialized && initRetries < 5) {
       try {
         await Firebase.initializeApp();
-        await FirebaseAuth.instance.signInAnonymously();
+        // BUG #5 FIX: Do NOT call signInAnonymously() here. It overwrites the device UID.
+        // Firebase Auth automatically restores the previous currentUser state from secure cache.
         firebaseInitialized = true;
-        debugPrint('BackgroundService: Firebase & Auth Initialized (attempt ${initRetries + 1}).');
+        debugPrint('BackgroundService: Firebase Initialized (attempt ${initRetries + 1}).');
       } catch (e) {
         initRetries++;
         debugPrint('BackgroundService: Firebase Init Error (attempt $initRetries): $e');

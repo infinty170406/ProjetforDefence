@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:usage_stats/usage_stats.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package_service.dart';
+// import 'package_service.dart'; // Unused in background isolate
 import 'device_status_service.dart';
 import 'enforcement_service.dart';
 import 'location_service.dart';
@@ -117,10 +117,13 @@ class MonitoringService {
 
     // ── B. Démarrer la collecte des stats (boucle 15min) ─────────────────
     await _syncUsageStats();
-    PackageService().syncInstalledApps();
+    // NOTE: PackageService().syncInstalledApps() doit être appelé depuis
+    // l'isolate principal (UI), pas depuis le background isolate.
+    // Il sera déclenché via triggerAppSync() depuis le main isolate.
 
-    _syncTimer = Timer.periodic(const Duration(minutes: 15), (_) async {
+    _syncTimer = Timer.periodic(const Duration(minutes: 2), (_) async {
       await _syncUsageStats();
+      await _syncBrowserHistory();
     });
 
     debugPrint('MonitoringService: Started (enforcement + collection).');
@@ -174,11 +177,34 @@ class MonitoringService {
       final Map<String, dynamic> appsData = {};
       for (final s in filtered.take(20)) {
         final pkg     = s.packageName ?? '';
+        if (pkg.isEmpty) continue;
         final minutes = (int.tryParse(s.totalTimeInForeground ?? '0') ?? 0) ~/ 60000;
+        
+        // Lire le label et l'icône depuis les détails déjà syncés par PackageService
+        String? appLabel;
+        String? iconBase64;
+        try {
+          final detailSnap = await _firestore
+              .doc('$childPath/inventory/apps/details/$pkg')
+              .get();
+          if (detailSnap.exists) {
+            appLabel = detailSnap.data()?['appName'] as String? ??
+                       detailSnap.data()?['label'] as String? ??
+                       detailSnap.data()?['name'] as String?;
+            iconBase64 = detailSnap.data()?['iconBase64'] as String? ??
+                         detailSnap.data()?['icon'] as String?;
+          }
+        } catch (_) {}
+
         appsData[pkg] = {
-          'totalMinutes': minutes,
+          'minutes':      minutes,
           'category':     _catStr(_classify(pkg)),
           'lastUpdate':   FieldValue.serverTimestamp(),
+          if (appLabel != null) 'label': appLabel,
+          if (appLabel != null) 'name': appLabel,
+          if (appLabel != null) 'appName': appLabel,
+          if (iconBase64 != null) 'iconBase64': iconBase64,
+          if (iconBase64 != null) 'icon': iconBase64,
         };
       }
 
@@ -196,18 +222,7 @@ class MonitoringService {
       final parentPath = '$childPath/alerts/usage/apps/$today';
       await _firestore.doc(parentPath).set(usageDoc, SetOptions(merge: true));
 
-      // Synchro vers les autres chemins pour sécurité
-      await _firestore.doc('$childPath/usage/$today').set(usageDoc, SetOptions(merge: true));
-      await _firestore.doc('usageStats/$childId-$today').set(usageDoc, SetOptions(merge: true));
-
       debugPrint('MonitoringService: 📤 Stats synced to parent path: $parentPath');
-
-      // Résumé sur le document enfant
-      await _firestore.doc(childPath).update({
-        'todayScreenMinutes': totalMinutes,
-        'lastUsageSync':      FieldValue.serverTimestamp(),
-      });
-
       debugPrint('MonitoringService: ✅ Stats synced — $totalMinutes min, ${filtered.length} apps.');
     } catch (e) {
       debugPrint('MonitoringService: _syncUsageStats error: $e');
@@ -217,8 +232,112 @@ class MonitoringService {
   bool _isSystemApp(String pkg) =>
       pkg.startsWith('com.android.') ||
       pkg.startsWith('com.google.android.') ||
+      pkg.startsWith('com.miui.') ||
+      pkg.startsWith('com.xiaomi.') ||
+      pkg.startsWith('com.qualcomm.') ||
+      pkg.startsWith('com.mediatek.') ||
+      pkg.startsWith('com.samsung.') ||
+      pkg.startsWith('com.huawei.') ||
+      pkg.startsWith('com.oppo.') ||
+      pkg.startsWith('com.vivo.') ||
+      pkg.startsWith('com.oneplus.') ||
+      pkg.startsWith('com.coloros.') ||
+      pkg.startsWith('com.heytap.') ||
+      pkg.startsWith('com.bbk.') ||
+      // Specific system packages often showing as "Home", "Android", "Chat"
       pkg == 'android' ||
+      pkg == 'com.miui.home' ||
+      pkg == 'com.miui.securitycenter' ||
+      pkg == 'com.miui.msa.global' ||
+      pkg == 'com.miui.bugreport' ||
+      pkg == 'com.miui.daemon' ||
+      pkg == 'com.miui.analytics' ||
+      pkg == 'com.xiaomi.market' ||
+      pkg == 'com.xiaomi.simactivate.service' ||
+      pkg == 'com.lbe.security.miui' ||
       pkg == 'app.theguardian.child';
+
+  static const _browserPackages = {
+    'com.android.chrome',
+    'org.mozilla.firefox',
+    'com.opera.browser',
+    'com.brave.browser',
+    'com.microsoft.emmx',
+    'com.UCMobile.intl',
+  };
+
+  /// Syncs browser history by reading recent UsageEvents for known browser apps.
+  /// This bypasses the EventChannel limitation in background isolates.
+  Future<void> _syncBrowserHistory() async {
+    if (!Platform.isAndroid) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
+    final childPath = prefs.getString('child_path');
+    if (childPath == null) return;
+
+    try {
+      final now = DateTime.now();
+      final since = now.subtract(const Duration(minutes: 3));
+      final events = await UsageStats.queryEvents(since, now);
+
+      final Set<String> reportedDomains = {};
+      final today = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+      for (final event in events.reversed) {
+        final pkg = event.packageName ?? '';
+        if (!_browserPackages.contains(pkg)) continue;
+        // Event type 1 = MOVE_TO_FOREGROUND (user switched to browser)
+        if (event.eventType != '1') continue;
+
+        // We can't get the URL directly, but we can record browser usage
+        // by package to at least provide some history signal.
+        if (reportedDomains.contains(pkg)) continue;
+        reportedDomains.add(pkg);
+
+        final browserName = pkg.split('.').last;
+        final domain = '$browserName.browser.session';
+
+        // Write to linear history collection
+        await _firestore.collection('$childPath/inventory/websites/history').add({
+          'url': 'browser://$pkg',
+          'domain': domain,
+          'package': pkg,
+          'title': _browserFriendlyName(pkg),
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+
+        // Write to aggregated websites stats
+        final webStatsPath = '$childPath/alerts/usage/websites/$today';
+        await _firestore.doc(webStatsPath).set({
+          'websites': {
+            domain.replaceAll('.', '_'): {
+              'domain': domain,
+              'lastVisit': FieldValue.serverTimestamp(),
+              'visits': FieldValue.increment(1),
+            },
+          },
+          'lastSync': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        debugPrint('MonitoringService: 🌐 Browser usage detected: $pkg');
+      }
+    } catch (e) {
+      debugPrint('MonitoringService: _syncBrowserHistory error: $e');
+    }
+  }
+
+  String _browserFriendlyName(String pkg) {
+    const names = {
+      'com.android.chrome': 'Google Chrome',
+      'org.mozilla.firefox': 'Firefox',
+      'com.opera.browser': 'Opera',
+      'com.brave.browser': 'Brave',
+      'com.microsoft.emmx': 'Microsoft Edge',
+      'com.UCMobile.intl': 'UC Browser',
+    };
+    return names[pkg] ?? pkg.split('.').last;
+  }
 
   Future<void> forceSyncNow() => _syncUsageStats();
 

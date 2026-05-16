@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/app_state.dart';
 import '../dashboard/dashboard_screen.dart';
+import '../../services/rules_service.dart';
 
 /// BlockingScreen
 ///
@@ -31,9 +32,15 @@ class _BlockingScreenState extends State<BlockingScreen>
   Timer? _refreshTimer;
   Timer? _unlockCheckTimer;
 
+  late ActiveRules _initialRules;
+
   @override
   void initState() {
     super.initState();
+    // Enregistre les règles au moment du blocage pour détecter un changement
+    _initialRules = context.read<AppState>().activeRules;
+    debugPrint('BlockingScreen: Shown with reason: ${widget.reason}');
+
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -57,12 +64,18 @@ class _BlockingScreenState extends State<BlockingScreen>
     if (!mounted) return;
     final appState = context.read<AppState>();
     
-    // Si l'app est juste bloquée par package (WhatsApp etc), widget.reason contient le nom
-    // On ne débloque automatiquement que pour le temps et les horaires.
+    // Si ce n'est pas un blocage lié au temps ou à l'heure, 
+    // on vérifie si la configuration des apps a changé.
     if (!appState.isScreenTimeLimitReached && !appState.isOutsideAllowedHours) {
-       // On vérifie si c'est un blocage d'app spécifique (pas de countdown possible)
        if (widget.reason.contains('Cette application est bloquée')) {
-         // On reste ici, c'est l'AccessibilityService qui nous fermera si on quitte l'app
+         // Si les règles de packages ont changé, le parent a peut-être débloqué l'app.
+         // On quitte l'écran. Si l'enfant retourne sur l'app interdite, 
+         // l'EnforcementService le bloquera de nouveau.
+         if (appState.activeRules.blockedApps.length != _initialRules.blockedApps.length ||
+             appState.activeRules.blockSocialMedia != _initialRules.blockSocialMedia ||
+             appState.activeRules.blockGaming != _initialRules.blockGaming) {
+           _goToDashboard();
+         }
          return;
        }
       _goToDashboard();

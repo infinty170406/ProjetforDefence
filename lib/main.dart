@@ -7,7 +7,6 @@ import 'services/notification_service.dart';
 import 'services/background_service.dart';
 import 'services/link_handler_service.dart';
 import 'services/auth_service.dart';
-import 'services/child_rules_enforcement_service.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
 
@@ -60,8 +59,7 @@ void main() async {
     final authService = AuthService();
     final isActivated = await authService.isDeviceActivated();
     if (isActivated) {
-      debugPrint('Main: Device is activated. Starting ChildRulesEnforcementService...');
-      await ChildRulesEnforcementService().initialize();
+      debugPrint('Main: Device is activated.');
     }
   } catch (e) {
     debugPrint('Main: Mode initialization failed: $e');

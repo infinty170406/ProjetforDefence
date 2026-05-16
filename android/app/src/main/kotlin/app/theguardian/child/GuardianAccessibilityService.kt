@@ -249,9 +249,11 @@ class GuardianAccessibilityService : AccessibilityService() {
         val urlBarIds = when (pkg) {
             "com.android.chrome" -> arrayOf("com.android.chrome:id/url_bar")
             "com.sec.android.app.sbrowser" -> arrayOf("com.sec.android.app.sbrowser:id/location_bar_edit_text")
-            "org.mozilla.firefox" -> arrayOf("org.mozilla.firefox:id/url_bar_title")
+            "org.mozilla.firefox" -> arrayOf("org.mozilla.firefox:id/url_bar_title", "org.mozilla.firefox:id/mozac_browser_toolbar_url_view")
             "com.microsoft.emmx" -> arrayOf("com.microsoft.emmx:id/url_bar_text")
-            else -> arrayOf("url_bar", "address_bar", "location_bar") // Essayer des IDs génériques
+            "com.brave.browser" -> arrayOf("com.brave.browser:id/url_bar")
+            "com.duckduckgo.mobile.android" -> arrayOf("com.duckduckgo.mobile.android:id/omnibarTextInput")
+            else -> arrayOf("url_bar", "address_bar", "location_bar", "url_view") // Essayer des IDs génériques
         }
 
         for (id in urlBarIds) {
@@ -264,8 +266,30 @@ class GuardianAccessibilityService : AccessibilityService() {
             }
         }
 
-        // Si non trouvé par ID, parcours récursif (dernier recours, limité pour perf)
-        return null 
+        // --- NOUVEAU : Fallback par recherche de contenu si l'ID a changé ---
+        // On cherche des nœuds éditables ou qui ressemblent à une barre d'adresse
+        return findUrlRecursive(root, 0)
+    }
+
+    private fun findUrlRecursive(node: AccessibilityNodeInfo?, depth: Int): String? {
+        if (node == null || depth > 50) return null // Sécurité pour éviter les boucles infinies
+
+        // Si le nœud est éditable et contient un point, c'est peut-être l'URL
+        if (node.isEditable && node.text != null) {
+            val text = node.text.toString()
+            if (text.contains(".") && !text.contains(" ")) {
+                return text
+            }
+        }
+
+        // Explorer les enfants
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            val result = findUrlRecursive(child, depth + 1)
+            if (result != null) return result
+        }
+
+        return null
     }
 
     private fun checkKeywords(texts: List<CharSequence>?, pkg: String) {

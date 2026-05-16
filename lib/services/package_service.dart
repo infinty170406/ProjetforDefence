@@ -37,18 +37,27 @@ class PackageService {
         'installedPackages': appList.map((e) => e['packageName']).toList(),
       }, SetOptions(merge: true));
 
-      // 2. Mise à jour des détails (icones) dans une sous-collection pour éviter la limite de 1 Mo
-      final batch = _firestore.batch();
-      for (final app in appList) {
-        final docRef = _firestore.collection('$childPath/inventory/apps/details').doc(app['packageName'] as String);
-        batch.set(docRef, {
-          'packageName': app['packageName'],
-          'appName':     app['appName'],
-          'iconBase64':  app['iconBase64'],
-          'lastUpdate':  FieldValue.serverTimestamp(),
-        });
+      // 2. Mise à jour des détails (icones) dans une sous-collection
+      // On utilise des tranches de 500 (limite Firestore batch)
+      for (var i = 0; i < appList.length; i += 500) {
+        final end = (i + 500 < appList.length) ? i + 500 : appList.length;
+        final chunk = appList.sublist(i, end);
+        
+        final batch = _firestore.batch();
+        for (final app in chunk) {
+          final docRef = _firestore.collection('$childPath/inventory/apps/details').doc(app['packageName'] as String);
+          batch.set(docRef, {
+            'packageName': app['packageName'],
+            'appName':     app['appName'],
+            'label':       app['appName'], // Parent App attend souvent 'label'
+            'name':        app['appName'], // Fallback alternatif
+            'iconBase64':  app['iconBase64'],
+            'icon':        app['iconBase64'], // Fallback alternatif
+            'lastUpdate':  FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+        await batch.commit();
       }
-      await batch.commit();
       
       debugPrint('PackageService: Full app list and icons synced successfully.');
     } catch (e) {

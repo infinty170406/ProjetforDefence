@@ -98,6 +98,8 @@ class AuthService {
       QuerySnapshot query;
       try {
         debugPrint('AuthService: Searching collectionGroup "children" where id == $token');
+        // IMPORTANT: Cette requête nécessite un index composite sur la collectionGroup "children".
+        // Si l'index est manquant, une exception sera levée avec un lien pour le créer.
         query = await _firestore
             .collectionGroup('children')
             .where('id', isEqualTo: token)
@@ -153,8 +155,7 @@ class AuthService {
           // On vérifie qu'on n'envoie que les clés autorisées par les règles Firestore
           final Map<String, dynamic> updateData = {
             'isLinked': true,
-            'linkedAt': FieldValue.serverTimestamp(),
-            'deviceUid': uid,
+            'childDeviceUid': uid, // Doit correspondre au champ attendu par les règles Firestore
           };
 
           transaction.update(childRef, updateData);
@@ -213,7 +214,9 @@ class AuthService {
         if (e.code == 'operation-not-allowed') {
           msg = 'Anonymous authentication is not enabled in Firebase.';
         } else if (e.code == 'permission-denied') {
-          msg = 'Access denied by security rules.';
+          msg = 'Access denied by security rules. Please check if the device is already linked or if rules are correct.';
+        } else if (e.code == 'failed-precondition') {
+          msg = 'A Firestore index is required for this operation. Please check the Firebase console logs.';
         } else {
           msg = 'Firebase Error (${e.code}): ${e.message}';
         }
@@ -229,6 +232,9 @@ class AuthService {
   }
 
   Future<bool> isDeviceActivated() async {
+    final user = FirebaseAuth.instance.currentUser;
+    debugPrint('AuthService: isDeviceActivated - Current Firebase UID: ${user?.uid}');
+    
     if (_cachedChildId != null) return true;
 
     // Tentative de lecture depuis le stockage sécurisé
@@ -257,10 +263,11 @@ class AuthService {
       if (uid != null) await _secureStorage.write(key: _deviceUidKey, value: uid);
 
       // Nettoyer SharedPreferences pour la sécurité
-      await prefs.remove(_childIdKey);
-      await prefs.remove(_parentIdKey);
-      await prefs.remove(_childPathKey);
-      await prefs.remove(_deviceUidKey);
+      // On conserve TOUTES les clés car le background isolate (RulesService, EnforcementService) en a besoin
+      // await prefs.remove(_childIdKey);
+      // await prefs.remove(_parentIdKey);
+      // await prefs.remove(_childPathKey);
+      // await prefs.remove(_deviceUidKey); 
       await prefs.setBool(_migratedKey, true);
 
       _cachedChildId = cid;

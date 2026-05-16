@@ -44,25 +44,13 @@ class WatchdogReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        Log.d(TAG, "Watchdog received signal: ${intent.action}")
+        Log.d(TAG, "Watchdog heartbeat: ${intent.action}")
         
-        // Relancer le service background en s'assurant que Flutter est initialisé
-        try {
-            // On lance MainActivity en mode "silencieux" si possible, 
-            // ou on se repose sur le fait que startIfPermissionsGranted sera appelé.
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                putExtra("FROM_WATCHDOG", true)
-            }
-            if (launchIntent != null) {
-                context.startActivity(launchIntent)
-            }
-            
-            // On replanifie immédiatement pour la prochaine fois
-            schedule(context)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to restart from watchdog", e)
-        }
+        // On ne lance plus MainActivity ici pour éviter de déranger l'enfant.
+        // Le Foreground Service est déjà configuré comme "sticky" et se relance
+        // via le BootReceiver ou le WorkManager si nécessaire.
+        
+        // On replanifie immédiatement pour maintenir la chaîne d'alarmes
+        schedule(context)
     }
 }

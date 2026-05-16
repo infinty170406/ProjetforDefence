@@ -9,6 +9,12 @@ import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import kotlin.concurrent.thread
 
+/**
+ * GuardianVpnService
+ * 
+ * DEPRECATED: Web filtering is now handled by GuardianAccessibilityService
+ * to avoid cutting the internet connection on the child's device.
+ */
 class GuardianVpnService : VpnService() {
 
     companion object {

@@ -88,22 +88,10 @@ class SosService {
         'battery':     batteryLevel,
       };
 
-      // 1. Écriture dans l'historique local de l'enfant (2 formats)
+      // 1. Écriture sur le chemin unique lu par le parent
       final deepPath = '$childPath/alerts/notifications/items';
-      final flatPath = '$childPath/alerts';
       
       await _firestore.collection(deepPath).add({...alertData, 'message': detail});
-      await _firestore.collection(flatPath).add({...alertData, 'message': detail});
-
-      // 2. Écriture dans la collection racine /alerts (pour le parent)
-      if (parentId.isNotEmpty) {
-        await _firestore.collection('alerts').add({
-          ...alertData,
-          'parentId': parentId,
-          'childPath': childPath,
-          'message': detail,
-        });
-      }
 
       // 3. Mise à jour du document enfant avec la dernière alerte SOS
       await _firestore.doc(childPath).update({

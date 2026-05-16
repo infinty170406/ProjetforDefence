@@ -7,7 +7,6 @@ import '../services/link_handler_service.dart';
 import '../services/rules_service.dart';
 import '../services/enforcement_service.dart';
 import '../services/background_service.dart';
-import '../services/child_rules_enforcement_service.dart';
 import '../models/child_profile.dart';
 import 'package:usage_stats/usage_stats.dart';
 import 'package:flutter/services.dart';
@@ -48,8 +47,12 @@ class AppState extends ChangeNotifier {
 
   bool get isScreenTimeLimitReached {
     final rules = _activeRules;
-    return rules.dailyLimitMinutes > 0 &&
+    final isReached = rules.dailyLimitMinutes > 0 &&
         (_todayUsedMinutes >= rules.dailyLimitMinutes);
+    if (isReached) {
+      debugPrint('AppState: Daily limit reached! Used: $_todayUsedMinutes, Limit: ${rules.dailyLimitMinutes}');
+    }
+    return isReached;
   }
 
   bool get isOutsideAllowedHours {
@@ -120,7 +123,6 @@ class AppState extends ChangeNotifier {
     if (_isActivated) {
       await _loadProfile();
       await _startListeners();
-      await ChildRulesEnforcementService().initialize();
       _isOnline = true;
       debugPrint('AppState: Activated device found, checking permissions...');
       await checkAllPermissions();
@@ -174,7 +176,6 @@ class AppState extends ChangeNotifier {
     FlutterBackgroundService().invoke('onActivated');
     await _loadProfile();
     await _startListeners();
-    await ChildRulesEnforcementService().initialize();
     await checkAllPermissions();
     notifyListeners();
   }
@@ -194,15 +195,20 @@ class AppState extends ChangeNotifier {
     _hasLocationPermission      = r[3] ?? false;
     _hasBatteryExemption        = r[4] ?? false;
     
-    // Si toutes les perms critiques sont là, on démarrre le service et on marque l'onboarding comme fini
-    if (_hasUsagePermission && _hasAccessibilityPermission && _hasOverlayPermission && _hasLocationPermission) {
+    // NOUVEAU : Onboarding considéré fini si le trio critique (Usage + A11y + Overlay) est là.
+    // La localisation est importante pour le parent mais ne bloque pas l'enforcement des apps.
+    final hasCriticalPermissions = _hasUsagePermission && 
+                                  _hasAccessibilityPermission && 
+                                  _hasOverlayPermission;
+
+    if (hasCriticalPermissions) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('onboarding_complete', true);
       await BackgroundService().startIfPermissionsGranted();
     }
 
     notifyListeners();
-    return _hasUsagePermission && _hasAccessibilityPermission && _hasOverlayPermission && _hasLocationPermission;
+    return hasCriticalPermissions;
   }
 
   Future<void> requestUsagePermission() async {

@@ -80,6 +80,17 @@ class ActiveRules {
   /// [NEW] Limites de temps par application (PackageName -> Minutes)
   final Map<String, int> appTimeLimits;
 
+  // Content Filtering (Granular)
+  final bool blockDrugs;
+  final bool blockSexualPredators;
+  final bool blockAnxietyDepression;
+  final bool blockSelfHarm;
+  final bool blockCyberbullying;
+  final bool blockMatureContent;
+  final bool blockEatingDisorders;
+  final bool monitorAccountActivity;
+  final bool locationAlerts;
+
   const ActiveRules({
     this.blockedApps       = const {},
     this.dailyLimitMinutes = 0,
@@ -94,6 +105,15 @@ class ActiveRules {
     this.customKeywords    = const {},
     this.geofences         = const [],
     this.appTimeLimits     = const {},
+    this.blockDrugs        = true,
+    this.blockSexualPredators = true,
+    this.blockAnxietyDepression = false,
+    this.blockSelfHarm     = true,
+    this.blockCyberbullying = true,
+    this.blockMatureContent = false,
+    this.blockEatingDisorders = false,
+    this.monitorAccountActivity = true,
+    this.locationAlerts    = true,
   });
 
   /// Règles vides = aucune restriction active
@@ -121,9 +141,19 @@ class ActiveRules {
         customKeywords:    keys.map((e) => e.toString()).toSet(),
         geofences:         geos.map((e) => Geofence.fromFirestore(e)).toList(),
         appTimeLimits:     limits.map((k, v) => MapEntry(k, (v as num).toInt())),
+        blockDrugs:        data['blockDrugs']        as bool? ?? true,
+        blockSexualPredators: data['blockSexualPredators'] as bool? ?? true,
+        blockAnxietyDepression: data['blockAnxietyDepression'] as bool? ?? false,
+        blockSelfHarm:     data['blockSelfHarm']     as bool? ?? true,
+        blockCyberbullying: data['blockCyberbullying'] as bool? ?? true,
+        blockMatureContent: data['blockMatureContent'] as bool? ?? false,
+        blockEatingDisorders: data['blockEatingDisorders'] as bool? ?? false,
+        monitorAccountActivity: data['monitorAccountActivity'] as bool? ?? true,
+        locationAlerts:    data['locationAlerts']    as bool? ?? true,
       );
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint('ActiveRules: Error parsing rules data: $e');
+      debugPrint('ActiveRules: Stack trace: $stack');
       return ActiveRules.empty;
     }
   }
@@ -294,17 +324,18 @@ class RulesService {
           _retryCount = 0; 
           
           if (!snap.exists) {
-            debugPrint('RulesService: Document DOES NOT EXIST at $docPath');
+            debugPrint('RulesService: ❌ Document DOES NOT EXIST at $docPath');
             _current = ActiveRules.empty;
           } else {
             final data = snap.data() as Map<String, dynamic>;
+            debugPrint('RulesService: 📄 Raw data received from Firestore: $data');
             _current = ActiveRules.fromFirestore(data);
             
             final p = await SharedPreferences.getInstance();
             await p.setString(_cacheKey, json.encode(_current.toMap()));
           }
 
-          debugPrint('RulesService: Rules updated → $_current');
+          debugPrint('RulesService: ✅ Rules updated → $_current');
           _notifyListeners();
           
           if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {

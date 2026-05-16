@@ -4,6 +4,7 @@ import 'auth/welcome_screen.dart';
 import 'dashboard/dashboard_screen.dart';
 import '../services/auth_service.dart';
 import '../services/location_service.dart';
+import '../services/package_service.dart';
 import '../providers/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/liquid_background.dart';
@@ -68,6 +69,10 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (isActivated) {
       await Provider.of<AppState>(context, listen: false).initialize();
+      // ⚠️ Doit être appelé depuis l'isolate principal (UI thread) car il
+      // utilise MethodChannel pour accéder à PackageManager Android.
+      // Ne pas appeler depuis MonitoringService (background isolate).
+      PackageService().syncInstalledApps();
       if (mounted) {
         Navigator.pushReplacement(
           context,
