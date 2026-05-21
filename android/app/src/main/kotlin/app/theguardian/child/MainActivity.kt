@@ -130,6 +130,16 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
 
+                    "makeEmergencyCall" -> {
+                        val phoneNumber = call.argument<String>("phoneNumber") ?: "112"
+                        val intent = Intent(Intent.ACTION_DIAL).apply {
+                            data = android.net.Uri.parse("tel:$phoneNumber")
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                        result.success(null)
+                    }
+
                     "hasOverlayPermission" -> {
                         result.success(Settings.canDrawOverlays(this))
                     }

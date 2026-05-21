@@ -10,8 +10,12 @@ class PackageService {
   /// et les envoie dans Firestore pour que le parent puisse les bloquer.
   Future<void> syncInstalledApps() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
     final childPath = prefs.getString('child_path');
-    if (childPath == null) return;
+    if (childPath == null) {
+      debugPrint('PackageService: Aborting sync - child_path is null');
+      return;
+    }
 
     try {
       const channel = MethodChannel('app.theguardian.child/system');

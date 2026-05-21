@@ -8,6 +8,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'monitoring_service.dart';
+import 'package_service.dart';
 
 /// BackgroundService
 ///
@@ -96,6 +97,11 @@ class BackgroundService {
     service.on('scheduleWatchdog').listen((_) {
       const MethodChannel('app.theguardian.child/system')
           .invokeMethod('scheduleWatchdog');
+    });
+
+    service.on('triggerAppSync').listen((_) {
+      debugPrint('BackgroundService: [UI] triggerAppSync event received. Running syncInstalledApps...');
+      PackageService().syncInstalledApps();
     });
   }
 

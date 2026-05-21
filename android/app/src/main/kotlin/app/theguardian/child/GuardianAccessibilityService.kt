@@ -120,12 +120,12 @@ class GuardianAccessibilityService : AccessibilityService() {
             return
         }
 
-        // 1. Détection de package bloqué (Apps)
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            if (blockedPackages.contains(pkg)) {
-                blockApp(pkg)
-                return
-            } else {
+        // 1. Détection de package bloqué (Apps) - instantané sur n'importe quel événement
+        if (blockedPackages.contains(pkg)) {
+            blockApp(pkg)
+            return
+        } else {
+            if (pkg != OWN_PACKAGE) {
                 hideOverlay()
             }
         }

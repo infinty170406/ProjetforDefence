@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/app_state.dart';
 import '../dashboard/dashboard_screen.dart';
@@ -33,10 +34,12 @@ class _BlockingScreenState extends State<BlockingScreen>
   Timer? _unlockCheckTimer;
 
   late ActiveRules _initialRules;
+  String _parentPhoneNumber = '';
 
   @override
   void initState() {
     super.initState();
+    _loadParentPhone();
     // Enregistre les règles au moment du blocage pour détecter un changement
     _initialRules = context.read<AppState>().activeRules;
     debugPrint('BlockingScreen: Shown with reason: ${widget.reason}');
@@ -57,6 +60,243 @@ class _BlockingScreenState extends State<BlockingScreen>
     _unlockCheckTimer = Timer.periodic(
       const Duration(seconds: 10),
       (_) => _checkIfUnlocked(),
+    );
+  }
+
+  Future<void> _loadParentPhone() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          _parentPhoneNumber = prefs.getString('parent_emergency_phone') ?? '';
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveParentPhone(String phone) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('parent_emergency_phone', phone);
+      if (mounted) {
+        setState(() {
+          _parentPhoneNumber = phone;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _triggerCall(String number) async {
+    try {
+      await const MethodChannel('app.theguardian.child/system')
+          .invokeMethod('makeEmergencyCall', {'phoneNumber': number});
+    } catch (e) {
+      debugPrint('BlockingScreen: Error triggering call: $e');
+    }
+  }
+
+  void _showEmergencySheet() {
+    final phoneController = TextEditingController(text: _parentPhoneNumber);
+    bool isEditing = _parentPhoneNumber.isEmpty;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+              decoration: const BoxDecoration(
+                color: Color(0xFF161616),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black54,
+                    blurRadius: 20,
+                    spreadRadius: 5,
+                  )
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[700],
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.statusDanger.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.phone_in_talk, color: AppColors.statusDanger, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Appel d\'urgence & SOS',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'En cas de danger ou d\'urgence, vous pouvez appeler immédiatement les secours ou vos parents.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey[400], fontSize: 13, height: 1.5),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _triggerCall('112');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF3333),
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 54),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 4,
+                      shadowColor: const Color(0xFFFF3333).withValues(alpha: 0.3),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.warning_amber_rounded, size: 20),
+                        SizedBox(width: 12),
+                        Text(
+                          'Appeler les secours (112)',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (!isEditing) ...[
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _triggerCall(_parentPhoneNumber);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.05),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 54),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.people, color: AppColors.accentTeal, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Appeler Parent ($_parentPhoneNumber)',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () {
+                        setModalState(() {
+                          isEditing = true;
+                        });
+                      },
+                      child: const Text(
+                        'Modifier le numéro du parent',
+                        style: TextStyle(color: AppColors.textGray400, fontSize: 13),
+                      ),
+                    ),
+                  ] else ...[
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.03),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: TextField(
+                        controller: phoneController,
+                        keyboardType: TextInputType.phone,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Entrez le numéro du parent',
+                          hintStyle: TextStyle(color: Colors.grey[600]),
+                          border: InputBorder.none,
+                          icon: const Icon(Icons.phone, color: AppColors.textGray400, size: 20),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        final phone = phoneController.text.trim();
+                        if (phone.isNotEmpty) {
+                          _saveParentPhone(phone);
+                          setModalState(() {
+                            isEditing = false;
+                          });
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accentTeal,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Enregistrer et appeler',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    if (_parentPhoneNumber.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () {
+                          setModalState(() {
+                            isEditing = false;
+                          });
+                        },
+                        child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+                      ),
+                    ],
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -276,13 +516,35 @@ class _BlockingScreenState extends State<BlockingScreen>
                           ],
 
                           const SizedBox(height: 32),
+                          
+                          // SOS Emergency Call Button
+                          ElevatedButton.icon(
+                            onPressed: _showEmergencySheet,
+                            icon: const Icon(Icons.phone_in_talk, size: 20),
+                            label: const Text(
+                              'Appel d\'urgence / SOS',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.statusDanger.withValues(alpha: 0.15),
+                              foregroundColor: AppColors.statusDanger,
+                              minimumSize: const Size(220, 50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                                side: BorderSide(color: AppColors.statusDanger.withValues(alpha: 0.35), width: 1.5),
+                              ),
+                              elevation: 0,
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
                           Text(
                             'Contactez vos parents pour modifier\nles restrictions.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.grey[600],
-                              fontSize: 14,
-                              height: 1.5,
+                              fontSize: 13,
+                              height: 1.4,
                             ),
                           ),
                         ],

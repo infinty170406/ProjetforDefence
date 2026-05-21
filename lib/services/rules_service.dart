@@ -291,6 +291,9 @@ class RulesService {
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      await prefs.reload(); // IMPORTANT: Obligatoire pour voir les changements faits par l'autre isolate
+      
+      debugPrint('RulesService: Starting... (waitForFirstLoad=$waitForFirstLoad)');
       
       // 1. Charger les règles depuis le cache local (offline-first)
       final cachedJson = prefs.getString(_cacheKey);
@@ -308,48 +311,21 @@ class RulesService {
       }
 
       final childPath = prefs.getString('child_path');
+      debugPrint('RulesService: Resolved child_path = $childPath');
+
       if (childPath == null) {
-        debugPrint('RulesService: child_path not set — cannot start.');
+        debugPrint('RulesService: ⚠️ child_path not set — cannot start rules listener.');
         _isStarting = false;
-        firstLoadCompleter?.complete();
+        if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
+          firstLoadCompleter.complete();
+        }
         return;
       }
 
       final docPath = '$childPath/rules/active';
       
-      // Écouter Firestore
-      _subscription?.cancel();
-      _subscription = _firestore.doc(docPath).snapshots().listen(
-        (snap) async {
-          _retryCount = 0; 
-          
-          if (!snap.exists) {
-            debugPrint('RulesService: ❌ Document DOES NOT EXIST at $docPath');
-            _current = ActiveRules.empty;
-          } else {
-            final data = snap.data() as Map<String, dynamic>;
-            debugPrint('RulesService: 📄 Raw data received from Firestore: $data');
-            _current = ActiveRules.fromFirestore(data);
-            
-            final p = await SharedPreferences.getInstance();
-            await p.setString(_cacheKey, json.encode(_current.toMap()));
-          }
-
-          debugPrint('RulesService: ✅ Rules updated → $_current');
-          _notifyListeners();
-          
-          if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
-            firstLoadCompleter.complete();
-          }
-        },
-        onError: (e) {
-          debugPrint('RulesService: Firestore error: $e');
-          if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
-            firstLoadCompleter.complete();
-          }
-          _handleRetry(docPath);
-        },
-      );
+      // Écouter Firestore (Centralisé dans _listenToFirestore)
+      _listenToFirestore(docPath, firstLoadCompleter: firstLoadCompleter);
 
       // 2. Écouter aussi les Geofences
       _checkAndStartGeofences(prefs);
@@ -370,34 +346,60 @@ class RulesService {
     
     final parentId = prefs.getString('parent_id');
     final childId = prefs.getString('child_id');
+    
+    debugPrint('RulesService: Checking for geofences sub (parent=$parentId, child=$childId)');
+    
     if (parentId != null && childId != null) {
       _listenToGeofences(parentId, childId);
+    } else {
+      debugPrint('RulesService: ⚠️ Cannot start Geofences sub — missing parent_id or child_id');
     }
   }
 
-  void _listenToFirestore(String docPath) {
+  void _listenToFirestore(String docPath, {Completer<void>? firstLoadCompleter}) {
     _subscription?.cancel();
     _subscription = _firestore.doc(docPath).snapshots().listen(
       (snap) async {
         _retryCount = 0; // Reset retry on success
         
         if (!snap.exists) {
-          debugPrint('RulesService: Document DOES NOT EXIST at $docPath');
+          debugPrint('RulesService: ❌ Document DOES NOT EXIST at $docPath');
           _current = ActiveRules.empty;
         } else {
           final data = snap.data() as Map<String, dynamic>;
-          _current = ActiveRules.fromFirestore(data);
+          debugPrint('RulesService: 📄 Raw data received for rules/active: $data');
+          
+          final newRules = ActiveRules.fromFirestore(data);
+          
+          // FUSION : Si le document rules/active ne contient pas de geofences
+          // (ce qui est normal si elles sont gérées en sous-collection),
+          // on préserve celles que nous avons déjà reçues via _listenToGeofences.
+          final hasGeofencesInDoc = data['geofences'] != null && (data['geofences'] as List).isNotEmpty;
+          
+          if (!hasGeofencesInDoc && _current.geofences.isNotEmpty) {
+            debugPrint('RulesService: 🛡️ Preserving ${_current.geofences.length} existing geofences from sub-collection.');
+            _current = newRules.copyWith(geofences: _current.geofences);
+          } else {
+            _current = newRules;
+          }
           
           // Sauvegarder dans le cache local
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString(_cacheKey, json.encode(_current.toMap()));
         }
 
-        debugPrint('RulesService: Rules updated → $_current');
+        debugPrint('RulesService: ✅ Rules updated → $_current');
         _notifyListeners();
+        
+        if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
+          firstLoadCompleter.complete();
+        }
       },
       onError: (e) {
         debugPrint('RulesService: Firestore error: $e');
+        if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
+          firstLoadCompleter.complete();
+        }
         _handleRetry(docPath);
       },
     );

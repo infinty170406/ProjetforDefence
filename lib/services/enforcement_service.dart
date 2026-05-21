@@ -185,8 +185,9 @@ class EnforcementService {
     onBlockRequired = onBlock;
     _backgroundService = service;
 
-    // Démarrer l'écoute des règles
-    await _rulesService.start();
+    // Démarrer l'écoute des règles (attendre le premier chargement pour éviter le "0 limit")
+    debugPrint('EnforcementService: Initializing RulesService...');
+    await _rulesService.start(waitForFirstLoad: true);
     _rulesService.addListener(_onRulesChanged);
 
     // Note : On n'écoute plus les EventChannels ici car ils ne fonctionnent pas
@@ -235,7 +236,9 @@ class EnforcementService {
     */
 
     debugPrint(
-      'EnforcementService: Rules updated. ${blocked.length} apps blocked.',
+      'EnforcementService: Rules updated. ${blocked.length} apps blocked. '
+      'Limit: ${rules.dailyLimitMinutes} min. '
+      'Hours: ${rules.allowedTimeStart}-${rules.allowedTimeEnd}',
     );
 
     // Déclencher une vérification immédiate sans attendre le prochain tick
@@ -271,13 +274,13 @@ class EnforcementService {
       _backgroundService!.invoke('updateNativeBlockedPackages', {
         'packages': packageList,
       });
-      return;
     }
 
     try {
       await _methodChannel.invokeMethod('updateBlockedPackages', packageList);
+      debugPrint('EnforcementService: Direct update of native blocked packages succeeded: ${packageList.length}');
     } catch (e) {
-      debugPrint('EnforcementService: Native update error (non-fatal): $e');
+      debugPrint('EnforcementService: Direct update of native blocked packages error (non-fatal): $e');
     }
   }
 
@@ -289,14 +292,72 @@ class EnforcementService {
       _backgroundService!.invoke('updateNativeCustomKeywords', {
         'keywords': keywordList,
       });
-      return;
     }
 
     try {
       await _methodChannel.invokeMethod('updateCustomKeywords', keywordList);
+      debugPrint('EnforcementService: Direct update of native custom keywords succeeded: ${keywordList.length}');
     } catch (e) {
-      debugPrint('EnforcementService: Native custom keywords update error: $e');
+      debugPrint('EnforcementService: Direct update of native custom keywords error (non-fatal): $e');
     }
+  }
+
+  String _getAppName(String package) {
+    final Map<String, String> names = {
+      'com.zhiliaoapp.musically': 'TikTok',
+      'com.tiktok': 'TikTok',
+      'com.instagram.android': 'Instagram',
+      'com.snapchat.android': 'Snapchat',
+      'com.twitter.android': 'Twitter/X',
+      'com.facebook.katana': 'Facebook',
+      'com.facebook.lite': 'Facebook Lite',
+      'com.pinterest': 'Pinterest',
+      'com.reddit.frontpage': 'Reddit',
+      'com.roblox.client': 'Roblox',
+      'com.epicgames.fortnite': 'Fortnite',
+      'com.mojang.minecraftpe': 'Minecraft',
+      'com.supercell.clashofclans': 'Clash of Clans',
+      'com.supercell.brawlstars': 'Brawl Stars',
+      'com.king.candycrushsaga': 'Candy Crush',
+      'com.gameloft.android.ANMP.GloftA9HM': 'Asphalt 9',
+      'com.google.android.youtube': 'YouTube',
+      'com.netflix.mediaclient': 'Netflix',
+      'com.spotify.music': 'Spotify',
+      'com.android.chrome': 'Google Chrome',
+      'org.mozilla.firefox': 'Firefox',
+      'com.sec.android.app.sbrowser': 'Samsung Internet',
+      'com.microsoft.emmx': 'Microsoft Edge',
+    };
+
+    if (names.containsKey(package)) {
+      return names[package]!;
+    }
+
+    final last = package.split('.').last;
+    if (last.isNotEmpty) {
+      return last[0].toUpperCase() + last.substring(1);
+    }
+    return package;
+  }
+
+  String? _extractSearchQuery(String url) {
+    try {
+      String cleanUrl = url;
+      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        cleanUrl = 'https://' + cleanUrl;
+      }
+      final uri = Uri.parse(cleanUrl);
+      final keys = ['q', 'query', 'text', 'p', 'wd', 'search'];
+      for (final key in keys) {
+        if (uri.queryParameters.containsKey(key)) {
+          final q = uri.queryParameters[key];
+          if (q != null && q.isNotEmpty) {
+            return Uri.decodeComponent(q).replaceAll('+', ' ');
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   // ── Tick de vérification (toutes les 5s) ─────────────────────────────────
@@ -397,7 +458,7 @@ class EnforcementService {
           await _alertService.sendAlert(
             type: AlertType.appTimeLimit,
             detail:
-                'Alerte de temps : Votre enfant a essayé d\'ouvrir l\'application $frontPackage, mais sa limite d\'utilisation pour cette application ($appLimit minutes) est atteinte.',
+                'Alerte de temps : Votre enfant a essayé d\'ouvrir l\'application ${_getAppName(frontPackage)}, mais sa limite d\'utilisation pour cette application ($appLimit minutes) est atteinte.',
           );
           onBlockRequired?.call(
             'Limite de temps pour cette application atteinte.',
@@ -425,7 +486,7 @@ class EnforcementService {
         await _alertService.sendAlert(
           type: AlertType.blockedApp,
           detail:
-              'Alerte de sécurité : Votre enfant a tenté d\'ouvrir l\'application $frontPackage, qui fait partie des applications que vous avez bloquées.',
+              'Alerte de sécurité : Votre enfant a tenté d\'ouvrir l\'application ${_getAppName(frontPackage)}, qui fait partie des applications que vous avez bloquées.',
         );
         onBlockRequired?.call('Cette application est bloquée par vos parents.');
       } else {
@@ -458,13 +519,45 @@ class EnforcementService {
 
     if (url.isEmpty) return;
 
+    // 1. Extraire la requête de recherche si présente
+    final searchQuery = _extractSearchQuery(url);
+
     // Historique (Supporte maintenant les URLs "nues" sans http)
     if (url != _lastReportedUrl) {
       _lastReportedUrl = url;
-      _reportUrlHistory(url, pkg);
+      _reportUrlHistory(url, pkg, searchQuery: searchQuery);
     }
 
-    // Blocage par domaine
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      // 2. Détecter si la recherche porte sur des catégories restreintes
+      bool shouldBlock = false;
+      String category = '';
+
+      if (rules.blockAdultContent && _matchesKeywords(searchQuery, _adultKeywords)) {
+        shouldBlock = true; category = 'Contenu Adulte';
+      } else if (rules.blockViolence && _matchesKeywords(searchQuery, _violenceKeywords)) {
+        shouldBlock = true; category = 'Violence';
+      } else if (rules.blockGambling && _matchesKeywords(searchQuery, _gamblingKeywords)) {
+        shouldBlock = true; category = 'Jeux d\'argent';
+      } else if (rules.blockDrugs && _matchesKeywords(searchQuery, _drugsKeywords)) {
+        shouldBlock = true; category = 'Drogues';
+      } else if (rules.blockSexualPredators && _matchesKeywords(searchQuery, _predatorsKeywords)) {
+        shouldBlock = true; category = 'Rencontres/Prédateurs';
+      } else if (rules.blockSelfHarm && _matchesKeywords(searchQuery, _selfHarmKeywords)) {
+        shouldBlock = true; category = 'Auto-mutilation';
+      } else if (rules.blockCyberbullying && _matchesKeywords(searchQuery, _bullyingKeywords)) {
+        shouldBlock = true; category = 'Cyber-harcèlement';
+      } else if (rules.blockEatingDisorders && _matchesKeywords(searchQuery, _eatingKeywords)) {
+        shouldBlock = true; category = 'Troubles alimentaires';
+      }
+
+      if (shouldBlock) {
+        _triggerWebSearchBlock(url, searchQuery, category);
+        return;
+      }
+    }
+
+    // Blocage par domaine classique
     for (final blocked in rules.blockedWebsites) {
       if (url.contains(blocked.toLowerCase())) {
         _triggerWebBlock(
@@ -475,7 +568,7 @@ class EnforcementService {
       }
     }
 
-    // Blocage par catégorie
+    // Blocage par catégorie d'URL classique
     if (rules.blockAdultContent && _matchesKeywords(url, _adultKeywords)) {
       _triggerWebBlock(
         url,
@@ -532,11 +625,32 @@ class EnforcementService {
     }
   }
 
-  bool _matchesKeywords(String url, Set<String> keywords) {
-    return keywords.any((k) => url.contains(k));
+  bool _matchesKeywords(String text, Set<String> keywords) {
+    return keywords.any((k) => text.contains(k.toLowerCase()));
   }
 
-  Future<void> _reportUrlHistory(String url, String package) async {
+  Future<void> _triggerWebSearchBlock(String url, String searchQuery, String category) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
+    if (!(prefs.getBool('onboarding_complete') ?? false)) return;
+
+    final domain = Uri.tryParse(url)?.host ?? url;
+    if (domain == _lastUrl) return;
+    _lastUrl = domain;
+
+    await _alertService.sendAlert(
+      type: AlertType.blockedApp,
+      detail: 'Votre enfant a cherché "$searchQuery"',
+    );
+
+    final reason = 'Recherche restreinte détectée ("$searchQuery").';
+    onBlockRequired?.call(reason);
+    if (_backgroundService != null) {
+      _backgroundService!.invoke('triggerBlock', {'reason': reason});
+    }
+  }
+
+  Future<void> _reportUrlHistory(String url, String package, {String? searchQuery}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final childPath = prefs.getString('child_path');
@@ -553,7 +667,6 @@ class EnforcementService {
         'totalMinutes': 0, // Optionnel, le parent additionne
         'websites': {
           domain.replaceAll('.', '_'): {
-            // Firestore n'aime pas les points dans les clés
             'domain': domain,
             'lastVisit': FieldValue.serverTimestamp(),
             'visits': FieldValue.increment(1),
@@ -562,14 +675,21 @@ class EnforcementService {
         'lastSync': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      // On garde aussi l'historique linéaire pour le parent (chemin corrigé)
+      // On garde aussi l'historique linéaire pour le parent
       await _firestore.collection('$childPath/inventory/websites/history').add({
         'url': url,
         'domain': domain,
+        'package': package,
+        'searchQuery': searchQuery,
+        'title': searchQuery != null && searchQuery.isNotEmpty 
+            ? 'Recherche : "$searchQuery"'
+            : (Uri.tryParse(url)?.path != null && Uri.tryParse(url)!.path.length > 1 
+                ? Uri.tryParse(url)!.path 
+                : domain),
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      debugPrint('EnforcementService: 🌐 Web stats synced to: $webStatsPath');
+      debugPrint('EnforcementService: 🌐 Web stats and history synced.');
     } catch (e) {
       debugPrint('EnforcementService: _reportUrlHistory error: $e');
     }
@@ -623,7 +743,7 @@ class EnforcementService {
     await _alertService.sendAlert(
       type: AlertType.keywordDetected,
       detail:
-          'Alerte de contenu : Le mot-clé sensible "$keyword" a été détecté pendant l\'utilisation de l\'application $pkg.',
+          'Alerte de contenu : Le mot-clé sensible "$keyword" a été détecté pendant l\'utilisation de l\'application ${_getAppName(pkg)}.',
     );
 
     // Déclencher le blocage immédiat pour les mots-clés

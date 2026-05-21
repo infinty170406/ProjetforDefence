@@ -117,9 +117,8 @@ class MonitoringService {
 
     // ── B. Démarrer la collecte des stats (boucle 15min) ─────────────────
     await _syncUsageStats();
-    // NOTE: PackageService().syncInstalledApps() doit être appelé depuis
-    // l'isolate principal (UI), pas depuis le background isolate.
-    // Il sera déclenché via triggerAppSync() depuis le main isolate.
+    // Déclencher la synchronisation complète des applications et icônes installées sur le main isolate
+    service.invoke('triggerAppSync');
 
     _syncTimer = Timer.periodic(const Duration(minutes: 2), (_) async {
       await _syncUsageStats();
