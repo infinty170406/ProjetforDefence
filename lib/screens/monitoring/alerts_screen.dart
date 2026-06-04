@@ -1,0 +1,422 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/glass_card.dart';
+import '../../core/widgets/liquid_background.dart';
+import '../../core/services/child_monitor_service.dart';
+import '../../core/models/alert_model.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class AlertsScreen extends StatefulWidget {
+  final dynamic child;
+  const AlertsScreen({super.key, this.child});
+
+  @override
+  State<AlertsScreen> createState() => _AlertsScreenState();
+}
+
+class _AlertsScreenState extends State<AlertsScreen> {
+  String _filter = 'ALL'; // ALL, SOS, BLOCKED_APP, TIME_LIMIT, OUTSIDE_HOURS
+
+  String get _childId => widget.child?['id'] ?? widget.child?['childId'] ?? '';
+  String get _childName => widget.child?['displayName'] ?? 'Child';
+  String? get _parentId => widget.child?['parentId'] as String?;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_childId.isNotEmpty) {
+      ChildMonitorService().markAllAlertsRead(_childId, parentId: _parentId);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.backgroundDark,
+      body: Stack(
+        children: [
+          const LiquidBackground(),
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(context),
+                _buildFilterBar(),
+                Expanded(child: _buildAlertsList()),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 24, 0),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => context.pop(),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Alerts',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  _childName,
+                  style: const TextStyle(color: AppColors.textGray400, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterBar() {
+    final filters = [
+      ('ALL', 'All', Icons.list),
+      ('SOS', 'SOS', Icons.emergency),
+      ('BLOCKED_APP', 'Apps', Icons.block),
+      ('TIME_LIMIT', 'Time', Icons.timer_off),
+      ('OUTSIDE_HOURS', 'Schedule', Icons.nights_stay),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: filters.map((f) {
+          final isSelected = _filter == f.$1;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () => setState(() => _filter = f.$1),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primary
+                      : Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primary
+                        : Colors.white.withValues(alpha: 0.15),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(f.$3,
+                        size: 14,
+                        color: isSelected ? Colors.black : Colors.white70),
+                    const SizedBox(width: 6),
+                    Text(
+                      f.$2,
+                      style: TextStyle(
+                        color: isSelected ? Colors.black : Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildAlertsList() {
+    if (_childId.isEmpty) {
+      return const Center(
+        child: Text('Child not found',
+            style: TextStyle(color: AppColors.textGray400)),
+      );
+    }
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: ChildMonitorService().watchAlerts(_childId, parentId: _parentId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error: ${snapshot.error}',
+                style: const TextStyle(color: Colors.red)),
+          );
+        }
+
+        final rawAlerts = snapshot.data ?? [];
+        final alerts = rawAlerts.map((data) => AlertModel.fromJson(data)).toList();
+
+        final filteredAlerts = _filter == 'ALL'
+            ? alerts
+            : alerts.where((a) => a.type == _filter).toList();
+
+        if (filteredAlerts.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.check_circle_outline, color: AppColors.primary, size: 64),
+                SizedBox(height: 16),
+                Text('No alerts found', style: TextStyle(color: Colors.white, fontSize: 18)),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          itemCount: filteredAlerts.length,
+          itemBuilder: (context, index) {
+            final alert = filteredAlerts[index];
+            return _buildAlertCard(alert);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAlertCard(AlertModel alert) {
+    final type = alert.type ?? 'UNKNOWN';
+    final detail = alert.description;
+    final isSos = type == 'SOS';
+    final isUnread = !alert.read;
+    final time = _formatDate(alert.timestamp);
+
+    // Metadata extract for SOS
+    final lat = alert.metadata?['latitude'] as double?;
+    final lng = alert.metadata?['longitude'] as double?;
+    final batt = alert.metadata?['battery'] as int?;
+
+    return GlassCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _alertColor(type).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(_alertIcon(type), color: _alertColor(type), size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          _alertLabel(type),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        if (isUnread) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    Text(time,
+                        style: const TextStyle(
+                            color: AppColors.textGray400, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (detail.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(detail,
+                style: const TextStyle(color: Colors.white70, fontSize: 14)),
+          ],
+          
+          // NEW: Interactive buttons (Allow / Deny)
+          if (alert.isInteractive) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _handleAlertAction(alert, 'ALLOW'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.withValues(alpha: 0.2),
+                      foregroundColor: Colors.greenAccent,
+                      side: const BorderSide(color: Colors.greenAccent, width: 0.5),
+                    ),
+                    child: const Text('ALLOW'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => _handleAlertAction(alert, 'DENY'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                      backgroundColor: Colors.red.withValues(alpha: 0.1),
+                    ),
+                    child: const Text('DENY'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          if (isSos && batt != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.battery_std, color: Colors.orange, size: 16),
+                const SizedBox(width: 4),
+                Text('Battery: $batt%',
+                    style: const TextStyle(color: Colors.orange, fontSize: 13)),
+              ],
+            ),
+          ],
+          if (isSos && lat != null && lng != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.map, size: 16),
+                    label: const Text('View on map'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                    ),
+                    onPressed: () => context.push('/map'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.call, size: 16),
+                    label: const Text('Call'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () async {
+                      final phone = alert.metadata?['phone'] ?? '112';
+                      final Uri uri = Uri(scheme: 'tel', path: phone.toString());
+                      final canLaunch = await canLaunchUrl(uri);
+                      if (!context.mounted) return;
+                      if (canLaunch) {
+                        await launchUrl(uri);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Cannot launch dialer')),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _handleAlertAction(AlertModel alert, String action) async {
+    try {
+      await ChildMonitorService().handleAlertInteraction(
+        childId: _childId,
+        parentId: _parentId,
+        alertId: alert.id,
+        action: action,
+        actionType: alert.actionType!,
+        actionValue: alert.actionValue!,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Action $action processed for ${alert.actionValue}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  IconData _alertIcon(String type) {
+    switch (type) {
+      case 'SOS': return Icons.emergency;
+      case 'BLOCKED_APP': return Icons.block;
+      case 'TIME_LIMIT': return Icons.timer_off;
+      case 'OUTSIDE_HOURS': return Icons.nights_stay;
+      default: return Icons.info_outline;
+    }
+  }
+
+  Color _alertColor(String type) {
+    switch (type) {
+      case 'SOS': return Colors.red;
+      case 'BLOCKED_APP': return Colors.orange;
+      case 'TIME_LIMIT': return Colors.amber;
+      case 'OUTSIDE_HOURS': return Colors.purple;
+      default: return AppColors.primary;
+    }
+  }
+
+  String _alertLabel(String type) {
+    switch (type) {
+      case 'SOS': return '🆘 SOS Alert';
+      case 'BLOCKED_APP': return '🚫 App blocked';
+      case 'TIME_LIMIT': return '⏰ Limit reached';
+      case 'OUTSIDE_HOURS': return '🌙 Outside schedule';
+      default: return 'Alert';
+    }
+  }
+
+  String _formatDate(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inHours < 1) return '${diff.inMinutes} min ago';
+    if (diff.inDays < 1) return '${diff.inHours}h ago';
+    return '${dt.day}/${dt.month} at ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+}

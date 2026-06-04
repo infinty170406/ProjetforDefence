@@ -1,0 +1,46 @@
+Analyzing ProjetforDefence-frontend...                          
+
+   info • Don't invoke 'print' in production code • bin/test_openrouter.dart:6:3 • avoid_print
+   info • Don't invoke 'print' in production code • bin/test_openrouter.dart:9:5 • avoid_print
+   info • Don't invoke 'print' in production code • bin/test_openrouter.dart:11:5 • avoid_print
+   info • Don't invoke 'print' in production code • bin/test_openrouter_new_key.dart:8:3 • avoid_print
+   info • Don't invoke 'print' in production code • bin/test_openrouter_new_key.dart:21:3 • avoid_print
+   info • Don't invoke 'print' in production code • bin/test_openrouter_new_key.dart:22:3 • avoid_print
+warning • Unused import: 'package:flutter/foundation.dart' • lib/core/repositories/alert_repository.dart:3:8 • unused_import
+warning • Unnecessary cast • lib/core/repositories/child_repository.dart:42:37 • unnecessary_cast
+warning • Unused import: 'package:flutter/foundation.dart' • lib/core/repositories/rules_repository.dart:3:8 • unused_import
+warning • Unnecessary cast • lib/core/repositories/rules_repository.dart:54:24 • unnecessary_cast
+warning • The value of the local variable 'hasRules' isn't used • lib/screens/child/child_details_screen.dart:438:24 • unused_local_variable
+   info • Use 'const' with the constructor to improve performance • lib/screens/child/rules_config_wizard_screen.dart:854:9 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/screens/child/rules_config_wizard_screen.dart:855:21 • prefer_const_literals_to_create_immutables
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/screens/child/rules_config_wizard_screen.dart:1163:13 • deprecated_member_use
+warning • The value of the local variable 'age' isn't used • lib/screens/child/rules_config_wizard_screen.dart:1176:11 • unused_local_variable
+warning • The declaration '_buildToggleRow' isn't referenced • lib/screens/child/rules_config_wizard_screen.dart:1766:10 • unused_element
+   info • Use 'const' with the constructor to improve performance • lib/screens/child/rules_editor_screen.dart:329:25 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/screens/child/rules_editor_screen.dart:330:37 • prefer_const_literals_to_create_immutables
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/screens/child/rules_editor_screen.dart:423:35 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/screens/child/rules_editor_screen.dart:433:25 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/screens/child/rules_editor_screen.dart:434:37 • prefer_const_literals_to_create_immutables
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/screens/child/rules_editor_screen.dart:584:13 • deprecated_member_use
+warning • Unused import: '../../core/services/email_service.dart' • lib/screens/dashboard/dashboard_screen.dart:9:8 • unused_import
+warning • Unused import: 'package:firebase_auth/firebase_auth.dart' • lib/screens/dashboard/dashboard_screen.dart:10:8 • unused_import
+   info • Use 'const' with the constructor to improve performance • lib/screens/monitoring/alerts_screen.dart:221:14 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/screens/monitoring/alerts_screen.dart:222:16 • prefer_const_constructors
+   info • Use 'const' literals as arguments to constructors of '@immutable' classes • lib/screens/monitoring/alerts_screen.dart:224:21 • prefer_const_literals_to_create_immutables
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/screens/monitoring/alerts_screen.dart:396:48 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/screens/monitoring/real_time_map_screen.dart:166:30 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/screens/monitoring/real_time_map_screen.dart:229:36 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/screens/monitoring/real_time_map_screen.dart:243:36 • use_build_context_synchronously
+warning • Unused import: 'package:flutter_map/flutter_map.dart' • lib/screens/monitoring/safe_zones_screen.dart:3:8 • unused_import
+warning • Unused import: 'package:latlong2/latlong.dart' • lib/screens/monitoring/safe_zones_screen.dart:4:8 • unused_import
+warning • Unused import: '../../core/services/location_service.dart' • lib/screens/monitoring/safe_zones_screen.dart:11:8 • unused_import
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/screens/monitoring/safe_zones_screen.dart:73:36 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/screens/monitoring/safe_zones_screen.dart:87:36 • use_build_context_synchronously
+warning • The operand can't be 'null', so the condition is always 'true' • lib/screens/monitoring/widgets/add_safe_zone_modal.dart:165:59 • unnecessary_null_comparison
+warning • The '!' will have no effect because the receiver can't be null • lib/screens/monitoring/widgets/add_safe_zone_modal.dart:166:67 • unnecessary_non_null_assertion
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/screens/monitoring/widgets/add_safe_zone_modal.dart:249:35 • use_build_context_synchronously
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/screens/settings/privacy_settings_screen.dart:202:13 • deprecated_member_use
+   info • Don't invoke 'print' in production code • test/openrouter_test.dart:7:5 • avoid_print
+   info • Don't invoke 'print' in production code • test/openrouter_test.dart:9:5 • avoid_print
+
+42 issues found. (ran in 16.2s)

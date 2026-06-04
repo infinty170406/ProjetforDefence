@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: vérifie que l'utilisateur est le parent propriétaire du document
+    function isParent(parentId) {
+      return request.auth != null && request.auth.uid == parentId;
+    }
+
+    // Helper: vérifie que c'est l'appareil enfant appairé à ce profil.
+    // Lit le champ childDeviceUid du document children/{childId}
+    // et le compare à l'UID de l'utilisateur authentifié (connexion anonyme).
+    function isChildDevice(parentId, childId) {
+      return request.auth != null
+          && get(/databases/$(database)/documents/parents/$(parentId)/children/$(childId)).data.childDeviceUid == request.auth.uid;
+    }
+
+    // ── Données parent ───────────────────────────────────────────────────────
+    match /parents/{parentId} {
+      allow read, write: if isParent(parentId);
+
+      // ── Enfants ─────────────────────────────────────────────────────────────
+      match /children/{childId} {
+        // Parent : accès complet
+
+        
+        allow read, write: if isParent(parentId);
+
+        // Appareil enfant : lecture de ses propres données
+        allow read: if isChildDevice(parentId, childId);
+
+        // Appareil enfant : mise à jour limitée (heartbeat, statut, FCM token)
+        allow update: if isChildDevice(parentId, childId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'deviceStatus', 'lastHeartbeat', 'fcmToken', 'lastTokenSync'
+            ]);
+
+        // Appairage : un nouvel appareil peut s'appairer en définissant isLinked + childDeviceUid
+        allow update: if request.auth != null
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'isLinked', 'childDeviceUid', 'deviceStatus', 'lastHeartbeat'
+            ])
+            && request.resource.data.isLinked == true
+            && request.resource.data.childDeviceUid == request.auth.uid;
+
+        // ── Règles (Rules Repository) ──────────────────────────────────────
+        match /rules/active {
+          // Parent : lecture et écriture complètes
+          allow read, write: if isParent(parentId);
+          // Appareil enfant : lecture uniquement de ses propres règles
+          allow read: if isChildDevice(parentId, childId);
+        }
+
+        // ── Alertes (Alert Repository) ───────────────────────────────────
+        match /alerts/{alertDoc=**} {
+          allow read, write: if isParent(parentId);
+          // Appareil enfant : lecture ET écriture (stats d'usage, notifications)
+          allow read, write: if isChildDevice(parentId, childId);
+        }
+
+        // ── Statistiques d'usage ─────────────────────────────────────────
+        match /usageStats/{statDoc} {
+          allow read: if isParent(parentId);
+          allow read, write: if isChildDevice(parentId, childId);
+        }
+
+        // ── Inventaire (Apps / Web history) ─────────────────────────────
+        // L'appareil enfant doit pouvoir écrire ici pour synchroniser
+        // les noms d'apps, icônes, et historique web.
+        match /inventory/{invDoc=**} {
+          allow read, write: if isParent(parentId);
+          allow read, write: if isChildDevice(parentId, childId);
+        }
+
+        // ── Position GPS ─────────────────────────────────────────────────
+        match /location/current {
+          allow read: if isParent(parentId);
+          allow read, write: if isChildDevice(parentId, childId);
+        }
+      }
+
+      // ── Géofences ─────────────────────────────────────────────────────────
+      match /geofences/{geofenceId} {
+        allow read, write: if isParent(parentId);
+      }
+
+      // ── Vérification OTP ──────────────────────────────────────────────────
+      match /verification/{doc} {
+        allow read, write: if isParent(parentId);
+      }
+    }
+
+    // ── Appairage : recherche par invitationToken ─────────────────────────
+    // Permet à tout utilisateur authentifié (y compris anonymement) de chercher
+    // un document enfant via collectionGroup pour valider le code d'appairage.
+    match /{path=**}/children/{childId} {
+      allow read: if request.auth != null
+          && resource.data.invitationToken != null;
+    }
+  }
+}
