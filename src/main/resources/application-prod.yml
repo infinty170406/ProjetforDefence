@@ -1,0 +1,17 @@
+spring:
+  main:
+    lazy-initialization: true
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+management:
+  health:
+    mail:
+      enabled: false
+
+logging:
+  level:
+    org.springframework.mail: DEBUG
+    org.eclipse.angus.mail: DEBUG
+    com.example.the_guardian_v1: INFO

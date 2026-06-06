@@ -1,0 +1,40 @@
+package com.example.the_guardian_v1.domain.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "parents", indexes = { @Index(name = "idx_parent_email", columnList = "email", unique = true) })
+@Getter
+@Setter
+
+public class Parent extends Auditable {
+
+  @Id
+  @Column(length = 36)
+  private String id;
+
+  @Column(nullable = false, length = 320, unique = true)
+  private String email;
+
+  @Column(nullable = false, length = 120)
+  private String name;
+
+  @Column(length = 20)
+  private String phoneNumber;
+
+  @Column(nullable = false, length = 20)
+  private String status;
+
+  @Column(nullable = false, columnDefinition = "boolean default false")
+  private Boolean verified = false;
+
+  @Column(nullable = false, columnDefinition = "boolean default false")
+  private Boolean kycVerified = false;
+
+  @Column(length = 50)
+  private String kycDocumentType;
+
+  @Column(length = 50)
+  private String kycDocumentNumber;
+}
