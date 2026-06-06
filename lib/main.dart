@@ -18,6 +18,7 @@ import 'core/repositories/child_repository.dart';
 import 'core/repositories/rules_repository.dart';
 import 'core/repositories/alert_repository.dart';
 import 'core/repositories/stats_repository.dart';
+import 'services/native_bridge_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,6 +67,7 @@ void main() async {
     ApiService().initialize(),
     NotificationService().initialize(),
     FirestoreService().updateLastActive(),
+    NativeBridgeService.startForegroundService(),
   ]).then((_) {
     debugPrint('APP_LOG: Background services initialized.');
   }).catchError((e) {
