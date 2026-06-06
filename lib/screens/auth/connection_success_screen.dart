@@ -109,7 +109,7 @@ class ConnectionSuccessScreen extends StatelessWidget {
                                   'assets/images/Rectangle 69.png',
                                   width: 80,
                                   height: 80,
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   colorBlendMode: BlendMode.modulate,
                                   fit: BoxFit.contain,
                                 ),

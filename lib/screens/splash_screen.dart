@@ -68,6 +68,7 @@ class _SplashScreenState extends State<SplashScreen>
     }
 
     if (isActivated) {
+      if (!mounted) return;
       await Provider.of<AppState>(context, listen: false).initialize();
       // ⚠️ Doit être appelé depuis l'isolate principal (UI thread) car il
       // utilise MethodChannel pour accéder à PackageManager Android.
@@ -80,10 +81,12 @@ class _SplashScreenState extends State<SplashScreen>
         );
       }
     } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-      );
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+        );
+      }
     }
   }
 

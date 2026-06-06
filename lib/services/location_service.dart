@@ -215,8 +215,13 @@ class LocationService {
 
   Future<void> _saveLocationToFirestore(geo.Position position) async {
     final prefs = await SharedPreferences.getInstance();
-    final childPath = prefs.getString("child_path");
-    if (childPath == null) return;
+    final rawChildPath = prefs.getString("child_path");
+    if (rawChildPath == null || rawChildPath.isEmpty) return;
+
+    // Assurez-vous qu'il n'y a pas de slash final pour éviter les chemins invalides
+    final childPath = rawChildPath.endsWith('/') 
+        ? rawChildPath.substring(0, rawChildPath.length - 1) 
+        : rawChildPath;
 
     try {
       final locationData = {
@@ -235,7 +240,7 @@ class LocationService {
       });
 
       // Point actuel dans collection dédiée
-      await _firestore.collection("$childPath/location").doc("current").set(locationData);
+      await _firestore.doc("$childPath/location/current").set(locationData);
 
       // Historique
       await _firestore.collection("$childPath/location_history").add(locationData);

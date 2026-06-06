@@ -95,7 +95,10 @@ class AlertService {
     if (childPath == null || childId == null || parentId == null) return;
 
     try {
-      final severity = type.genre == 'security' ? 'HIGH' : 'MEDIUM';
+      // security = CRITICAL (SOS, géofences, mots-clés)
+      // restriction = HIGH (app bloquée, limite atteinte, hors horaire)
+      // → Les deux niveaux sont désormais visibles dans l'overlay parent.
+      final severity = type.genre == 'security' ? 'CRITICAL' : 'HIGH';
 
       final alertData = {
         'childId':     childId,

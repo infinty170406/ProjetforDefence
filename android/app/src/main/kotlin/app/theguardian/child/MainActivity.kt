@@ -45,12 +45,46 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
         GuardianWorker.scheduleIfNeeded(this)
         WatchdogReceiver.schedule(this)
+        // FIX BUG #5: gérer un SHOW_BLOCK au cold start (AccessibilityService a lancé l'app)
+        handleBlockIntent(intent)
+    }
+
+    // FIX BUG #5: gérer un SHOW_BLOCK quand l'app était déjà ouverte
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleBlockIntent(intent)
+    }
+
+    private fun handleBlockIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra("SHOW_BLOCK", false) == true) {
+            val reason = intent.getStringExtra("BLOCK_REASON") ?: "Cette application est bloquée."
+            val pkg    = intent.getStringExtra("BLOCK_PACKAGE") ?: ""
+            android.util.Log.i("MainActivity", "SHOW_BLOCK received: $reason")
+
+            // Toujours stocker en SharedPreferences (filet de sécurité)
+            val prefs = getSharedPreferences("FlutterSharedPreferences", android.content.Context.MODE_PRIVATE)
+            prefs.edit().putString("flutter.guardian_pending_block", reason).apply()
+
+            // Tenter la livraison immédiate si le sink est prêt
+            val delivered = blockEventSink?.let {
+                it.success(mapOf("package" to pkg, "reason" to reason))
+                true
+            } ?: false
+
+            if (!delivered) {
+                // Réessayer après 800ms (Flutter a le temps de monter)
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    blockEventSink?.success(mapOf("package" to pkg, "reason" to reason))
+                }, 800)
+            }
+        }
     }
 
     private val METHOD_CHANNEL    = "app.theguardian.child/system"
     private val EVENT_CHANNEL     = "app.theguardian.child/block_events"
     private val WEB_EVENT_CHANNEL = "app.theguardian.child/web_events"
     private val KEYWORD_EVENT_CHANNEL = "app.theguardian.child/keyword_events"
+    private val FOREGROUND_EVENT_CHANNEL = "app.theguardian.child/foreground_events"
 
     private var blockEventSink: EventChannel.EventSink? = null
     private var blockReceiver: BroadcastReceiver? = null
@@ -60,6 +94,9 @@ class MainActivity : FlutterActivity() {
 
     private var keywordEventSink: EventChannel.EventSink? = null
     private var keywordReceiver: BroadcastReceiver? = null
+
+    private var foregroundEventSink: EventChannel.EventSink? = null
+    private var foregroundReceiver: BroadcastReceiver? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -117,6 +154,16 @@ class MainActivity : FlutterActivity() {
                             ?.toSet()
                             ?: emptySet()
                         GuardianAccessibilityService.customKeywords = keywords
+                        result.success(null)
+                    }
+
+                    "updateBlockedWebsites" -> {
+                        @Suppress("UNCHECKED_CAST")
+                        val websites = (call.arguments as? List<*>)
+                            ?.filterIsInstance<String>()
+                            ?.toSet()
+                            ?: emptySet()
+                        GuardianAccessibilityService.blockedWebsites = websites
                         result.success(null)
                     }
 
@@ -251,6 +298,19 @@ class MainActivity : FlutterActivity() {
                     unregisterKeywordReceiver()
                 }
             })
+
+        // ── EventChannel (Foreground Events) ──────────────────────────────────
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, FOREGROUND_EVENT_CHANNEL)
+            .setStreamHandler(object : EventChannel.StreamHandler {
+                override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                    foregroundEventSink = events
+                    registerForegroundReceiver()
+                }
+                override fun onCancel(arguments: Any?) {
+                    foregroundEventSink = null
+                    unregisterForegroundReceiver()
+                }
+            })
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -290,17 +350,20 @@ class MainActivity : FlutterActivity() {
                 if (intent.action != GuardianAccessibilityService.ACTION_URL_DETECTED) return
                 val url = intent.getStringExtra(GuardianAccessibilityService.EXTRA_URL) ?: return
                 val pkg = intent.getStringExtra(GuardianAccessibilityService.EXTRA_URL_PACKAGE) ?: ""
+                val searchQuery = intent.getStringExtra(GuardianAccessibilityService.EXTRA_SEARCH_QUERY)
+                
+                val eventMap = mutableMapOf<String, Any>("url" to url, "package" to pkg)
+                if (searchQuery != null) {
+                    eventMap["searchQuery"] = searchQuery
+                }
                 
                 // 1. Envoyer à l'UI si elle est ouverte
-                webEventSink?.success(mapOf("url" to url, "package" to pkg))
+                webEventSink?.success(eventMap)
                 
                 // 2. Envoyer au service de background (Isolate séparé)
                 // C'est ici que réside la logique EnforcementService
-                sendDataToBackground(context, mapOf(
-                    "action" to "web_event",
-                    "url" to url,
-                    "package" to pkg
-                ))
+                eventMap["action"] = "web_event"
+                sendDataToBackground(context, eventMap)
             }
         }
         registerReceiver(
@@ -345,10 +408,37 @@ class MainActivity : FlutterActivity() {
         keywordReceiver = null
     }
 
+    private fun registerForegroundReceiver() {
+        foregroundReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.action != GuardianAccessibilityService.ACTION_FOREGROUND_CHANGED) return
+                val pkg = intent.getStringExtra(GuardianAccessibilityService.EXTRA_FOREGROUND_PACKAGE) ?: return
+                
+                foregroundEventSink?.success(mapOf("package" to pkg))
+                
+                sendDataToBackground(context, mapOf(
+                    "action" to "foreground_event",
+                    "package" to pkg
+                ))
+            }
+        }
+        registerReceiver(
+            foregroundReceiver,
+            IntentFilter(GuardianAccessibilityService.ACTION_FOREGROUND_CHANGED),
+            RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    private fun unregisterForegroundReceiver() {
+        foregroundReceiver?.let { unregisterReceiver(it) }
+        foregroundReceiver = null
+    }
+
     override fun onDestroy() {
         unregisterBlockReceiver()
         unregisterWebReceiver()
         unregisterKeywordReceiver()
+        unregisterForegroundReceiver()
         super.onDestroy()
     }
 

@@ -35,6 +35,17 @@ class _BlockingScreenState extends State<BlockingScreen>
 
   late ActiveRules _initialRules;
   String _parentPhoneNumber = '';
+  
+  Timer? _countdownTimer;
+  int _secondsRemaining = 3;
+
+  bool get _isGlobalBlock {
+    final r = widget.reason.toLowerCase();
+    return r.contains('journalier') ||
+        r.contains('heures autorisées') ||
+        r.contains('plage horaire') ||
+        r.contains('temps d\'écran');
+  }
 
   @override
   void initState() {
@@ -61,6 +72,20 @@ class _BlockingScreenState extends State<BlockingScreen>
       const Duration(seconds: 10),
       (_) => _checkIfUnlocked(),
     );
+
+    if (!_isGlobalBlock) {
+      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) return;
+        setState(() {
+          if (_secondsRemaining > 1) {
+            _secondsRemaining--;
+          } else {
+            _countdownTimer?.cancel();
+            _goToDashboard();
+          }
+        });
+      });
+    }
   }
 
   Future<void> _loadParentPhone() async {
@@ -335,6 +360,7 @@ class _BlockingScreenState extends State<BlockingScreen>
     _pulseController.dispose();
     _refreshTimer?.cancel();
     _unlockCheckTimer?.cancel();
+    _countdownTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -491,8 +517,8 @@ class _BlockingScreenState extends State<BlockingScreen>
 
                           const SizedBox(height: 24),
 
-                          // COMPTEUR DE DÉBLOCAGE
-                          if (nextUnlock != null) ...[
+                          // COMPTEUR DE DÉBLOCAGE GLOBAL
+                          if (_isGlobalBlock && nextUnlock != null) ...[
                             Text(
                               'DÉVERROUILLAGE DANS',
                               style: TextStyle(
@@ -511,6 +537,62 @@ class _BlockingScreenState extends State<BlockingScreen>
                                 fontWeight: FontWeight.w300,
                                 letterSpacing: 2,
                                 fontFeatures: [FontFeature.tabularFigures()],
+                              ),
+                            ),
+                          ],
+
+                          // COMPTEUR DE FERMETURE AUTOMATIQUE (BLOCAGE SPÉCIFIQUE)
+                          if (!_isGlobalBlock) ...[
+                            Text(
+                              'RETOUR AU TABLEAU DE BORD DANS',
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: 11,
+                                letterSpacing: 1.2,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 70,
+                                  height: 70,
+                                  child: CircularProgressIndicator(
+                                    value: _secondsRemaining / 3,
+                                    color: AppColors.accentTeal,
+                                    backgroundColor: Colors.white.withValues(alpha: 0.05),
+                                    strokeWidth: 4,
+                                  ),
+                                ),
+                                Text(
+                                  '$_secondsRemaining',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 28),
+                            ElevatedButton.icon(
+                              onPressed: _goToDashboard,
+                              icon: const Icon(Icons.close, size: 20),
+                              label: const Text(
+                                'Fermer et retour',
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white.withValues(alpha: 0.05),
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(190, 50),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(25),
+                                  side: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
+                                ),
+                                elevation: 0,
                               ),
                             ),
                           ],
@@ -539,7 +621,9 @@ class _BlockingScreenState extends State<BlockingScreen>
 
                           const SizedBox(height: 20),
                           Text(
-                            'Contactez vos parents pour modifier\nles restrictions.',
+                            _isGlobalBlock 
+                                ? 'Contactez vos parents pour modifier\nles restrictions.'
+                                : 'L\'application non autorisée a été fermée.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.grey[600],

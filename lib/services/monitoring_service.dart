@@ -161,6 +161,9 @@ class MonitoringService {
       final filtered = stats.where((s) {
         final pkg = s.packageName ?? '';
         final ms  = int.tryParse(s.totalTimeInForeground ?? '0') ?? 0;
+        // BUG FIX #5 : Ne pas exclure com.google.android.youtube / com.android.chrome
+        // si le parent les a bloqués. Les stats doivent refléter l'usage réel.
+        // On garde seulement l'exclusion des paquets génériques Android/constructeur.
         return ms > 0 && !_isSystemApp(pkg);
       }).toList()
         ..sort((a, b) {
@@ -228,9 +231,14 @@ class MonitoringService {
     }
   }
 
+  // BUG FIX #5 : _isSystemApp() ne filtre que les paquets génériques système.
+  // YouTube (com.google.android.youtube) et Chrome (com.android.chrome) PEUVENT
+  // être bloqués explicitement par le parent, donc ils ne doivent pas être
+  // systématiquement ignorés.
+  // Dans les stats : ils sont inclus (usage réel).
+  // Dans le blocage : voir enforcement_service.dart (blockedByParent a la priorité).
   bool _isSystemApp(String pkg) =>
-      pkg.startsWith('com.android.') ||
-      pkg.startsWith('com.google.android.') ||
+      // Paquets purement système / constructeur sans intérêt éducatif
       pkg.startsWith('com.miui.') ||
       pkg.startsWith('com.xiaomi.') ||
       pkg.startsWith('com.qualcomm.') ||
@@ -243,8 +251,17 @@ class MonitoringService {
       pkg.startsWith('com.coloros.') ||
       pkg.startsWith('com.heytap.') ||
       pkg.startsWith('com.bbk.') ||
-      // Specific system packages often showing as "Home", "Android", "Chat"
+      // Services Android génériques sans contenu utilisateur
       pkg == 'android' ||
+      pkg == 'com.android.systemui' ||
+      pkg == 'com.android.launcher' ||
+      pkg == 'com.android.launcher3' ||
+      pkg == 'com.android.settings' ||
+      pkg == 'com.android.phone' ||
+      pkg == 'com.android.inputmethod.latin' ||
+      pkg == 'com.google.android.inputmethod.latin' ||
+      pkg == 'com.google.android.gms' ||
+      pkg == 'com.google.android.gsf' ||
       pkg == 'com.miui.home' ||
       pkg == 'com.miui.securitycenter' ||
       pkg == 'com.miui.msa.global' ||
@@ -255,6 +272,8 @@ class MonitoringService {
       pkg == 'com.xiaomi.simactivate.service' ||
       pkg == 'com.lbe.security.miui' ||
       pkg == 'app.theguardian.child';
+      // NOTE : com.android.chrome, com.google.android.youtube, etc.
+      // sont INTENTIONNELLEMENT absents pour permettre le blocage parental.
 
   static const _browserPackages = {
     'com.android.chrome',

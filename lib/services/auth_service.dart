@@ -70,8 +70,8 @@ class AuthService {
 
     try {
       // 1. Check Connectivity
-      final connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult == ConnectivityResult.none) {
+      final connectivityResultList = await Connectivity().checkConnectivity();
+      if (connectivityResultList.contains(ConnectivityResult.none)) {
         debugPrint('AuthService: ❌ No internet connection');
         return const LinkActivation(
           status: LinkStatus.networkError,
@@ -95,33 +95,34 @@ class AuthService {
       debugPrint('AuthService: Anonymous auth successful, UID: $uid');
 
       // 2. Recherche du document enfant
-      QuerySnapshot query;
+      QuerySnapshot? query;
       try {
         debugPrint('AuthService: Searching collectionGroup "children" where id == $token');
-        // IMPORTANT: Cette requête nécessite un index composite sur la collectionGroup "children".
-        // Si l'index est manquant, une exception sera levée avec un lien pour le créer.
         query = await _firestore
             .collectionGroup('children')
             .where('id', isEqualTo: token)
             .limit(1)
             .get()
             .timeout(const Duration(seconds: 15));
+      } catch (e) {
+        debugPrint('AuthService: ⚠️ Query by id failed (possibly permission-denied): $e');
+      }
 
-        if (query.docs.isEmpty) {
-          debugPrint('AuthService: Not found by "id", trying by "invitationToken"...');
+      if (query == null || query.docs.isEmpty) {
+        try {
+          debugPrint('AuthService: Trying by "invitationToken"...');
           query = await _firestore
               .collectionGroup('children')
               .where('invitationToken', isEqualTo: token)
               .limit(1)
               .get()
               .timeout(const Duration(seconds: 15));
+        } catch (e) {
+          debugPrint('AuthService: ❌ Query by invitationToken failed: $e');
         }
-      } catch (e) {
-        debugPrint('AuthService: ❌ Query failed: $e');
-        rethrow;
       }
 
-      if (query.docs.isEmpty) {
+      if (query == null || query.docs.isEmpty) {
         debugPrint('AuthService: ❌ No document found for token: $token');
         return const LinkActivation(status: LinkStatus.invalid);
       }

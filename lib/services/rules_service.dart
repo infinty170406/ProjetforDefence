@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -154,7 +155,8 @@ class ActiveRules {
     } catch (e, stack) {
       debugPrint('ActiveRules: Error parsing rules data: $e');
       debugPrint('ActiveRules: Stack trace: $stack');
-      return ActiveRules.empty;
+      // On lance l'erreur au lieu de renvoyer empty pour que RulesService préserve le cache.
+      throw FormatException('Failed to parse ActiveRules: $e');
     }
   }
 
@@ -264,8 +266,9 @@ class RulesService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  StreamSubscription<DocumentSnapshot>? _subscription;
+  StreamSubscription<QuerySnapshot>? _subscription;
   StreamSubscription<QuerySnapshot>? _geofencesSub;
+  StreamSubscription<User?>? _authSub;
   ActiveRules _current = ActiveRules.empty;
   bool _isStarting = false;
   int _retryCount = 0;
@@ -310,11 +313,11 @@ class RulesService {
         }
       }
 
-      final childPath = prefs.getString('child_path');
-      debugPrint('RulesService: Resolved child_path = $childPath');
+      final childDeviceUid = prefs.getString('device_uid') ?? FirebaseAuth.instance.currentUser?.uid;
+      debugPrint('RulesService: Resolved childDeviceUid = $childDeviceUid');
 
-      if (childPath == null) {
-        debugPrint('RulesService: ⚠️ child_path not set — cannot start rules listener.');
+      if (childDeviceUid == null) {
+        debugPrint('RulesService: ⚠️ childDeviceUid not set — cannot start rules listener.');
         _isStarting = false;
         if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
           firstLoadCompleter.complete();
@@ -322,10 +325,8 @@ class RulesService {
         return;
       }
 
-      final docPath = '$childPath/rules/active';
-      
-      // Écouter Firestore (Centralisé dans _listenToFirestore)
-      _listenToFirestore(docPath, firstLoadCompleter: firstLoadCompleter);
+      // Écouter Firestore via collectionGroup
+      _listenToFirestore(childDeviceUid, firstLoadCompleter: firstLoadCompleter);
 
       // 2. Écouter aussi les Geofences
       _checkAndStartGeofences(prefs);
@@ -343,49 +344,76 @@ class RulesService {
 
   void _checkAndStartGeofences(SharedPreferences prefs) {
     if (_geofencesSub != null) return;
-    
+
     final parentId = prefs.getString('parent_id');
-    final childId = prefs.getString('child_id');
-    
+    final childId  = prefs.getString('child_id');
+
     debugPrint('RulesService: Checking for geofences sub (parent=$parentId, child=$childId)');
-    
-    if (parentId != null && childId != null) {
+
+    if (parentId == null || childId == null) {
+      debugPrint('RulesService: ⚠️ Cannot start Geofences sub — missing parent_id or child_id');
+      return;
+    }
+
+    // Guard: attendre que Firebase Auth soit restauré avant de lire Firestore,
+    // sinon request.auth est null → PERMISSION_DENIED sur la collection géofences.
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      debugPrint('RulesService: Auth ready (${user.uid}), starting geofences listener.');
       _listenToGeofences(parentId, childId);
     } else {
-      debugPrint('RulesService: ⚠️ Cannot start Geofences sub — missing parent_id or child_id');
+      debugPrint('RulesService: Auth not ready — waiting for authStateChanges to start geofences.');
+      _authSub?.cancel();
+      _authSub = FirebaseAuth.instance.authStateChanges().listen((u) {
+        if (u != null && _geofencesSub == null) {
+          debugPrint('RulesService: Auth restored (${u.uid}), starting geofences listener.');
+          _listenToGeofences(parentId, childId);
+          _authSub?.cancel();
+          _authSub = null;
+        }
+      });
     }
   }
 
-  void _listenToFirestore(String docPath, {Completer<void>? firstLoadCompleter}) {
+  void _listenToFirestore(String childDeviceUid, {Completer<void>? firstLoadCompleter}) {
     _subscription?.cancel();
-    _subscription = _firestore.doc(docPath).snapshots().listen(
+    _subscription = _firestore
+        .collectionGroup('rules')
+        .where('childDeviceUid', isEqualTo: childDeviceUid)
+        .snapshots()
+        .listen(
       (snap) async {
         _retryCount = 0; // Reset retry on success
         
-        if (!snap.exists) {
-          debugPrint('RulesService: ❌ Document DOES NOT EXIST at $docPath');
+        if (snap.docs.isEmpty) {
+          debugPrint('RulesService: ❌ Rules document DOES NOT EXIST or no rules found for childDeviceUid: $childDeviceUid');
           _current = ActiveRules.empty;
         } else {
-          final data = snap.data() as Map<String, dynamic>;
-          debugPrint('RulesService: 📄 Raw data received for rules/active: $data');
+          final data = snap.docs.first.data();
+          debugPrint('RulesService: 📄 Raw data received for rules: $data');
           
-          final newRules = ActiveRules.fromFirestore(data);
-          
-          // FUSION : Si le document rules/active ne contient pas de geofences
-          // (ce qui est normal si elles sont gérées en sous-collection),
-          // on préserve celles que nous avons déjà reçues via _listenToGeofences.
-          final hasGeofencesInDoc = data['geofences'] != null && (data['geofences'] as List).isNotEmpty;
-          
-          if (!hasGeofencesInDoc && _current.geofences.isNotEmpty) {
-            debugPrint('RulesService: 🛡️ Preserving ${_current.geofences.length} existing geofences from sub-collection.');
-            _current = newRules.copyWith(geofences: _current.geofences);
-          } else {
-            _current = newRules;
+          try {
+            final newRules = ActiveRules.fromFirestore(data);
+            
+            // FUSION : Si le document rules/active ne contient pas de geofences
+            // (ce qui est normal si elles sont gérées en sous-collection),
+            // on préserve celles que nous avons déjà reçues via _listenToGeofences.
+            final hasGeofencesInDoc = data['geofences'] != null && (data['geofences'] as List).isNotEmpty;
+            
+            if (!hasGeofencesInDoc && _current.geofences.isNotEmpty) {
+              debugPrint('RulesService: 🛡️ Preserving ${_current.geofences.length} existing geofences from sub-collection.');
+              _current = newRules.copyWith(geofences: _current.geofences);
+            } else {
+              _current = newRules;
+            }
+            
+            // Sauvegarder dans le cache local
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(_cacheKey, json.encode(_current.toMap()));
+          } catch (e) {
+            debugPrint('RulesService: ❌ Parsing failed. Retaining current rules. Error: $e');
+            // On ne remplace pas _current, ce qui préserve les règles existantes ou le cache chargé au démarrage.
           }
-          
-          // Sauvegarder dans le cache local
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_cacheKey, json.encode(_current.toMap()));
         }
 
         debugPrint('RulesService: ✅ Rules updated → $_current');
@@ -397,10 +425,13 @@ class RulesService {
       },
       onError: (e) {
         debugPrint('RulesService: Firestore error: $e');
+        if (e is FirebaseException && e.code == 'permission-denied') {
+          debugPrint('RulesService: FirebaseException [permission-denied] - Cannot read rules. Check Firebase Security Rules.');
+        }
         if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
           firstLoadCompleter.complete();
         }
-        _handleRetry(docPath);
+        _handleRetry(childDeviceUid);
       },
     );
   }
@@ -424,12 +455,12 @@ class RulesService {
     });
   }
 
-  void _handleRetry(String docPath) {
+  void _handleRetry(String childDeviceUid) {
     _retryCount++;
     final delay = Duration(seconds: (_retryCount * 5).clamp(5, 60));
     debugPrint('RulesService: Retrying in ${delay.inSeconds}s (attempt $_retryCount)...');
     
-    Timer(delay, () => _listenToFirestore(docPath));
+    Timer(delay, () => _listenToFirestore(childDeviceUid));
   }
 
   void _notifyListeners() {
@@ -442,8 +473,10 @@ class RulesService {
   Future<void> stop() async {
     await _subscription?.cancel();
     await _geofencesSub?.cancel();
+    await _authSub?.cancel();
     _subscription = null;
     _geofencesSub = null;
+    _authSub = null;
     _current = ActiveRules.empty;
     debugPrint('RulesService: Stopped.');
   }

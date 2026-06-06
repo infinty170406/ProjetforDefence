@@ -29,7 +29,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _pingController;
   StreamSubscription<String>? _blockSub;
   bool _sosSending = false;
@@ -44,9 +44,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     )..repeat();
 
     // Consommer un éventuel événement de blocage en attente (cold start)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final pending = BlockEventService.consumePending();
-      if (pending != null) _navigateToBlock(pending);
+    // Utilise consumePendingAsync pour lire aussi SharedPreferences
+    // au cas où l'EventChannel n'était pas prêt quand le blocage est arrivé
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final pending = await BlockEventService.consumePendingAsync();
+      if (pending != null && mounted) _navigateToBlock(pending);
 
       // Force la synchronisation des applications installées pour que 
       // l'application parente puisse recevoir les vrais noms et icônes
@@ -56,6 +58,20 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     // Écouter les blocages en temps réel
     _blockSub = BlockEventService.stream.listen(_navigateToBlock);
+
+    // Observer le cycle de vie pour relire SharedPreferences quand l'app reprend
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // L'app vient de reprendre le focus (ex: après blocage AccessibilityService)
+      // Lire SharedPreferences au cas où un SHOW_BLOCK est en attente
+      BlockEventService.consumePendingAsync().then((pending) {
+        if (pending != null && mounted) _navigateToBlock(pending);
+      });
+    }
   }
 
   void _navigateToBlock(String reason) {

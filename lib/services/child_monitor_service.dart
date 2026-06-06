@@ -16,15 +16,25 @@ class ChildMonitorService {
   /// Returns the stream of active rules for the child.
   Stream<ActiveRules> watchRules() async* {
     final prefs = await SharedPreferences.getInstance();
-    final childPath = prefs.getString('child_path');
-    if (childPath == null) {
+    final childDeviceUid = prefs.getString('device_uid');
+    if (childDeviceUid == null) {
       yield ActiveRules.empty;
       return;
     }
 
-    yield* _db.doc('$childPath/rules/active').snapshots().map((snap) {
-      if (!snap.exists) return ActiveRules.empty;
-      return ActiveRules.fromFirestore(snap.data() as Map<String, dynamic>);
+    yield* _db
+        .collectionGroup('rules')
+        .where('childDeviceUid', isEqualTo: childDeviceUid)
+        .snapshots()
+        .map((snap) {
+      if (snap.docs.isEmpty) return ActiveRules.empty;
+      return ActiveRules.fromFirestore(snap.docs.first.data());
+    }).handleError((error) {
+      if (error is FirebaseException && error.code == 'permission-denied') {
+        print('ChildMonitorService: FirebaseException [permission-denied] on watchRules. Check Firebase Security Rules.');
+      } else {
+        print('ChildMonitorService: Error on watchRules: $error');
+      }
     });
   }
 

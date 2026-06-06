@@ -63,8 +63,8 @@ class LinkHandlerService {
 
     final context = navigatorKey.currentContext;
 
-    if (context == null) {
-      debugPrint('LinkHandler: Context not ready, storing link for later.');
+    if (context == null || !context.mounted) {
+      debugPrint('LinkHandler: Context not ready or not mounted, storing link for later.');
       _pendingLink = link;
       return;
     }

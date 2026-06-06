@@ -188,6 +188,12 @@ class BackgroundService {
       }
     });
 
+    service.on('foreground_event').listen((data) {
+      if (data != null) {
+        MonitoringService().enforcement.handleNativeForegroundEvent(data);
+      }
+    });
+
     try {
       await MonitoringService().startMonitoring(service);
       debugPrint('BackgroundService: MonitoringService started.');
@@ -198,8 +204,15 @@ class BackgroundService {
       debugPrint('BackgroundService: MonitoringService failed: $e');
     }
 
-    // Heartbeat de la notification de foreground
+    // Heartbeat de la notification de foreground + écriture du heartbeat pour le watchdog
     Timer.periodic(const Duration(seconds: 60), (_) async {
+      // FIX BUG #6 : écrire le timestamp pour que GuardianWorker sache que le service est vivant
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(
+        'guardian_service_heartbeat',
+        DateTime.now().millisecondsSinceEpoch,
+      );
+
       if (service is AndroidServiceInstance &&
           await service.isForegroundService()) {
         service.setForegroundNotificationInfo(
@@ -223,15 +236,34 @@ class BackgroundService {
     final service = FlutterBackgroundService();
     if (await service.isRunning()) return;
 
-    // Sur Android 14+, le type 'location' impose d'avoir les permissions AVANT le start
-    // Note: on vérifie la localisation car c'est elle qui cause le crash FGS 'location'
+    // Sur Android 14+, le type 'location' impose d'avoir les permissions AVANT le start.
+    // Cependant, nous DEVONS démarrer l'enforcement même sans localisation.
+    // L'idéal est de reconfigurer dynamiquement le service, mais pour garantir
+    // la sécurité, on démarre le service de toute façon (il plantera si la config
+    // location est stricte sur A14, mais FlutterBackgroundService gère ça partiellement).
     final status = await Permission.location.status;
-    if (status.isGranted) {
-      debugPrint('BackgroundService: Permissions granted, starting service...');
-      await service.startService();
-    } else {
-      debugPrint('BackgroundService: Location permission missing, cannot start service yet.');
+    if (!status.isGranted) {
+      debugPrint('BackgroundService: Location permission missing, but starting service anyway for enforcement.');
+      // Option: Reconfigurer sans location
+      await service.configure(
+        androidConfiguration: AndroidConfiguration(
+          onStart: onStart,
+          autoStart: false,
+          isForegroundMode: true,
+          foregroundServiceTypes: [AndroidForegroundType.dataSync], // Uniquement dataSync
+          notificationChannelId: 'guardian_foreground',
+          initialNotificationTitle: 'The Guardian',
+          initialNotificationContent: 'Surveillance active',
+          foregroundServiceNotificationId: 888,
+        ),
+        iosConfiguration: IosConfiguration(
+          autoStart: false,
+          onForeground: onStart,
+          onBackground: onIosBackground,
+        ),
+      );
     }
+    await service.startService();
   }
 }
 
@@ -268,6 +300,27 @@ class BlockEventService {
   static Stream<String> get stream => _controller.stream;
 
   /// Consomme et retourne la dernière raison en attente (si présente).
+  /// Vérifie aussi dans SharedPreferences au cas où l'EventChannel
+  /// n'était pas encore prêt quand le blocage est arrivé.
+  static Future<String?> consumePendingAsync() async {
+    if (_pendingReason != null) {
+      final r = _pendingReason;
+      _pendingReason = null;
+      return r;
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      final r = prefs.getString('flutter.guardian_pending_block');
+      if (r != null) {
+        await prefs.remove('flutter.guardian_pending_block');
+        return r;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Version synchrone conservée pour compatibilité.
   static String? consumePending() {
     final r = _pendingReason;
     _pendingReason = null;

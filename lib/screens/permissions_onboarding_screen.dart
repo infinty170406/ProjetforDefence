@@ -198,10 +198,10 @@ class _PermissionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isGranted ? Colors.green.withOpacity(0.3) : Colors.white.withOpacity(0.05),
+          color: isGranted ? Colors.green.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05),
           width: 1,
         ),
       ),
@@ -211,7 +211,7 @@ class _PermissionCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: isGranted ? Colors.green.withOpacity(0.1) : AppColors.primary.withOpacity(0.1),
+              color: isGranted ? Colors.green.withValues(alpha: 0.1) : AppColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -248,7 +248,7 @@ class _PermissionCard extends StatelessWidget {
             TextButton(
               onPressed: onTap,
               style: TextButton.styleFrom(
-                backgroundColor: AppColors.primary.withOpacity(0.1),
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                 foregroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

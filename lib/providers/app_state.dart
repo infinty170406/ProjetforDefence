@@ -166,6 +166,17 @@ class AppState extends ChangeNotifier {
 
   void _onRulesChanged(ActiveRules rules) {
     _activeRules = rules;
+    
+    // NOUVEAU : Synchroniser immédiatement les packages bloqués avec le natif depuis l'isolate UI.
+    // Cela garantit que GuardianAccessibilityService (natif) a la bonne liste même si
+    // le service d'arrière-plan (FlutterBackgroundService) est arrêté ou redémarre.
+    final blocked = rules.effectiveBlockedPackages(
+      socialMediaPackages: EnforcementService.socialMedia,
+      gamingPackages: EnforcementService.gaming,
+    );
+    EnforcementService().updateNativeBlockedPackages(blocked);
+    EnforcementService().updateNativeCustomKeywords(rules.customKeywords);
+
     notifyListeners();
   }
 

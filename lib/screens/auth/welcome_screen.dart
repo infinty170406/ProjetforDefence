@@ -38,13 +38,13 @@ class WelcomeScreen extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 6),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.1),
+                                color: AppColors.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
                                 'The Guardian Child',
                                 style: TextStyle(
-                                  color: AppColors.primary.withOpacity(0.8),
+                                  color: AppColors.primary.withValues(alpha: 0.8),
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 2,
