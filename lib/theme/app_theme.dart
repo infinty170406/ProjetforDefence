@@ -3,15 +3,15 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   // Couleurs principales
-  static const Color primary = Color(0xFFB32BEE);
-  static const Color primaryDark = Color(0xFF7B1FA2);
+  static const Color primary = Color(0xFF4F46E5); // Bleu royal / Bleu violacé
+  static const Color primaryDark = Color(0xFF3B82F6); // Bleu azur / Bleu moyen
 
   // Couleurs de fond
-  static const Color backgroundLight = Color(0xFFF7F6F8);
+  static const Color backgroundLight = Color(0xFFFFFFFF); // Blanc pur
   static const Color backgroundDark = Color(0xFF121212);
 
   // Couleurs d'accent
-  static const Color accentTeal = Color(0xFF2DD4BF);
+  static const Color accentTeal = Color(0xFF14B8A6); // Vert émeraude / Turquoise
   static const Color accentAmber = Color(0xFFFBBF24);
 
   // Couleurs de l'effet glass
@@ -31,8 +31,12 @@ class AppColors {
   static const Color statusDanger = Color(0xFFEF4444);
 
   // Couleurs spécifiques
-  static const Color backgroundOnboarding = Color(0xFF0F172A);
+  static const Color backgroundOnboarding = Color(0xFFEBE8F9); // Violet très clair / Lavande
   static const Color backgroundDarkDeep = Color(0xFF020617);
+
+  // Couleurs de dégradé (Fond du logo)
+  static const Color gradientStart = Color(0xFFEBE8F9); // Violet très clair / Lavande
+  static const Color gradientEnd = Color(0xFFE3F2FD); // Bleu ciel / Turquoise très clair
 }
 
 class AppTheme {
