@@ -24,6 +24,12 @@
         android:usesCleartextTraffic="false">
 
         <activity
+            android:name=".BlockActivity"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:exported="false"
+            android:launchMode="singleInstance" />
+
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
@@ -84,6 +90,11 @@
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
             </intent-filter>
         </receiver>
+
+        <!-- Google Maps API Key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyDqJtH6hpF1i1ct9qHzKsqHh4wzMwZTzfw" />
 
     </application>
 

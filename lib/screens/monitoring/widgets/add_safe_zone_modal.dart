@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/models/geo_zone.dart';
@@ -148,60 +148,46 @@ class _AddSafeZoneModalState extends State<AddSafeZoneModal> {
                 ],
               ),
             ),
-          const SizedBox(height: 16),
           Expanded(
             child: _isLoadingLoc 
               ? const Center(child: CircularProgressIndicator())
-              : ColorFiltered(
-                  colorFilter: ColorFilter.mode(
-                    Colors.black.withValues(alpha: 0.5),
-                    BlendMode.darken,
+              : GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: _center,
+                    zoom: 15.0,
                   ),
-                  child: FlutterMap(
-                    options: MapOptions(
-                      initialCenter: _center,
-                      initialZoom: 15.0,
-                      onPositionChanged: (position, hasGesture) {
-                        if (hasGesture && position.center != null) {
-                          setState(() => _center = position.center!);
-                        }
-                      },
-                      onTap: (tapPosition, point) {
-                        setState(() => _center = point);
-                      },
+                  onCameraMove: (position) {
+                    _center = position.target;
+                  },
+                  onCameraIdle: () {
+                    setState(() {}); // to update the circle and marker
+                  },
+                  onTap: (point) {
+                    setState(() => _center = point);
+                  },
+                  markers: {
+                    Marker(
+                      markerId: const MarkerId('center'),
+                      position: _center,
                     ),
-                    children: [
-                      TileLayer(
-                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.example.the_guardian',
-                      ),
-                      CircleLayer(
-                        circles: [
-                          CircleMarker(
-                            point: _center,
-                            color: AppColors.primary.withValues(alpha: 0.3),
-                            borderColor: AppColors.primary,
-                            borderStrokeWidth: 2,
-                            radius: _radius,
-                            useRadiusInMeter: true,
-                          ),
-                        ],
-                      ),
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            point: _center,
-                            width: 40,
-                            height: 40,
-                            child: const Icon(Icons.location_on, color: AppColors.primary, size: 40),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                  },
+                  circles: {
+                    Circle(
+                      circleId: const CircleId('radius'),
+                      center: _center,
+                      radius: _radius,
+                      fillColor: AppColors.primary.withOpacity(0.3),
+                      strokeColor: AppColors.primary,
+                      strokeWidth: 2,
+                    ),
+                  },
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: false,
+                  zoomControlsEnabled: false,
+                  mapToolbarEnabled: false,
+                  compassEnabled: false,
                 ),
           ),
-          Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

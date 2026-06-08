@@ -1,168 +1,92 @@
-# 🎉 THE GUARDIAN - PACKAGE FINAL COMPLET
+# 🛡️ The Guardian - Solution de Contrôle Parental Premium
 
-## ✅ 13 ÉCRANS FLUTTER TRADUITS !
-
-### 📱 TOUS LES ÉCRANS CRÉÉS
-
-#### 🚀 Splash & Onboarding (2)
-1. ✅ **splash_welcome_screen.dart**
-2. ✅ **onboarding_intro_ia_screen.dart**
-
-#### 👤 Authentification (4)
-3. ✅ **connexion_parent_screen.dart**
-4. ✅ **creation_compte_parent_screen.dart**
-5. ✅ **mot_de_passe_oublie_screen.dart** ⭐ NOUVEAU
-6. ✅ **verification_otp_screen.dart** ⭐ NOUVEAU
-
-#### 📊 Dashboard (2)
-17. ✅ **dashboard_screen.dart** (État vide)
-18. ✅ **dashboard_with_data_screen.dart** (Avec données)
-
-#### 👶 Gestion Enfants (2)
-19. ✅ **creation_profil_enfant_screen.dart**
-20. ✅ **details_enfant_screen.dart**
-
-#### 🤖 IA & Features (4)
-21. ✅ **hub_chat_ia_screen.dart**
-22. ✅ **carte_temps_reel_screen.dart** (Données réelles & Switcher) ⭐ NOUVEAU
-23. ✅ **parametres_generaux_screen.dart**
-24. ✅ **compte_screen.dart** (Gestion profil) ⭐ NOUVEAU
+**The Guardian** est une suite complète de contrôle parental moderne et sécurisée. Conçue avec une interface premium en glassmorphism et animée par un moteur de sécurité natif Android résistant au contournement, elle permet aux parents de protéger et d'accompagner leurs enfants dans leur vie numérique.
 
 ---
 
-## 🎨 WIDGETS RÉUTILISABLES
+## 📐 Architecture Globale du Projet
 
-- ✅ **GlassCard** - Effet glassmorphism
-- ✅ **LiquidBackground** - Fond animé
-- ✅ **CustomButton** - Boutons stylés
-- ✅ **CustomTextField** - Champs de formulaire
+Le projet est divisé en deux grandes parties collaborant en temps réel via un backend **Firebase (Firestore & Auth)** :
 
----
-
-## 🚀 INSTALLATION
-
-```bash
-git clone https://github.com/infinty170406/ProjetforDefence.git -b frontend
-cd ProjetforDefence
-flutter pub get
-flutter run
+```mermaid
+graph TD
+    Parent[Application Parent - Flutter] -->|Définit Règles / Zones| Firestore[(Firebase Firestore)]
+    Firestore -->|Synchro en Temps Réel| Child[Application Enfant - Flutter]
+    Child -->|Méthodes Natives Channel| NativeEngine[Moteur Natif Android - Kotlin]
+    NativeEngine -->|Applique Restrictions / Filtres| Device[Système Android de l'Enfant]
+    Device -->|Met à jour Localisation / Batterie| Firestore
+    Firestore -->|Affiche Stats & Carte| Parent
 ```
 
----
+### 1. Application Parent (`ProjetforDefence-frontend`)
+*   **Tableau de Bord Premium** : Visualisation en temps réel des statistiques d'utilisation, niveau de batterie, et de la position géographique de chaque enfant.
+*   **Gestion des Règles** : Éditeur intuitif pour bloquer des applications spécifiques, des sites web ou configurer des limites de temps.
+*   **Carte Temps Réel** : Intégration du SDK Google Maps pour le suivi en direct et la gestion des barrières virtuelles (Geofencing).
+*   **Assistant IA** : Hub de discussion avec une IA pour aider les parents à analyser le comportement numérique et obtenir des conseils éducatifs.
 
-## ✨ FEATURES IMPLÉMENTÉES
-
-### Design
-✅ Glassmorphism complet
-✅ Animations liquides
-✅ Dark mode élégant
-✅ Gradients et ombres
-✅ Effets de glow
-
-### Navigation
-✅ Flow complet de l'app
-✅ Transitions fluides
-✅ Navigation flottante
-✅ Routes nommées
-
-### Formulaires
-✅ Validation complète
-✅ Champs personnalisés
-✅ États de chargement
-✅ Messages d'erreur
-
-### Chat IA
-✅ Interface de chat
-✅ Suggestions intelligentes
-✅ Réponses contextuelles
-✅ Indicateur typing
-
-### Carte (GÉOLOCALISATION RÉELLE)
-✅ **Données réelles** : Affichage des positions des enfants depuis l'API.
-✅ **Sélecteur d'enfant** : Possibilité de switcher entre les différents enfants sur la carte.
-✅ Statuts en temps réel, infos de localisation et niveaux de batterie.
-
-### Session & Profil
-✅ **Persistance de session** : Connexion conservée (plus besoin de se reconnecter).
-✅ **Gestion du profil** : Page "Mon Compte" fonctionnelle avec infos sauvegardées.
-✅ Sélecteur de langue et réglages complets.
-
-### Paramètres
-✅ Tous les réglages
-✅ Sélecteur de langue
-✅ Switches fonctionnels
-✅ Section légale
+### 2. Application Enfant (`ProjetforDefence-feature-child-app-restructuring`)
+*   **Enregistrement Réseau** : Liaison sécurisée avec le compte parent via un jeton d'invitation à 6 chiffres.
+*   **Service d'Arrière-plan Persistant** : Service natif pour remonter en continu la localisation géographique et l'état de l'appareil.
+*   **Moteur d'Exécution Native** : Réceptionne les règles de blocage et les applique de manière stricte au niveau du système d'exploitation.
 
 ---
 
-## 📊 PROGRESSION
+## ⚡ Moteur de Sécurité Natif (Android Engine)
 
-**15 écrans / 30 total = 50% traduit et fonctionnel**
+Pour garantir que les restrictions ne puissent pas être contournées par l'enfant, **The Guardian** s'appuie sur des composants Android natifs écrits en **Kotlin** :
 
----
+### 🛡️ 1. Service d'Accessibilité (`GuardianAccessibilityService`)
+C'est le cœur du système de blocage de l'application. Il surveille l'activité de l'appareil en temps réel :
+*   **Blocage d'Applications** : Détecte l'ouverture des applications interdites et affiche instantanément un écran de blocage.
+*   **Filtrage Web en Temps Réel** : Inspecte la barre d'adresse des navigateurs majeurs (**Google Chrome**, **Samsung Internet**, **Firefox**) et bloque l'accès si l'URL saisie figure dans la liste noire des parents.
+*   **Système d'Auto-Défense (Anti-Bypass)** : Intercepte les tentatives d'accès aux paramètres système Android (`com.android.settings`). Si l'enfant essaie de désactiver le service d'accessibilité ou de retirer les droits d'administration, l'accès à ces menus lui est instantanément refusé.
 
-## 💡 CE QUI FONCTIONNE
+### 🔋 2. Optimisation des Performances (Cache Local)
+Pour préserver l'autonomie du téléphone de l'enfant :
+*   La liste des applications et des sites bloqués est stockée localement dans les `SharedPreferences`.
+*   Le service d'accessibilité utilise un `OnSharedPreferenceChangeListener` pour charger ces règles en mémoire cache.
+*   Aucun accès disque ou réseau n'est effectué lors de la navigation ou du lancement d'applications, garantissant **zéro ralentissement** et **zéro surconsommation de batterie**.
 
-✅ **Flow complet** : Splash → Onboarding → Auth → Dashboard → Features
-✅ **Authentification** : Login + Inscription + Mot de passe oublié + OTP
-✅ **Gestion enfants** : Ajout + Détails + Switcher sur la carte
-✅ **Chat IA** : Interface complète avec suggestions
-✅ **GÉOLOCALISATION RÉELLE** : Suivi en temps réel des enfants
-✅ **PERSISTANCE** : Sauvegarde des informations du compte
-✅ **Toutes les animations et navigation fluides**
+### 📱 3. Écran de Blocage Dédié (`BlockActivity`)
+*   Lorsqu'une règle est enfreinte, le service d'accessibilité lance la `BlockActivity`.
+*   C'est une activité Android native ultra-légère conçue pour s'afficher instantanément par-dessus l'application bloquée.
+*   Elle neutralise le bouton "Retour" de l'appareil (`onBackPressed`), forçant l'utilisateur à retourner sur son écran d'accueil ou dans une zone autorisée.
 
----
+### ⚙️ 4. Administrateur de l'Appareil (`GuardianDeviceAdminReceiver`)
+*   Empêche la désinstallation non autorisée de l'application par l'enfant.
+*   Protège le statut système du processus d'arrière-plan.
 
-## 📝 PROCHAINES ÉTAPES
-
-### Écrans Restants (15)
-- Dashboard Orchestrateur IA
-- Modification Profil Enfant
-- Installation Enfant (2 écrans)
-- Zones Sûres
-- Paramètres Notifications
-- Paramètres Confidentialité
-- Sécurité KYC (2 écrans)
-- Tutoriels Visuels
-- Page Produit
-
-### Intégrations
-- Backend complet (API Render)
-- Notifications push
-- Géofencing avancé
+### 🏃 5. Service de Premier Plan (`GuardianForegroundService`)
+*   Maintient l'application active en arrière-plan avec une notification persistante, empêchant le système Android de tuer le processus pour économiser de la RAM.
+*   Gère la collecte de localisation GPS en tâche de fond.
 
 ---
 
-## 🎯 UTILISATION
+## 🛠️ Configuration & Lancement
 
-### Lancer l'app
-```bash
-flutter run
-```
+### Prérequis
+*   **Flutter SDK** (dernière version stable)
+*   **Android SDK** (API 26 minimum pour les services de premier plan)
+*   Un projet **Firebase** configuré avec Firestore et Authentication.
 
-### Tester le flow
-1. Splash (3s auto) → Onboarding
-2. Cliquer "Continuer" → Connexion
-3. Cliquer "S'inscrire" → Inscription
-4. OU se connecter → Dashboard
-5. Cliquer "+" → Ajouter enfant
-6. Accéder au chat IA, carte, paramètres
+### Installation et Démarrage rapide
+1.  Récupérer le code source :
+    ```bash
+    git clone https://github.com/infinty170406/ProjetforDefence.git
+    cd ProjetforDefence
+    ```
+2.  Installer les dépendances Flutter :
+    ```bash
+    flutter pub get
+    ```
+3.  Lancer l'application :
+    ```bash
+    flutter run
+    ```
 
----
-
-## 🛠️ PERSONNALISATION
-
-### Couleurs
-`lib/core/theme/app_theme.dart`
-
-### Textes
-Directement dans les fichiers screens
-
-### Navigation
-`lib/main.dart`
-
----
-
-Bon développement ! 🚀
-
-**Package créé avec ❤️ et Flutter**
+### Configuration des Permissions requises sur l'appareil Enfant
+Pour que le système fonctionne, les permissions suivantes doivent être accordées manuellement lors du premier démarrage :
+1.  **Service d'Accessibilité** : Pour l'analyse d'écran, le blocage des apps, le filtrage web et l'auto-défense.
+2.  **Administrateur de l'appareil** : Pour interdire la désinstallation de l'application.
+3.  **Localisation (Toujours autoriser)** : Pour permettre le geofencing et le suivi de position en arrière-plan.
+4.  **Affichage par-dessus les autres applications** : Requis pour dessiner l'écran de blocage natif.

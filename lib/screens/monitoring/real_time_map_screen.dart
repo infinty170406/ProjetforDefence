@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/location_service.dart';
@@ -25,7 +25,7 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
-  final MapController _mapController = MapController();
+  GoogleMapController? _mapController;
   final LocationService _locationService = LocationService();
 
 
@@ -69,7 +69,7 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
   void dispose() {
     _childrenSubscription?.cancel();
     _pulseController.dispose();
-    _mapController.dispose();
+    _mapController?.dispose();
     super.dispose();
   }
 
@@ -153,8 +153,8 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
   }
 
   void _updateMapCamera() {
-    if (_selectedChild?.lastLocation != null) {
-      _mapController.move(_selectedChild!.lastLocation!, 14.0);
+    if (_mapController != null && _selectedChild?.lastLocation != null) {
+      _mapController!.animateCamera(CameraUpdate.newLatLngZoom(_currentLocation, 14.0));
     }
   }
 
@@ -261,114 +261,38 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
               Colors.black.withValues(alpha: 0.5),
               BlendMode.darken,
             ),
-            child: FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                initialCenter: _currentLocation,
-                initialZoom: 15.0,
+            child: GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: _currentLocation,
+                zoom: 15.0,
               ),
-              children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.example.the_guardian',
-                ),
-                CircleLayer(
-                  circles: _safeZones.where((z) => _selectedChild == null || z.childId == null || z.childId == _selectedChild!.id).map((zone) {
-                    return CircleMarker(
-                      point: LatLng(zone.centerLatitude, zone.centerLongitude),
-                      radius: zone.radiusMeters,
-                      useRadiusInMeter: true,
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      borderColor: AppColors.primary.withValues(alpha: 0.5),
-                      borderStrokeWidth: 2,
-                    );
-                  }).toList(),
-                ),
-                MarkerLayer(
-                  markers: _children.where((c) => c.lastLocation != null).map((child) {
-                    final isSelected = child.id == _selectedChild?.id;
-                    return Marker(
-                      point: child.lastLocation!,
-                      width: 80,
-                      height: 80,
-                      alignment: Alignment.topCenter,
-                      child: GestureDetector(
-                        onTap: () => _onChildSwitched(child),
-                        child: AnimatedBuilder(
-                          animation: _pulseAnimation,
-                          builder: (context, childWidget) {
-                            return Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                // Pulse Effect
-                                if (isSelected)
-                                  Container(
-                                    width: 50 * _pulseAnimation.value,
-                                    height: 50 * _pulseAnimation.value,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: AppColors.primary.withValues(alpha: 0.3 * (1.5 - _pulseAnimation.value + 1.0) / 2),
-                                    ),
-                                  ),
-                                
-                                // Marker Body
-                                Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        // The Pin Teardrop Shape
-                                        Icon(
-                                          Icons.location_on,
-                                          size: isSelected ? 54 : 44,
-                                          color: isSelected ? AppColors.primary : Colors.white,
-                                        ),
-                                        // The White Circle Inside with Child Avatar
-                                        Positioned(
-                                          top: isSelected ? 10 : 8,
-                                          child: Container(
-                                            width: isSelected ? 26 : 22,
-                                            height: isSelected ? 26 : 22,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: Colors.black12,
-                                                width: 1,
-                                              ),
-                                            ),
-                                            child: Center(
-                                              child: Icon(
-                                                Icons.face_retouching_natural_rounded,
-                                                size: isSelected ? 18 : 14,
-                                                color: Colors.black87,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    // The Oval Shadow/Base
-                                    Container(
-                                      width: isSelected ? 28 : 24,
-                                      height: 6,
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withValues(alpha: 0.5),
-                                        borderRadius: const BorderRadius.all(Radius.elliptical(28, 6)),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
+              onMapCreated: (controller) {
+                _mapController = controller;
+                _updateMapCamera();
+              },
+              myLocationEnabled: true,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              mapToolbarEnabled: false,
+              compassEnabled: false,
+              markers: _children.where((c) => c.lastLocation != null).map((child) {
+                return Marker(
+                  markerId: MarkerId(child.id),
+                  position: child.lastLocation!,
+                  infoWindow: InfoWindow(title: child.displayName),
+                  onTap: () => _onChildSwitched(child),
+                );
+              }).toSet(),
+              circles: _safeZones.where((z) => _selectedChild == null || z.childId == null || z.childId == _selectedChild!.id).map((zone) {
+                return Circle(
+                  circleId: CircleId(zone.id ?? zone.name),
+                  center: zone.center,
+                  radius: zone.radius,
+                  fillColor: AppColors.primary.withOpacity(0.15),
+                  strokeColor: AppColors.primary.withOpacity(0.5),
+                  strokeWidth: 2,
+                );
+              }).toSet(),
             ),
           ),
           SafeArea(

@@ -19,6 +19,11 @@ class MainActivity : FlutterActivity() {
                     updateBlockedApps(apps)
                     result.success(null)
                 }
+                "updateBlockedWebsites" -> {
+                    val websites = call.argument<List<String>>("websites") ?: listOf()
+                    updateBlockedWebsites(websites)
+                    result.success(null)
+                }
                 "startForegroundService" -> {
                     startGuardianForegroundService()
                     result.success(null)
@@ -44,6 +49,11 @@ class MainActivity : FlutterActivity() {
     private fun updateBlockedApps(apps: List<String>) {
         val prefs = getSharedPreferences("GuardianPrefs", Context.MODE_PRIVATE)
         prefs.edit().putString("blocked_apps", apps.joinToString(",")).apply()
+    }
+
+    private fun updateBlockedWebsites(websites: List<String>) {
+        val prefs = getSharedPreferences("GuardianPrefs", Context.MODE_PRIVATE)
+        prefs.edit().putString("blocked_urls", websites.joinToString(",")).apply()
     }
 
     private fun startGuardianForegroundService() {
