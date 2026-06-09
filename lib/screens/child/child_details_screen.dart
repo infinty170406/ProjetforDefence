@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
+import '../../core/services/api_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/liquid_background.dart';
@@ -120,6 +121,46 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     }
   }
 
+  Future<void> _handleDeleteProfile(dynamic child) async {
+    final childId = child?['childId'] ?? child?['id'];
+    if (childId == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text('Delete profile', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+        content: Text('Do you really want to delete this child profile? This action is irreversible.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false), child: const Text('Cancel', style: TextStyle(color: AppColors.primary))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await ApiService().deleteChild(childId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile deleted')),
+        );
+        context.go('/dashboard');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.statusDanger),
+        );
+      }
+    }
+  }
+
   Future<void> _showShareDialog() async {
     final displayName = widget.child?['displayName'] ?? 'Child';
     final token = widget.child?['invitationToken'] ?? '---';
@@ -127,20 +168,20 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) => Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Share installation link', 
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            const Text('Invite your child to install the app via:', 
-              style: TextStyle(color: AppColors.textGray300, fontSize: 14)),
-            const SizedBox(height: 24),
+            Text('Share installation link', 
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 20, fontWeight: FontWeight.bold)),
+            SizedBox(height: 8),
+            Text('Invite your child to install the app via:', 
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16)),
+            SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -172,7 +213,7 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                 _shareOption(
                   'Copy Link', 
                   Icons.copy_all, 
-                  Colors.white54,
+                  Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54),
                   () {
                     Clipboard.setData(ClipboardData(text: shareText));
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied to clipboard')));
@@ -181,7 +222,7 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
         ),
       ),
@@ -195,7 +236,7 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
@@ -203,8 +244,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
             ),
             child: Icon(icon, color: color, size: 28),
           ),
-          const SizedBox(height: 8),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
+          SizedBox(height: 8),
+          Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12)),
         ],
       ),
     );
@@ -224,7 +265,7 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     final statsRepo = context.read<StatsRepository>();
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -232,49 +273,72 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
             child: RefreshIndicator(
               onRefresh: _fetchUsageStats,
               color: AppColors.primary,
-              backgroundColor: const Color(0xFF1A1A2E),
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header with back button and actions
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
-                          onPressed: () => context.pop(),
-                        ),
-                        const Spacer(),
-                        _buildActionButtons(child),
-                      ],
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 900),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ── Top bar ───────────────────────────────────────
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.arrow_back_ios_new_rounded,
+                                    color: Theme.of(context).colorScheme.onSurface, size: 20),
+                                onPressed: () => context.pop(),
+                              ),
+                              Spacer(),
+                              _buildActionButtons(child),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+
+                          // ── Profile hero ──────────────────────────────────
+                          _buildProfileHeader(displayName, age, childId, childRepo),
+                          const SizedBox(height: 36),
+
+                          // ── Monitoring cards ──────────────────────────────
+                          _buildSectionTitle('Monitoring'),
+                          const SizedBox(height: 4),
+                          LayoutBuilder(builder: (context, constraints) {
+                            final cols = constraints.maxWidth > 560 ? 3 : 2;
+                            final ratio = constraints.maxWidth > 560 ? 1.3 : 1.15;
+                            return GridView.count(
+                              crossAxisCount: cols,
+                              crossAxisSpacing: 14,
+                              mainAxisSpacing: 14,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              childAspectRatio: ratio,
+                              children: [
+                                _buildRulesSummaryCard(childId, child, rulesRepo),
+                                _buildScreenTimeRemainingCard(childId, child, rulesRepo),
+                                _buildAppListingCard(childId),
+                                _buildAlertHistoryCard(childId, alertRepo),
+                                _buildWebHistoryCard(childId, statsRepo),
+                              ],
+                            );
+                          }),
+                          const SizedBox(height: 32),
+
+                          // ── Activity overview ─────────────────────────────
+                          _buildSectionTitle('Activity Overview'),
+                          const SizedBox(height: 4),
+                          _buildOverviewCard(childId, childRepo, alertRepo),
+                          const SizedBox(height: 28),
+
+                          // ── Action buttons ────────────────────────────────
+                          _buildConfigButtons(child),
+                          const SizedBox(height: 48),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                    _buildProfileHeader(displayName, age, childId, childRepo),
-                    const SizedBox(height: 32),
-                    _buildSectionTitle('Monitoring'),
-                    GridView.count(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 14,
-                      mainAxisSpacing: 14,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      childAspectRatio: 1.1,
-                      children: [
-                        _buildRulesSummaryCard(childId, child, rulesRepo),
-                        _buildScreenTimeRemainingCard(childId, child, rulesRepo),
-                        _buildAppListingCard(childId),
-                        _buildAlertHistoryCard(childId, alertRepo),
-                        _buildWebHistoryCard(childId, statsRepo),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    _buildSectionTitle('Activity Overview'),
-                    _buildOverviewCard(childId, childRepo, alertRepo),
-                    const SizedBox(height: 40),
-                    _buildConfigButtons(child),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -289,24 +353,29 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          icon: const Icon(Icons.share_outlined, color: Colors.white70, size: 20),
+          icon: Icon(Icons.share_outlined, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), size: 20),
           tooltip: 'Share Link',
           onPressed: _showShareDialog,
         ),
         IconButton(
-          icon: const Icon(Icons.edit_outlined, color: Colors.white70, size: 20),
+          icon: Icon(Icons.edit_outlined, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), size: 20),
           tooltip: 'Edit Profile',
           onPressed: () => context.push('/child/edit', extra: child),
         ),
         IconButton(
-          icon: const Icon(Icons.map_outlined, color: Colors.white70, size: 20),
+          icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+          tooltip: 'Delete Profile',
+          onPressed: () => _handleDeleteProfile(child),
+        ),
+        IconButton(
+          icon: Icon(Icons.map_outlined, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), size: 20),
           tooltip: 'View on Map',
           onPressed: () => context.push('/map', extra: child),
         ),
         IconButton(
           icon: Icon(
             _isLoadingUsage ? Icons.sync : Icons.refresh,
-            color: _isLoadingUsage ? AppColors.primary : Colors.white,
+            color: _isLoadingUsage ? AppColors.primary : Theme.of(context).colorScheme.onSurface,
             size: 20,
           ),
           tooltip: 'Refresh Stats',
@@ -317,68 +386,233 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
   }
 
   Widget _buildProfileHeader(String displayName, String age, String childId, ChildRepository childRepo) {
-    return Center(
-      child: Column(
-        children: [
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-            child: Text(
-              displayName[0],
-              style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold),
-            ),
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final usedMinutes = (_usageStats?['usedMinutes'] ?? _usageStats?['totalMinutes'] ?? 0) as num;
+    final rawApps = _usageStats?['apps'];
+    final appsCount = rawApps is Map ? rawApps.length : (rawApps is List ? rawApps.length : 0);
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary.withValues(alpha: isLight ? 0.07 : 0.14),
+            AppColors.accentTeal.withValues(alpha: isLight ? 0.04 : 0.09),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isLight ? const Color(0xFFDDE3F5) : AppColors.primary.withValues(alpha: 0.20),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: isLight ? 0.06 : 0.10),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
           ),
-          const SizedBox(height: 16),
-          Text(displayName,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold)),
-          Text('$age years old',
-              style: const TextStyle(color: AppColors.textGray300, fontSize: 16)),
-          if (_lastSync != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                'Last updated: ${_lastSync!.hour}:${_lastSync!.minute.toString().padLeft(2, '0')}',
-                style: const TextStyle(color: Colors.white60, fontSize: 10),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Decorative circles
+          Positioned(
+            right: -20,
+            top: -20,
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withValues(alpha: isLight ? 0.05 : 0.08),
               ),
             ),
-          const SizedBox(height: 12),
-          StreamBuilder<String>(
-            stream: childRepo.watchDeviceStatus(childId),
-            builder: (context, snapshot) {
-              final status = snapshot.data ?? 'OFFLINE';
-              final isOnline = status == 'ONLINE';
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: (isOnline ? Colors.green : Colors.grey).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: (isOnline ? Colors.greenAccent : Colors.grey).withValues(alpha: 0.3)),
+          ),
+          Positioned(
+            right: 40,
+            bottom: -30,
+            child: Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.accentTeal.withValues(alpha: isLight ? 0.06 : 0.10),
+              ),
+            ),
+          ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 580;
+              final content = [
+                // Avatar with ring
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [AppColors.primary, AppColors.accentTeal],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.30),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: CircleAvatar(
+                    radius: 40,
+                    backgroundColor: isLight ? Colors.white : const Color(0xFF0F172A),
+                    child: Text(
+                      displayName[0].toUpperCase(),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 34,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                            color: isOnline ? Colors.greenAccent : Colors.grey,
-                            shape: BoxShape.circle)),
-                    const SizedBox(width: 6),
-                    Text(isOnline ? 'Online' : 'Offline',
+                const SizedBox(width: 20, height: 16),
+                // Info block
+                Expanded(
+                  flex: isWide ? 5 : 0,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        displayName,
                         style: TextStyle(
-                            color: isOnline ? Colors.greenAccent : Colors.grey,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600)),
-                  ],
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$age years old',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 15,
+                        ),
+                      ),
+                      if (_lastSync != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Updated at ${_lastSync!.hour}:${_lastSync!.minute.toString().padLeft(2, '0')}',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      // Status Badge
+                      StreamBuilder<String>(
+                        stream: childRepo.watchDeviceStatus(childId),
+                        builder: (context, snapshot) {
+                          final status = snapshot.data ?? 'OFFLINE';
+                          final isOnline = status == 'ONLINE';
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: (isOnline ? const Color(0xFF22C55E) : Colors.grey)
+                                  .withValues(alpha: isLight ? 0.12 : 0.18),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: (isOnline ? const Color(0xFF22C55E) : Colors.grey)
+                                    .withValues(alpha: 0.30),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    color: isOnline ? const Color(0xFF4ADE80) : Colors.grey,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isOnline ? 'Online' : 'Offline',
+                                  style: TextStyle(
+                                    color: isOnline ? const Color(0xFF16A34A) : Colors.grey,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              );
+                if (!isWide) const SizedBox(height: 20),
+                // Quick Stats block
+                Expanded(
+                  flex: isWide ? 4 : 0,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildQuickStat(
+                        icon: Icons.timer_outlined,
+                        label: 'Screen time',
+                        value: usedMinutes > 0 ? '${usedMinutes.toInt()} min' : '—',
+                        color: AppColors.primary,
+                        isLight: isLight,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildQuickStat(
+                        icon: Icons.apps_rounded,
+                        label: 'Apps active',
+                        value: _usageStats == null ? '—' : '$appsCount',
+                        color: const Color(0xFF9C6FFF),
+                        isLight: isLight,
+                      ),
+                      const SizedBox(height: 8),
+                      StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: context.read<AlertRepository>().watchAlerts(childId),
+                        builder: (context, snapshot) {
+                          final unread = (snapshot.data ?? [])
+                              .where((a) => a['read'] != true)
+                              .length;
+                          return _buildQuickStat(
+                            icon: Icons.notifications_outlined,
+                            label: 'Alerts',
+                            value: unread == 0 ? 'None' : '$unread new',
+                            color: unread > 0 ? Colors.redAccent : AppColors.accentTeal,
+                            isLight: isLight,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ];
+
+              if (isWide) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: content.cast<Widget>(),
+                );
+              } else {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: content.cast<Widget>(),
+                );
+              }
             },
           ),
         ],
@@ -386,9 +620,61 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     );
   }
 
+  Widget _buildQuickStat({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+    required bool isLight,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isLight
+            ? Colors.white.withValues(alpha: 0.70)
+            : Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: isLight ? 0.15 : 0.12),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
   Widget _buildOverviewCard(String childId, ChildRepository childRepo, AlertRepository alertRepo) {
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Column(
         children: [
           StreamBuilder<String>(
@@ -400,11 +686,11 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                 'Device Status',
                 status,
                 Icons.sensors,
-                trailingColor: isOnline ? Colors.greenAccent : Colors.white24,
+                trailingColor: isOnline ? Colors.greenAccent : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24),
               );
             },
           ),
-          const Divider(color: Colors.white10),
+          Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10)),
           StreamBuilder<List<Map<String, dynamic>>>(
             stream: alertRepo.watchAlerts(childId),
             builder: (context, snapshot) {
@@ -418,7 +704,7 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                 'Alerts Today',
                 todayCount.toString(),
                 Icons.notifications_none,
-                trailingColor: todayCount > 0 ? Colors.orange : Colors.white24,
+                trailingColor: todayCount > 0 ? Colors.orange : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24),
               );
             },
           ),
@@ -445,8 +731,10 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              elevation: 2,
+              shadowColor: AppColors.primary.withValues(alpha: 0.3),
             ),
           ),
         ),
@@ -458,9 +746,9 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
             label: const Text('Usage Statistics'),
             onPressed: () => context.push('/child/stats', extra: child),
             style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white70,
-              side: const BorderSide(color: Colors.white24),
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(color: AppColors.primary, width: 1.5),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
           ),
@@ -526,12 +814,12 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
           AppColors.accentTeal,
           () => _showScreenTimeDetail(childId, child),
           customSubtitle: _usageStats == null 
-            ? const Text('Sync to update', style: TextStyle(color: Colors.white24, fontSize: 9))
+            ? Text('Sync to update', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24), fontSize: 9))
             : (lockedUI 
-                ? const Text('Téléphone verrouillé', style: TextStyle(color: Colors.redAccent, fontSize: 9, fontWeight: FontWeight.bold))
+                ? Text('Téléphone verrouillé', style: TextStyle(color: Colors.redAccent, fontSize: 9, fontWeight: FontWeight.bold))
                 : (limitReached
-                    ? const Text('Limite atteinte', style: TextStyle(color: Colors.orangeAccent, fontSize: 9, fontWeight: FontWeight.bold))
-                    : Text('$remaining min left of ${limit.toInt()}m', style: const TextStyle(color: AppColors.textGray300, fontSize: 10)))),
+                    ? Text('Limite atteinte', style: TextStyle(color: Colors.orangeAccent, fontSize: 9, fontWeight: FontWeight.bold))
+                    : Text('$remaining min left of ${limit.toInt()}m', style: TextStyle(color: AppColors.textGray300, fontSize: 10)))),
         );
       },
     );
@@ -589,14 +877,14 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
 
   Widget _buildStatItem(String label, String value, IconData icon, {Color? trailingColor}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white60, size: 20),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
-          const Spacer(),
-          Text(value, style: TextStyle(color: trailingColor ?? Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+          Icon(icon, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.60), size: 20),
+          SizedBox(width: 12),
+          Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 14)),
+          Spacer(),
+          Text(value, style: TextStyle(color: trailingColor ?? Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 14)),
         ],
       ),
     );
@@ -605,7 +893,28 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 18,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            title,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -617,7 +926,7 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -661,27 +970,27 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
               });
 
               return Padding(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Browsing History',
+                        Text('Browsing History',
                             style: TextStyle(
-                                color: Colors.white,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold)),
                         IconButton(
-                            icon: const Icon(Icons.close, color: Colors.white),
+                            icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
                             onPressed: () => Navigator.pop(ctx)),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Expanded(
                       child: allHistory.isEmpty && !isLoading
-                        ? const Center(child: Text('No history found', style: TextStyle(color: Colors.white54)))
+                        ? Center(child: Text('No history found', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54))))
                         : StreamBuilder<Map<String, dynamic>>(
                             stream: FirestoreService().rulesStream(childId),
                             builder: (context, rulesSnap) {
@@ -692,7 +1001,7 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                 itemCount: allHistory.length + (hasMore ? 1 : 0),
                                 itemBuilder: (context, index) {
                                   if (index == allHistory.length) {
-                                    return const Padding(
+                                    return Padding(
                                       padding: EdgeInsets.symmetric(vertical: 20),
                                       child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
                                     );
@@ -718,9 +1027,9 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                   }
                                   
                                   return Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
+                                    padding: EdgeInsets.only(bottom: 12),
                                     child: GlassCard(
-                                      padding: const EdgeInsets.all(12),
+                                      padding: EdgeInsets.all(12),
                                       child: Row(
                                         children: [
                                           Container(
@@ -730,9 +1039,9 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                               color: AppColors.accentTeal.withValues(alpha: 0.1),
                                               borderRadius: BorderRadius.circular(10),
                                             ),
-                                            child: const Icon(Icons.public, color: AppColors.accentTeal, size: 24),
+                                            child: Icon(Icons.public, color: AppColors.accentTeal, size: 24),
                                           ),
-                                          const SizedBox(width: 14),
+                                          SizedBox(width: 14),
                                            Expanded(
                                             child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -740,11 +1049,11 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                                 // Title: page title or formatted domain
                                                 Text(
                                                   title,
-                                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 14),
                                                   maxLines: 1,
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
-                                                const SizedBox(height: 2),
+                                                SizedBox(height: 2),
                                                 // Line 2: always show the URL/domain
                                                 Text(
                                                   domain,
@@ -757,11 +1066,11 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                                 ),
                                                 // Line 3: show search query if present
                                                 if (displayQuery != null && displayQuery.isNotEmpty) ...[
-                                                  const SizedBox(height: 2),
+                                                  SizedBox(height: 2),
                                                   Row(
                                                     children: [
                                                       Icon(Icons.search, size: 11, color: AppColors.accentTeal),
-                                                      const SizedBox(width: 3),
+                                                      SizedBox(width: 3),
                                                       Expanded(
                                                         child: Text(
                                                           displayQuery,
@@ -784,10 +1093,10 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                             onPressed: () => FirestoreService().toggleWebsiteBlock(childId, domain, !isBlocked),
                                             style: TextButton.styleFrom(
                                               foregroundColor: isBlocked ? Colors.greenAccent : Colors.redAccent,
-                                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                                              padding: EdgeInsets.symmetric(horizontal: 12),
                                             ),
                                             child: Text(isBlocked ? 'ALLOW' : 'BLOCK', 
-                                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                                           ),
                                         ],
                                       ),
@@ -811,93 +1120,150 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
 
   Widget _buildActionCard(
       String label, IconData icon, Color color, VoidCallback onTap,
-      {String? subtitle, 
-       int? badgeCount, 
+      {String? subtitle,
+       int? badgeCount,
        Color? badgeColor,
        bool hasWarning = false,
        Widget? customSubtitle}) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return GestureDetector(
       onTap: onTap,
-      child: GlassCard(
-        padding: const EdgeInsets.all(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              isLight ? Colors.white.withValues(alpha: 0.96) : const Color(0xFF0D1B2A).withValues(alpha: 0.7),
+              isLight ? color.withValues(alpha: 0.04) : color.withValues(alpha: 0.06),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isLight
+                ? color.withValues(alpha: 0.20)
+                : color.withValues(alpha: 0.15),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isLight
+                  ? color.withValues(alpha: 0.10)
+                  : Colors.black.withValues(alpha: 0.15),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.15), shape: BoxShape.circle),
-                      child: Icon(icon, color: color, size: 22),
-                    ),
-                    if (badgeCount != null && badgeCount > 0)
-                      Positioned(
-                        right: -2,
-                        top: -2,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: badgeColor ?? Colors.red,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.backgroundDark, width: 1.5),
-                          ),
-                          child: Text(
-                            badgeCount > 99 ? '99+' : badgeCount.toString(),
-                            style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Icon bubble with badge
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: isLight ? 0.10 : 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(icon, color: color, size: 24),
+                      ),
+                      if (badgeCount != null && badgeCount > 0)
+                        Positioned(
+                          right: -3,
+                          top: -3,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: badgeColor ?? Colors.red,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: Theme.of(context).scaffoldBackgroundColor,
+                                  width: 1.5),
+                            ),
+                            child: Text(
+                              badgeCount > 99 ? '99+' : badgeCount.toString(),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: Text(label,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600),
-                      textAlign: TextAlign.center),
-                ),
-                if (customSubtitle != null) ...[
-                  const SizedBox(height: 4),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 52),
-                    child: ClipRect(child: customSubtitle),
+                    ],
                   ),
-                ] else if (subtitle != null) ...[
+                  const SizedBox(height: 12),
+                  // Label
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 4),
-                  SizedBox(
-                    width: double.infinity,
-                    child: Text(subtitle,
-                        style: const TextStyle(
-                            color: AppColors.textGray300,
-                            fontSize: 10,
-                            fontWeight: FontWeight.normal),
-                        textAlign: TextAlign.center,
-                        maxLines: 1),
+                  // Subtitle
+                  if (customSubtitle != null)
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 36),
+                      child: ClipRect(child: customSubtitle),
+                    )
+                  else if (subtitle != null)
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  // Tap indicator
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'View',
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(Icons.arrow_forward_ios_rounded, color: color, size: 10),
+                    ],
                   ),
                 ],
-              ],
+              ),
             ),
+            // Warning dot
             if (hasWarning)
               Positioned(
-                top: -4,
-                right: -4,
+                top: 8,
+                right: 8,
                 child: Container(
-                  width: 12,
-                  height: 12,
+                  width: 10,
+                  height: 10,
                   decoration: BoxDecoration(
                     color: Colors.red,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.backgroundDark, width: 2),
+                    border: Border.all(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        width: 1.5),
                   ),
                 ),
               ),
@@ -910,12 +1276,12 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
   void _showScreenTimeDetail(String childId, dynamic childData) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -923,19 +1289,19 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Screen Time Detail',
+                Text('Screen Time Detail',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 20,
                         fontWeight: FontWeight.bold)),
                 IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => Navigator.pop(ctx)),
               ],
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             _buildScreenTimeSection(childId, childData: childData),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
           ],
         ),
       ),
@@ -957,8 +1323,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
           children: [
             _buildSectionTitle('Current Status'),
             if (_isLoadingUsage) ...[
-              const SizedBox(width: 12),
-              const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
+              SizedBox(width: 12),
+              SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
             ],
           ],
         ),
@@ -979,7 +1345,7 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
             final isOver = dailyLimit > 0 && usedMinutes >= dailyLimit;
 
             return GlassCard(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(20),
               child: Column(
                 children: [
                   Row(
@@ -989,13 +1355,13 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Used: ${_fmtMin(usedMinutes.toInt())}',
-                              style: const TextStyle(color: Colors.white, fontSize: 15)),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15)),
                           Text('Limit: ${_fmtMin(dailyLimit)}',
-                              style: const TextStyle(color: AppColors.textGray300, fontSize: 13)),
+                              style: TextStyle(color: AppColors.textGray300, fontSize: 13)),
                         ],
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: (isOver ? Colors.red : AppColors.primary).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
@@ -1011,57 +1377,57 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: LinearProgressIndicator(
                       value: progress,
-                      backgroundColor: Colors.white10,
+                      backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
                       valueColor: AlwaysStoppedAnimation<Color>(
                           isOver ? Colors.red : AppColors.primary),
                       minHeight: 8,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   Row(
                     children: [
-                      const Icon(Icons.timer_outlined,
+                      Icon(Icons.timer_outlined,
                           color: AppColors.textGray300, size: 18),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           dailyLimit == 0
                               ? 'No daily limit set'
                               : 'Daily limit: ${_fmtMin(dailyLimit)}',
-                          style: const TextStyle(color: AppColors.textGray300),
+                          style: TextStyle(color: AppColors.textGray300),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       TextButton(
                         onPressed: () => _showLimitPicker(childId, dailyLimit),
-                        child: const Text('Edit',
+                        child: Text('Edit',
                             style: TextStyle(color: AppColors.primary)),
                       ),
                     ],
                   ),
-                  const Divider(color: Colors.white10),
+                  Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10)),
                   Row(
                     children: [
-                      const Icon(Icons.schedule,
+                      Icon(Icons.schedule,
                           color: AppColors.textGray300, size: 18),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           hasSchedule
                               ? 'Schedule: $startTime – $endTime'
                               : 'No time schedule set',
-                          style: const TextStyle(color: AppColors.textGray300),
+                          style: TextStyle(color: AppColors.textGray300),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       TextButton(
                         onPressed: () => context.push('/child/config', extra: childData),
-                        child: const Text('Edit',
+                        child: Text('Edit',
                             style: TextStyle(color: AppColors.primary)),
                       ),
                     ],
@@ -1088,23 +1454,23 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     int selectedLimit = currentLimit;
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Container(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Set Daily Limit',
+              Text('Set Daily Limit',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 20,
                       fontWeight: FontWeight.bold)),
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
               Text('$selectedLimit minutes',
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: AppColors.primary,
                       fontSize: 32,
                       fontWeight: FontWeight.bold)),
@@ -1114,20 +1480,20 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                 max: 480,
                 divisions: 32,
                 activeColor: AppColors.primary,
-                inactiveColor: Colors.white10,
+                inactiveColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
                 onChanged: (val) =>
                     setModalState(() => selectedLimit = val.toInt()),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: 32),
               Row(
                 children: [
                   Expanded(
                       child: OutlinedButton(
                           onPressed: () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white),
-                          child: const Text('Cancel'))),
-                  const SizedBox(width: 16),
+                              foregroundColor: Theme.of(context).colorScheme.onSurface),
+                          child: Text('Cancel'))),
+                  SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () async {
@@ -1142,8 +1508,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white),
-                      child: const Text('Save'),
+                          foregroundColor: Theme.of(context).colorScheme.onSurface),
+                      child: Text('Save'),
                     ),
                   ),
                 ],
@@ -1159,7 +1525,7 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       useSafeArea: true,
       builder: (context) => _AppManagerWidget(childId: childId),
     );
@@ -1221,31 +1587,31 @@ class _AppManagerWidgetState extends State<_AppManagerWidget> {
       maxChildSize: 0.95,
       expand: false,
       builder: (context, scrollController) => Container(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Manage Applications',
+                Text('Manage Applications',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 24,
                         fontWeight: FontWeight.bold)),
                 IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => Navigator.pop(context)),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextField(
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: 'Search applications...',
-                hintStyle: const TextStyle(color: Colors.white30),
-                prefixIcon: const Icon(Icons.search, color: Colors.white30),
+                hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.30)),
+                prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.30)),
                 filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.05),
+                fillColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none),
@@ -1253,7 +1619,7 @@ class _AppManagerWidgetState extends State<_AppManagerWidget> {
               onChanged: (val) =>
                   setState(() => _searchQuery = val.toLowerCase()),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             Expanded(
               child: StreamBuilder<Map<String, dynamic>>(
                 stream: FirestoreService().usageStatsStream(widget.childId),
@@ -1287,12 +1653,12 @@ class _AppManagerWidgetState extends State<_AppManagerWidget> {
 
                           if (inventory.isEmpty &&
                               invSnap.connectionState == ConnectionState.waiting) {
-                            return const Center(
+                            return Center(
                                 child: CircularProgressIndicator(
                                     color: AppColors.primary));
                           }
                           if (inventory.isEmpty) {
-                            return const Center(
+                            return Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -1337,7 +1703,7 @@ class _AppManagerWidgetState extends State<_AppManagerWidget> {
                                   ),
                                   activeTrackColor: Colors.redAccent.withValues(alpha: 0.3),
                                   inactiveThumbColor: Colors.grey,
-                                  inactiveTrackColor: Colors.white10,
+                                  inactiveTrackColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
                                   onChanged: (val) {
                                     final newList = List<String>.from(blocked);
                                     if (val) {

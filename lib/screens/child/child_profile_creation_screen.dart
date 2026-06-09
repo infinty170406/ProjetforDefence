@@ -62,20 +62,20 @@ class _ChildProfileCreationScreenState
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.backgroundDark,
-          title: const Text('Confirmation', style: TextStyle(color: Colors.white)),
-          content: const Text(
+          
+          title: Text('Confirmation', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+          content: Text(
             'This child is a major (18-21 years old). Some parental restrictions will be limited. Do you want to continue?',
-            style: TextStyle(color: AppColors.textGray400),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel', style: TextStyle(color: AppColors.textGray400)),
+              child: Text('Cancel', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Continue', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+              child: Text('Continue', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -120,12 +120,12 @@ class _ChildProfileCreationScreenState
   void _showConfigurationDialog(dynamic result) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -133,23 +133,23 @@ class _ChildProfileCreationScreenState
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24),
                     borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 20),
-            const Icon(Icons.check_circle, color: Colors.greenAccent, size: 52),
-            const SizedBox(height: 12),
-            const Text('Profile Created!',
+            SizedBox(height: 20),
+            Icon(Icons.check_circle, color: Colors.greenAccent, size: 52),
+            SizedBox(height: 12),
+            Text('Profile Created!',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 22,
                     fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Text(
               'How would you like to configure ${_nameController.text.trim()}\'s rules?',
-              style: const TextStyle(color: AppColors.textGray400, fontSize: 14),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             _configOption(
               ctx,
               Icons.auto_awesome,
@@ -161,7 +161,7 @@ class _ChildProfileCreationScreenState
                     extra: {'child': result, 'mode': 'setup'});
               },
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             _configOption(
               ctx,
               Icons.settings,
@@ -172,18 +172,18 @@ class _ChildProfileCreationScreenState
                 context.pushReplacement('/child/config', extra: result);
               },
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             _configOption(
               ctx,
               Icons.skip_next,
               'Skip for now',
               'Configure rules later',
-              Colors.white38,
+              Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
               () {
                 context.pushReplacement('/child/link-gen', extra: result);
               },
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
         ),
       ),
@@ -198,7 +198,7 @@ class _ChildProfileCreationScreenState
         onTap();
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(14),
@@ -207,22 +207,22 @@ class _ChildProfileCreationScreenState
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(10),
               decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.15), shape: BoxShape.circle),
               child: Icon(icon, color: color, size: 22),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold)),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
                   Text(subtitle,
-                      style: const TextStyle(
-                          color: AppColors.textGray400, fontSize: 12)),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                 ],
               ),
             ),
@@ -236,66 +236,66 @@ class _ChildProfileCreationScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // SAME: close button
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   // SAME: title
-                  const Text(
+                  Text(
                     'New Profile',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 32,
                         fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     "Add a profile for one of your children to start protecting them.",
                     style:
-                        TextStyle(color: AppColors.textGray400, fontSize: 16),
+                        TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16),
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(height: 40),
                   // SAME: avatar placeholder
                   Center(
                     child: Container(
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
                         shape: BoxShape.circle,
                         border: Border.all(color: AppColors.glassBorder),
                       ),
-                      child: const Icon(Icons.add_a_photo_outlined,
-                          color: Colors.white70, size: 32),
+                      child: Icon(Icons.add_a_photo_outlined,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), size: 32),
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(height: 40),
                   // SAME: fields
                   CustomTextField(
                     controller: _nameController,
                     hint: "Child's first name",
                     prefixIcon: Icons.child_care,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   CustomTextField(
                     controller: _ageController,
                     hint: 'Age (1-21)',
                     prefixIcon: Icons.calendar_today,
                     keyboardType: TextInputType.number,
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
                   // SAME: button
                   CustomButton(
                     text: _isLoading ? _loadingMessage : 'Next',

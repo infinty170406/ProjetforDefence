@@ -16,7 +16,7 @@ class AiThinkingTransitionScreen extends StatelessWidget {
     });
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -24,23 +24,23 @@ class AiThinkingTransitionScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.auto_awesome,
+                Icon(Icons.auto_awesome,
                     color: AppColors.accentTeal, size: 100),
-                const SizedBox(height: 32),
-                const Text(
+                SizedBox(height: 32),
+                Text(
                   'AI is thinking...',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 24,
                     fontWeight: FontWeight.w300,
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 SizedBox(
                   width: 200,
                   height: 2,
                   child: LinearProgressIndicator(
-                    backgroundColor: Colors.white.withValues(alpha: 0.1),
+                    backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
                     valueColor:
                         const AlwaysStoppedAnimation<Color>(AppColors.accentTeal),
                   ),

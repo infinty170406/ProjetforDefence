@@ -253,7 +253,7 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           ColorFiltered(
@@ -297,7 +297,7 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
           ),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: EdgeInsets.all(20.0),
               child: Column(
                 children: [
                   Row(
@@ -315,10 +315,10 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
                             context.push('/child/details', extra: childMap);
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
+                            padding: EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
-                              color: AppColors.backgroundDark
+                              color: Theme.of(context).scaffoldBackgroundColor
                                   .withValues(alpha: 0.85),
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(
@@ -333,43 +333,43 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
                                   backgroundColor:
                                       AppColors.primary.withValues(alpha: 0.2),
                                   child: Text(_selectedChild!.displayName[0],
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           color: AppColors.primary,
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold)),
                                 ),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 Text(_selectedChild!.displayName,
-                                    style: const TextStyle(
-                                        color: Colors.white,
+                                    style: TextStyle(
+                                        color: Theme.of(context).colorScheme.onSurface,
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600)),
-                                const SizedBox(width: 4),
-                                const Icon(Icons.open_in_new,
+                                SizedBox(width: 4),
+                                Icon(Icons.open_in_new,
                                     color: AppColors.primary, size: 16),
                               ],
                             ),
                           ),
                         )
                       else
-                        const SizedBox(),
+                        SizedBox(),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _buildHeaderButton(
                             _autoFollow ? Icons.gps_fixed : Icons.gps_not_fixed,
                             () => setState(() => _autoFollow = !_autoFollow),
-                            color: _autoFollow ? AppColors.primary : Colors.white60,
+                            color: _autoFollow ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.60),
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           _buildHeaderButton(Icons.refresh, () => _startRealTimeTracking()),
                         ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   if (_children.length > 1) _buildChildSwitcher(),
-                  const Spacer(),
+                  Spacer(),
                 ],
               ),
             ),
@@ -377,7 +377,7 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
           if (_isLoading)
             Container(
               color: Colors.black54,
-              child: const Center(child: CircularProgressIndicator()),
+              child: Center(child: CircularProgressIndicator()),
             ),
         ],
       ),
@@ -386,22 +386,23 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
           : FloatingActionButton(
               onPressed: _showAddZoneModal,
               backgroundColor: AppColors.primary,
-              child: const Icon(Icons.add_location_alt_outlined, color: Colors.white),
+              child: Icon(Icons.add_location_alt_outlined, color: Theme.of(context).colorScheme.onSurface),
             ),
     );
   }
 
-  Widget _buildHeaderButton(IconData icon, VoidCallback onTap, {Color color = Colors.white}) {
+  Widget _buildHeaderButton(IconData icon, VoidCallback onTap, {Color? color}) {
+    final displayColor = color ?? Theme.of(context).colorScheme.onSurface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.backgroundDark.withValues(alpha: 0.8),
+          color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.8),
           shape: BoxShape.circle,
           border: Border.all(color: AppColors.glassBorder),
         ),
-        child: Icon(icon, color: color, size: 24),
+        child: Icon(icon, color: displayColor, size: 24),
       ),
     );
   }
@@ -413,16 +414,16 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
         children: _children.map((child) {
           final isSelected = _selectedChild?.id == child.id;
           return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
+            padding: EdgeInsets.only(right: 8.0),
             child: GestureDetector(
               onTap: () => _onChildSwitched(child),
               child: Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppColors.primary
-                      : AppColors.backgroundDark.withValues(alpha: 0.8),
+                      : Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                       color: isSelected
@@ -432,7 +433,7 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
                 child: Text(
                   child.displayName,
                   style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight:
                           isSelected ? FontWeight.bold : FontWeight.normal),
                 ),

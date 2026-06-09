@@ -42,7 +42,7 @@ class RulesSummaryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -57,22 +57,22 @@ class RulesSummaryScreen extends StatelessWidget {
                     _buildHeader(context),
                     Expanded(
                       child: ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                         children: [
-                          _buildScreenTimeCard(rules),
-                          const SizedBox(height: 16),
-                          _buildScheduleCard(rules),
-                          const SizedBox(height: 16),
-                          _buildSafeZonesCard(),
-                          const SizedBox(height: 16),
-                          _buildContentFilterCard(rules),
-                          const SizedBox(height: 16),
+                          _buildScreenTimeCard(context, rules),
+                          SizedBox(height: 16),
+                          _buildScheduleCard(context, rules),
+                          SizedBox(height: 16),
+                          _buildSafeZonesCard(context),
+                          SizedBox(height: 16),
+                          _buildContentFilterCard(context, rules),
+                          SizedBox(height: 16),
                           _buildBlockedAppsCard(context, rules),
-                          const SizedBox(height: 16),
-                          _buildBlockedSitesCard(rules),
-                          const SizedBox(height: 16),
-                          _buildCustomKeywordsCard(rules),
-                          const SizedBox(height: 48),
+                          SizedBox(height: 16),
+                          _buildBlockedSitesCard(context, rules),
+                          SizedBox(height: 16),
+                          _buildCustomKeywordsCard(context, rules),
+                          SizedBox(height: 48),
                         ],
                       ),
                     ),
@@ -90,24 +90,24 @@ class RulesSummaryScreen extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
             onPressed: () => context.pop(),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Rules Summary',
-                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 22, fontWeight: FontWeight.bold),
               ),
               Text(
                 _childName,
-                style: const TextStyle(color: AppColors.textGray400, fontSize: 13),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
               ),
             ],
           ),
@@ -118,47 +118,47 @@ class RulesSummaryScreen extends StatelessWidget {
 
   // ── Section header helper ─────────────────────────────────────────────────
 
-  Widget _sectionHeader(String title, IconData icon, Color color) {
+  Widget _sectionHeader(BuildContext context, String title, IconData icon, Color color) {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(8),
           decoration: BoxDecoration(color: color.withValues(alpha: 0.15), shape: BoxShape.circle),
           child: Icon(icon, color: color, size: 18),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Text(title,
-            style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 17, fontWeight: FontWeight.bold)),
       ],
     );
   }
 
   // ── Screen Time ───────────────────────────────────────────────────────────
 
-  Widget _buildScreenTimeCard(Map<String, dynamic> rules) {
+  Widget _buildScreenTimeCard(BuildContext context, Map<String, dynamic> rules) {
     final int limit = (rules['dailyLimitMinutes'] ?? 0) as int;
     final String timeStr = limit == 0
         ? 'No limit set'
         : (limit < 60 ? '${limit}m' : '${limit ~/ 60}h ${limit % 60 == 0 ? '' : '${limit % 60}m'}').trim();
 
     return GlassCard(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(24),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             decoration:
                 BoxDecoration(color: AppColors.accentTeal.withValues(alpha: 0.12), shape: BoxShape.circle),
-            child: const Icon(Icons.timer_outlined, color: AppColors.accentTeal, size: 36),
+            child: Icon(Icons.timer_outlined, color: AppColors.accentTeal, size: 36),
           ),
-          const SizedBox(height: 14),
-          const Text('Daily Screen Time Limit',
-              style: TextStyle(color: AppColors.textGray400, fontSize: 14)),
-          const SizedBox(height: 6),
+          SizedBox(height: 14),
+          Text('Daily Screen Time Limit',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
+          SizedBox(height: 6),
           Text(
             timeStr,
             style: TextStyle(
-              color: limit == 0 ? AppColors.textGray400 : Colors.white,
+              color: limit == 0 ? AppColors.textGray400 : Theme.of(context).colorScheme.onSurface,
               fontSize: 34,
               fontWeight: FontWeight.bold,
             ),
@@ -170,18 +170,18 @@ class RulesSummaryScreen extends StatelessWidget {
 
   // ── Schedule ──────────────────────────────────────────────────────────────
 
-  Widget _buildScheduleCard(Map<String, dynamic> rules) {
+  Widget _buildScheduleCard(BuildContext context, Map<String, dynamic> rules) {
     final String? start = rules['allowedTimeStart'] as String?;
     final String? end = rules['allowedTimeEnd'] as String?;
     final bool isActive = start != null && end != null;
 
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionHeader('Usage Schedule', Icons.schedule, AppColors.primary),
-          const SizedBox(height: 16),
+          _sectionHeader(context, 'Usage Schedule', Icons.schedule, AppColors.primary),
+          SizedBox(height: 16),
           Row(
             children: [
               Icon(
@@ -189,11 +189,11 @@ class RulesSummaryScreen extends StatelessWidget {
                 color: isActive ? Colors.tealAccent : AppColors.textGray400,
                 size: 20,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Text(
                 isActive ? 'Allowed between $start and $end' : 'No schedule set (always allowed)',
                 style: TextStyle(
-                    color: isActive ? Colors.white : AppColors.textGray400, fontSize: 14),
+                    color: isActive ? Theme.of(context).colorScheme.onSurface : AppColors.textGray400, fontSize: 14),
               ),
             ],
           ),
@@ -204,38 +204,38 @@ class RulesSummaryScreen extends StatelessWidget {
 
   // ── Safe Zones ────────────────────────────────────────────────────────────
 
-  Widget _buildSafeZonesCard() {
+  Widget _buildSafeZonesCard(BuildContext context) {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: ChildMonitorService().watchGeofences(_childId, parentId: _parentId),
       builder: (context, snapshot) {
         final zones = snapshot.data ?? [];
         return GlassCard(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _sectionHeader('Safe Zones', Icons.location_on, AppColors.accentTeal),
-              const SizedBox(height: 16),
+              _sectionHeader(context, 'Safe Zones', Icons.location_on, AppColors.accentTeal),
+              SizedBox(height: 16),
               if (zones.isEmpty)
-                const Text('No safe zones configured.',
-                    style: TextStyle(color: AppColors.textGray400, fontSize: 13))
+                Text('No safe zones configured.',
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13))
               else
                 Column(
                   children: zones.map((zone) {
                     final name = zone['name'] ?? 'Unnamed Zone';
                     final radius = zone['radiusMeters'] ?? 0;
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
+                      padding: EdgeInsets.only(bottom: 12),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle_outline, color: Colors.tealAccent, size: 18),
-                          const SizedBox(width: 12),
+                          Icon(Icons.check_circle_outline, color: Colors.tealAccent, size: 18),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                                Text('${radius.toInt()}m radius', style: const TextStyle(color: AppColors.textGray400, fontSize: 12)),
+                                Text(name, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14, fontWeight: FontWeight.w600)),
+                                Text('${radius.toInt()}m radius', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                               ],
                             ),
                           ),
@@ -253,7 +253,7 @@ class RulesSummaryScreen extends StatelessWidget {
 
   // ── Content Filters ───────────────────────────────────────────────────────
 
-  Widget _buildContentFilterCard(Map<String, dynamic> rules) {
+  Widget _buildContentFilterCard(BuildContext context, Map<String, dynamic> rules) {
     final filters = <Map<String, dynamic>>[
       // Safety & Well-being
       {'label': 'Anxiety / Depression', 'icon': Icons.psychology_outlined,          'color': Colors.tealAccent,        'key': 'blockAnxietyDepression'},
@@ -275,24 +275,25 @@ class RulesSummaryScreen extends StatelessWidget {
     final List<String> categories = List<String>.from(rules['customCategories'] ?? []);
 
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionHeader('Content Filters', Icons.shield_outlined, Colors.orangeAccent),
-          const SizedBox(height: 20),
+          _sectionHeader(context, 'Content Filters', Icons.shield_outlined, Colors.orangeAccent),
+          SizedBox(height: 20),
           if (activeFilters.isEmpty && categories.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(bottom: 8),
               child: Text('No content filters or custom categories set.',
-                  style: TextStyle(color: AppColors.textGray400, fontSize: 13)),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
             ),
           ...activeFilters.asMap().entries.map((entry) {
             final f = entry.value;
             final Color color = f['color'] as Color;
             return Padding(
-              padding: const EdgeInsets.only(bottom: 20),
+              padding: EdgeInsets.only(bottom: 20),
               child: _buildDetailRow(
+                context,
                 f['icon'] as IconData,
                 f['label'] as String,
                 'Blocked',
@@ -305,18 +306,18 @@ class RulesSummaryScreen extends StatelessWidget {
           // Affichage intégré des custom categories
           if (categories.isNotEmpty) ...[
             if (activeFilters.isNotEmpty)
-              const Divider(color: Colors.white10, height: 20),
-            const SizedBox(height: 10),
-            const Text(
+              Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10), height: 20),
+            SizedBox(height: 10),
+            Text(
               'CUSTOM CATEGORIES',
               style: TextStyle(color: AppColors.statusWarning, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2),
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: categories.map((cat) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.statusWarning.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
@@ -325,11 +326,11 @@ class RulesSummaryScreen extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.category, color: AppColors.statusWarning, size: 13),
-                    const SizedBox(width: 6),
+                    Icon(Icons.category, color: AppColors.statusWarning, size: 13),
+                    SizedBox(width: 6),
                     Text(cat,
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface, fontSize: 13, fontWeight: FontWeight.w500)),
                   ],
                 ),
               )).toList(),
@@ -346,16 +347,16 @@ class RulesSummaryScreen extends StatelessWidget {
     final List<dynamic> blockedPackages = rules['blockedApps'] as List? ?? [];
 
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              _sectionHeader('Blocked Apps', Icons.block, Colors.redAccent),
-              const Spacer(),
+              _sectionHeader(context, 'Blocked Apps', Icons.block, Colors.redAccent),
+              Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.redAccent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
@@ -363,14 +364,14 @@ class RulesSummaryScreen extends StatelessWidget {
                 ),
                 child: Text(
                   '${blockedPackages.length}',
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ),
             ],
           ),
           if (blockedPackages.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Column(
               children: blockedPackages.map((pkg) {
                 final pkgStr = pkg.toString();
@@ -385,7 +386,7 @@ class RulesSummaryScreen extends StatelessWidget {
                   childId: _childId,
                   packageName: pkg.toString(),
                   category: category,
-                  trailing: const Text(
+                  trailing: Text(
                     'Blocked',
                     style: TextStyle(
                         color: Colors.redAccent,
@@ -398,10 +399,10 @@ class RulesSummaryScreen extends StatelessWidget {
               }).toList(),
             ),
           ] else
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 14),
               child: Text('No specific applications are blocked.',
-                  style: TextStyle(color: AppColors.textGray400, fontSize: 13)),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
             ),
         ],
       ),
@@ -410,21 +411,21 @@ class RulesSummaryScreen extends StatelessWidget {
 
   // ── Blocked Websites ──────────────────────────────────────────────────────
 
-  Widget _buildBlockedSitesCard(Map<String, dynamic> rules) {
+  Widget _buildBlockedSitesCard(BuildContext context, Map<String, dynamic> rules) {
     final List<String> blockedSites =
         List<String>.from(rules['blockedWebsites'] ?? []);
 
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              _sectionHeader('Blocked Websites', Icons.language, Colors.orange),
-              const Spacer(),
+              _sectionHeader(context, 'Blocked Websites', Icons.language, Colors.orange),
+              Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.orange.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
@@ -432,19 +433,19 @@ class RulesSummaryScreen extends StatelessWidget {
                 ),
                 child: Text(
                   '${blockedSites.length}',
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ),
             ],
           ),
           if (blockedSites.isNotEmpty) ...[
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: blockedSites.map((domain) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.orange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
@@ -453,19 +454,19 @@ class RulesSummaryScreen extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.block, color: Colors.orange, size: 12),
-                    const SizedBox(width: 6),
+                    Icon(Icons.block, color: Colors.orange, size: 12),
+                    SizedBox(width: 6),
                     Text(_formatDomainName(domain),
-                        style: const TextStyle(color: Colors.orange, fontSize: 13, fontWeight: FontWeight.bold)),
+                        style: TextStyle(color: Colors.orange, fontSize: 13, fontWeight: FontWeight.bold)),
                   ],
                 ),
               )).toList(),
             ),
           ] else
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 14),
               child: Text('No specific websites are blocked.',
-                  style: TextStyle(color: AppColors.textGray400, fontSize: 13)),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
             ),
         ],
       ),
@@ -510,21 +511,21 @@ class RulesSummaryScreen extends StatelessWidget {
 
   // ── Custom Keywords ───────────────────────────────────────────────────────
 
-  Widget _buildCustomKeywordsCard(Map<String, dynamic> rules) {
+  Widget _buildCustomKeywordsCard(BuildContext context, Map<String, dynamic> rules) {
     final List<String> keywords = List<String>.from(rules['customKeywords'] ?? []);
 
 
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              _sectionHeader('Custom Monitoring', Icons.manage_search, AppColors.primary),
-              const Spacer(),
+              _sectionHeader(context, 'Custom Monitoring', Icons.manage_search, AppColors.primary),
+              Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
@@ -532,24 +533,24 @@ class RulesSummaryScreen extends StatelessWidget {
                 ),
                 child: Text(
                   '${keywords.length}',
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          const Text(
+          SizedBox(height: 6),
+          Text(
             'Alerts will be triggered when these words are detected on the device.',
-            style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.4),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), fontSize: 12, height: 1.4),
           ),
           if (keywords.isNotEmpty) ...[
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: keywords.map((kw) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
@@ -558,20 +559,20 @@ class RulesSummaryScreen extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.label_outline, color: AppColors.primary, size: 13),
-                    const SizedBox(width: 6),
+                    Icon(Icons.label_outline, color: AppColors.primary, size: 13),
+                    SizedBox(width: 6),
                     Text(kw,
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface, fontSize: 13, fontWeight: FontWeight.w500)),
                   ],
                 ),
               )).toList(),
             ),
           ] else
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 14),
               child: Text('No custom keywords added.',
-                  style: TextStyle(color: AppColors.textGray400, fontSize: 13)),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
             ),
         ],
       ),
@@ -581,6 +582,7 @@ class RulesSummaryScreen extends StatelessWidget {
   // ── Detail Row ────────────────────────────────────────────────────────────
 
   Widget _buildDetailRow(
+    BuildContext context,
     IconData icon,
     String label,
     String value,
@@ -588,25 +590,25 @@ class RulesSummaryScreen extends StatelessWidget {
     bool active = false,
     Color? activeColor,
   }) {
-    final displayColor = active ? (activeColor ?? Colors.redAccent) : Colors.white24;
+    final displayColor = active ? (activeColor ?? Colors.redAccent) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24);
     return Row(
       children: [
         Icon(icon, color: active ? displayColor : AppColors.textGray400, size: 20),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(
-          child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 14)),
+          child: Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14)),
         ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
             color: active
                 ? Colors.redAccent.withValues(alpha: 0.12)
-                : Colors.white.withValues(alpha: 0.05),
+                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
                 color: active
                     ? Colors.redAccent.withValues(alpha: 0.35)
-                    : Colors.white12),
+                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12)),
           ),
           child: Text(
             value,

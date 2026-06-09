@@ -33,11 +33,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
-            title: const Text('Email Sent', style: TextStyle(color: Colors.white)),
-            content: const Text(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            title: Text('Email Sent', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+            content: Text(
               'A password reset link has been sent to your email address.',
-              style: TextStyle(color: AppColors.textGray400),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             actions: [
               TextButton(
@@ -65,44 +65,44 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
-                  const SizedBox(height: 24),
-                   const Text(
+                  SizedBox(height: 24),
+                   Text(
                     'Reset Password',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     'Enter your email to receive a reset link.',
                     style: TextStyle(
-                      color: AppColors.textGray400,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 16,
                     ),
                   ),
-                  const SizedBox(height: 48),
+                  SizedBox(height: 48),
                   CustomTextField(
                     controller: _emailController,
                     hint: 'Email',
                     prefixIcon: Icons.email_outlined,
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
                   CustomButton(
                     text: 'Send link',
                     isLoading: _isLoading,

@@ -10,33 +10,33 @@ class OnboardingVisionAiScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 children: [
-                  const Spacer(),
-                  const Icon(Icons.visibility, color: AppColors.primary, size: 100),
-                  const SizedBox(height: 32),
-                  const Text(
+                  Spacer(),
+                  Icon(Icons.visibility, color: AppColors.primary, size: 100),
+                  SizedBox(height: 32),
+                  Text(
                     'AI Vision',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 32,
                         fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     'AI detects inappropriate content instantly.',
                     textAlign: TextAlign.center,
                     style:
-                        TextStyle(color: AppColors.textGray400, fontSize: 18),
+                        TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 18),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   CustomButton(
                     text: 'Next',
                     onPressed: () => context.push('/onboarding/kyc'),

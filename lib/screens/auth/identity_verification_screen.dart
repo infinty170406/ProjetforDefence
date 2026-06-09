@@ -179,35 +179,35 @@ class _IdentityVerificationScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
-                  const SizedBox(height: 24),
-                  const Text(
+                  SizedBox(height: 24),
+                  Text(
                     'Identity Verification',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 32,
                         fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     'Please provide your official information to secure your account.',
                     style:
-                        TextStyle(color: AppColors.textGray400, fontSize: 16),
+                        TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16),
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
                   if (_status == null) ...[
                     CustomTextField(
                       label: 'Full Name (as on ID)',
@@ -215,35 +215,35 @@ class _IdentityVerificationScreenState
                       controller: _nameController,
                       prefixIcon: Icons.person_outline,
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Document Type',
-                            style: TextStyle(color: Colors.white70, fontSize: 14)),
-                        const SizedBox(height: 12),
+                        Text('Document Type',
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 14)),
+                        SizedBox(height: 12),
                         Row(
                           children: [
                             _buildTypeChip('ID_CARD', 'ID Card'),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             _buildTypeChip('PASSPORT', 'Passport'),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             _buildTypeChip('DRIVERS_LICENSE', 'License'),
                           ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     CustomTextField(
                       label: 'Document Number',
                       hint: 'A12345678',
                       controller: _docNumberController,
                       prefixIcon: Icons.badge_outlined,
                     ),
-                    const SizedBox(height: 24),
-                    const Text('Verification Images',
-                        style: TextStyle(color: Colors.white70, fontSize: 14)),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 24),
+                    Text('Verification Images',
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 14)),
+                    SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
@@ -254,7 +254,7 @@ class _IdentityVerificationScreenState
                             onTap: () => _pickImage(true),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        SizedBox(width: 16),
                         Expanded(
                           child: _buildImagePickerCard(
                             title: 'Selfie',
@@ -265,15 +265,15 @@ class _IdentityVerificationScreenState
                         ),
                       ],
                     ),
-                    const SizedBox(height: 40),
+                    SizedBox(height: 40),
                     CustomButton(
                       text:
                           _isVerifying ? 'Processing...' : 'Submit Verification',
                       onPressed: _isVerifying ? null : _startVerification,
                     ),
                   ] else ...[
-                    const SizedBox(height: 40),
-                    const Center(
+                    SizedBox(height: 40),
+                    Center(
                       child: GlassCard(
                         padding: EdgeInsets.all(32),
                         child: Column(
@@ -285,7 +285,7 @@ class _IdentityVerificationScreenState
                             Text(
                               'Verification Pending',
                               style: TextStyle(
-                                  color: Colors.white,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold),
                             ),
@@ -294,13 +294,13 @@ class _IdentityVerificationScreenState
                               'Our team is reviewing your documents. You can track the status in your profile.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                  color: AppColors.textGray400, height: 1.5),
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.5),
                             ),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 40),
+                    SizedBox(height: 40),
                     CustomButton(
                       text: 'Go to Dashboard',
                       onPressed: () => context.go('/dashboard'),
@@ -321,21 +321,21 @@ class _IdentityVerificationScreenState
       child: GestureDetector(
         onTap: () => setState(() => _selectedDocType = type),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: isSelected
                 ? AppColors.primary
                 : AppColors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? Colors.transparent : Colors.white12,
+              color: isSelected ? Colors.transparent : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
             ),
           ),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: isSelected ? Colors.white : Colors.white70,
+              color: isSelected ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70),
               fontSize: 12,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
@@ -359,7 +359,7 @@ class _IdentityVerificationScreenState
           color: AppColors.primary.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: imageFile != null ? AppColors.accentTeal : Colors.white12,
+            color: imageFile != null ? AppColors.accentTeal : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
             width: imageFile != null ? 2 : 1,
           ),
         ),
@@ -371,7 +371,7 @@ class _IdentityVerificationScreenState
                   children: [
                     Image.file(imageFile, fit: BoxFit.cover),
                     Container(color: Colors.black45),
-                    const Center(
+                    Center(
                       child: Icon(Icons.check_circle, color: AppColors.accentTeal, size: 40),
                     ),
                   ],
@@ -381,13 +381,13 @@ class _IdentityVerificationScreenState
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(icon, color: AppColors.primary, size: 32),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     title,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 12),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
+                  SizedBox(height: 4),
+                  Text(
                     'Tap to capture',
                     style: TextStyle(color: AppColors.textGray500, fontSize: 10),
                   ),

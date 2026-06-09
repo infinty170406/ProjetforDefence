@@ -111,7 +111,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _showNotificationsPanel() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF12121F),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       isScrollControlled: true,
@@ -122,28 +122,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
         expand: false,
         builder: (_, scrollController) => Column(
           children: [
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Container(
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24),
                   borderRadius: BorderRadius.circular(2)),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: EdgeInsets.symmetric(horizontal: 24),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Notifications',
+                  Text('Notifications',
                       style: TextStyle(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 20,
                           fontWeight: FontWeight.bold)),
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Close',
+                    child: Text('Close',
                         style: TextStyle(color: AppColors.primary)),
                   ),
                 ],
@@ -151,7 +151,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             Expanded(
               child: _children.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -159,18 +159,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               color: AppColors.textGray400, size: 48),
                           SizedBox(height: 16),
                           Text('No children added yet',
-                              style: TextStyle(color: AppColors.textGray400)),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                         ],
                       ),
                     )
                   : ListView(
                       controller: scrollController,
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16),
                       children: [
-                        const Text('Select a child to see their notifications:',
+                        Text('Select a child to see their notifications:',
                             style: TextStyle(
-                                color: AppColors.textGray400, fontSize: 13)),
-                        const SizedBox(height: 12),
+                                color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+                        SizedBox(height: 12),
                         ..._children
                             .map((child) => _buildNotifChildTile(ctx, child)),
                       ],
@@ -184,8 +184,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildNotifChildTile(BuildContext ctx, dynamic child) {
     return GlassCard(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.all(16),
       child: InkWell(
         onTap: () {
           Navigator.pop(ctx);
@@ -203,24 +203,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
               backgroundColor: AppColors.primary.withValues(alpha: 0.2),
               child: Text(
                 (child['displayName'] ?? 'C')[0],
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppColors.primary, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(child['displayName'] ?? 'Child',
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold)),
-                  const Text('View notifications →',
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
+                  Text('View notifications →',
                       style: TextStyle(color: AppColors.primary, fontSize: 13)),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textGray400),
+            Icon(Icons.chevron_right, color: AppColors.textGray400),
           ],
         ),
       ),
@@ -231,43 +231,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          const Positioned.fill(child: LiquidBackground()),
+          if (Theme.of(context).brightness == Brightness.dark)
+            const Positioned.fill(child: LiquidBackground()),
           SafeArea(
             child: Column(
               children: [
                 _buildHeader(),
                 Expanded(
                   child: _isLoading
-                      ? const Center(
+                      ? Center(
                           child: CircularProgressIndicator(
                               color: AppColors.primary))
                       : RefreshIndicator(
                           onRefresh: _fetchChildren,
                           color: AppColors.primary,
-                          backgroundColor: AppColors.backgroundDark,
+                          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                           child: SingleChildScrollView(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.all(24),
+                            padding: EdgeInsets.all(24),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 _buildGreetingSection(),
-                                const SizedBox(height: 32),
+                                SizedBox(height: 32),
                                 if (_currentState == GuardianState.noChild) ...[
                                   _buildEmptyState(),
                                 ] else ...[
                                   _buildFamilyOverviewHeader(),
                                   ...(_children
                                       .map((child) => _buildChildCard(child))),
-                                  const SizedBox(height: 16),
+                                  SizedBox(height: 16),
                                   _buildAiOrchestratorBanner(),
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: 8),
                                   _buildKycBanner(),
                                 ],
-                                const SizedBox(height: 100),
+                                SizedBox(height: 100),
                               ],
                             ),
                           ),
@@ -290,18 +291,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // SAME: title block
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'THE GUARDIAN',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.5),
@@ -309,7 +310,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text(
                 'Dashboard',
                 style: TextStyle(
-                    color: AppColors.textGray400,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 20,
                     fontWeight: FontWeight.w600),
               ),
@@ -324,31 +325,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Stack(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
                         shape: BoxShape.circle,
                         border: Border.all(color: AppColors.glassBorder),
                       ),
-                      child: const Icon(Icons.notifications_outlined,
-                          color: Colors.white, size: 24),
+                      child: Icon(Icons.notifications_outlined,
+                          color: Theme.of(context).colorScheme.onSurface, size: 24),
                     ),
                     if (_totalUnread > 0)
                       Positioned(
                         right: 0,
                         top: 0,
                         child: Container(
-                          padding: const EdgeInsets.all(4),
+                          padding: EdgeInsets.all(4),
                           decoration: BoxDecoration(
                             color: AppColors.primary,
                             shape: BoxShape.circle,
                             border: Border.all(
-                                color: AppColors.backgroundDark, width: 1.5),
+                                color: Theme.of(context).scaffoldBackgroundColor, width: 1.5),
                           ),
                           child: Text(
                             _totalUnread > 9 ? '9+' : '$_totalUnread',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
@@ -382,27 +383,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               TextSpan(
                 text: greeting,
-                style: const TextStyle(
-                    color: Colors.white,
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 28,
                     fontWeight: FontWeight.w300),
               ),
               TextSpan(
                 text: name,
-                style: const TextStyle(
-                    color: Colors.white,
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 28,
                     fontWeight: FontWeight.w600),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           _currentState == GuardianState.noChild
               ? 'Start by adding your first child profile to begin monitoring.'
               : 'Monitoring active. Select a child to view activity.',
-          style: const TextStyle(color: AppColors.textGray400, fontSize: 16),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16),
         ),
       ],
     );
@@ -413,41 +414,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 40),
+          SizedBox(height: 40),
           Container(
             width: 80,
             height: 80,
             decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle),
-            child: const Icon(Icons.family_restroom_outlined,
+            child: Icon(Icons.family_restroom_outlined,
                 color: AppColors.primary, size: 40),
           ),
-          const SizedBox(height: 24),
-          const Text('No Children Added Yet',
+          SizedBox(height: 24),
+          Text('No Children Added Yet',
               style: TextStyle(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 20,
                   fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
-          const Text(
+          SizedBox(height: 12),
+          Text(
             'Add your first child profile to start\nprotecting and monitoring their digital life.',
             textAlign: TextAlign.center,
             style: TextStyle(
-                color: AppColors.textGray400, fontSize: 14, height: 1.5),
+                color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14, height: 1.5),
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
           ElevatedButton(
             onPressed: () => context.push('/child/create'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              foregroundColor: Theme.of(context).colorScheme.onSurface,
+              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(50)),
               elevation: 0,
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.add, size: 20),
@@ -463,8 +464,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildChildCard(dynamic child) {
     return GlassCard(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(16),
       child: InkWell(
         onTap: () => context.push('/child/details', extra: child),
         child: Row(
@@ -475,19 +476,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               backgroundColor: AppColors.primary.withValues(alpha: 0.2),
               child: Text(
                 (child['displayName'] ?? 'C')[0],
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppColors.primary, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     child['displayName'] ?? 'Unknown',
-                    style: const TextStyle(
-                        color: Colors.white,
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 18,
                         fontWeight: FontWeight.bold),
                     overflow: TextOverflow.ellipsis,
@@ -508,7 +509,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   size: 13,
                                   color:
                                       isOver ? Colors.red : AppColors.textGray400),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               Flexible(
                                   child: Text(
                                     isOver
@@ -539,7 +540,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 final isOnline = status == 'ONLINE';
                 return Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: (isOnline ? Colors.green : Colors.grey)
                         .withValues(alpha: 0.15),
@@ -556,7 +557,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           shape: BoxShape.circle,
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         isOnline ? 'Online' : 'Offline',
                         style: TextStyle(
@@ -570,8 +571,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 );
               },
             ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, color: AppColors.textGray400),
+            SizedBox(width: 8),
+            Icon(Icons.chevron_right, color: AppColors.textGray400),
           ],
         ),
       ),
@@ -582,14 +583,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text('Family Overview',
+        Text('Family Overview',
             style: TextStyle(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 18,
                 fontWeight: FontWeight.w600)),
         TextButton(
           onPressed: () => context.push('/map'),
-          child: const Row(
+          child: Row(
             children: [
               Text('View Map', style: TextStyle(color: AppColors.primary)),
               Icon(Icons.chevron_right, color: AppColors.primary, size: 20),
@@ -604,8 +605,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return GestureDetector(
       onTap: () => context.push('/ai-orchestrator'),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(18),
+        margin: EdgeInsets.only(bottom: 12),
+        padding: EdgeInsets.all(18),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.centerLeft,
@@ -647,17 +648,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ],
               ),
-              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 22),
+              child: Icon(Icons.auto_awesome, color: Theme.of(context).colorScheme.onSurface, size: 22),
             ),
-            const SizedBox(width: 14),
-            const Expanded(
+            SizedBox(width: 14),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Orchestrateur IA',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
@@ -666,14 +667,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Text(
                     'Analyse intelligente • Recommandations personnalisées',
                     style: TextStyle(
-                      color: AppColors.textGray400,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 11,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.primary, size: 22),
+            Icon(Icons.chevron_right, color: AppColors.primary, size: 22),
           ],
         ),
       ),
@@ -684,8 +685,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return GestureDetector(
       onTap: () => context.push('/onboarding/kyc'),
       child: Container(
-        margin: const EdgeInsets.only(top: 8),
-        padding: const EdgeInsets.all(16),
+        margin: EdgeInsets.only(top: 8),
+        padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -699,31 +700,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.verified_user_outlined,
+              child: Icon(Icons.verified_user_outlined,
                   color: AppColors.primary, size: 22),
             ),
-            const SizedBox(width: 14),
-            const Expanded(
+            SizedBox(width: 14),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Complete your verification',
                       style: TextStyle(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                           fontSize: 14)),
                   Text('Verify your identity to unlock all features',
                       style: TextStyle(
-                          color: AppColors.textGray400, fontSize: 12)),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, color: AppColors.primary, size: 16),
+            Icon(Icons.arrow_forward_ios, color: AppColors.primary, size: 16),
           ],
         ),
       ),
@@ -732,6 +733,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // SAME: floating navbar - no design change
   Widget _buildFloatingNavBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final double navWidth = MediaQuery.of(context).size.width * 0.9;
     final double itemWidth = (navWidth - 24) / 5;
 
@@ -740,15 +742,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
         width: navWidth,
         height: 80,
         decoration: BoxDecoration(
-          color: const Color(0xFF121212).withValues(alpha: 0.7),
-          borderRadius: BorderRadius.circular(50),
-          border: Border.all(color: AppColors.glassBorder),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: 0.5),
-                blurRadius: 30,
-                spreadRadius: 5)
-          ],
+        color: isDark 
+            ? const Color(0xFF121212).withValues(alpha: 0.7) 
+            : Colors.white.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(50),
+        border: Border.all(
+            color: isDark 
+                ? AppColors.glassBorder 
+                : const Color(0xFFDDE3F5)),
+        boxShadow: [
+          BoxShadow(
+              color: isDark 
+                  ? Colors.black.withValues(alpha: 0.5) 
+                  : const Color(0xFF4F46E5).withValues(alpha: 0.10),
+              blurRadius: 30,
+              spreadRadius: 5)
+        ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(50),
@@ -782,13 +791,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       Expanded(child: _buildNavBarItem(Icons.dashboard, 0)),
                       Expanded(child: _buildNavBarItem(Icons.map_outlined, 1)),
-                      const SizedBox(width: 56),
+                      SizedBox(width: 56),
                       Expanded(
                           child:
                               _buildNavBarItem(Icons.chat_bubble_outline, 3)),
@@ -807,6 +816,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildNavBarItem(IconData icon, int index) {
     final bool isSelected = _selectedNavIndex == index;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () async {
         setState(() {
@@ -836,7 +846,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon,
-                color: isSelected ? AppColors.primary : AppColors.textGray400,
+                color: isSelected 
+                    ? AppColors.primary 
+                    : (isDark ? AppColors.textGray400 : const Color(0xFF94A3B8)),
                 size: 24)
           ],
         ),
@@ -863,7 +875,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     spreadRadius: 5)
               ],
             ),
-            child: const Icon(Icons.add, color: Colors.white, size: 28),
+            child: Icon(Icons.add, color: Theme.of(context).colorScheme.onSurface, size: 28),
           ),
         ),
       ),

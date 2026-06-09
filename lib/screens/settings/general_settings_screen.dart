@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/api_service.dart';
+import '../../core/models/app_state_manager.dart';
 
 class GeneralSettingsScreen extends StatelessWidget {
   const GeneralSettingsScreen({super.key});
@@ -13,11 +15,11 @@ class GeneralSettingsScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Sign out', style: TextStyle(color: Colors.white)),
-        content: const Text('Are you sure you want to sign out?',
-            style: TextStyle(color: Colors.white70)),
+        title: Text('Sign out', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+        content: Text('Are you sure you want to sign out?',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -47,7 +49,7 @@ class GeneralSettingsScreen extends StatelessWidget {
   void _showHelp(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => Padding(
@@ -56,17 +58,17 @@ class GeneralSettingsScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Help & Support',
+            Text('Help & Support',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 20,
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            _helpItem(Icons.email_outlined, 'Email us', 'support@theguardian.app'),
+            _helpItem(context, Icons.email_outlined, 'Email us', 'support@theguardian.app'),
             const SizedBox(height: 12),
-            _helpItem(Icons.web, 'Documentation', 'docs.theguardian.app'),
+            _helpItem(context, Icons.web, 'Documentation', 'docs.theguardian.app'),
             const SizedBox(height: 12),
-            _helpItem(Icons.info_outline, 'App version', 'The Guardian v1.0.0'),
+            _helpItem(context, Icons.info_outline, 'App version', 'The Guardian v1.0.0'),
             const SizedBox(height: 24),
           ],
         ),
@@ -74,7 +76,7 @@ class GeneralSettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _helpItem(IconData icon, String title, String subtitle) {
+  Widget _helpItem(BuildContext context, IconData icon, String title, String subtitle) {
     return Row(
       children: [
         Icon(icon, color: AppColors.primary, size: 22),
@@ -82,20 +84,140 @@ class GeneralSettingsScreen extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-            Text(subtitle, style: const TextStyle(color: AppColors.textGray400, fontSize: 13)),
+            Text(title, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
+            Text(subtitle, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
           ],
         ),
       ],
     );
   }
 
+  void _showThemeSelector(BuildContext context) {
+    final stateManager = context.read<AppStateManager>();
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'App Theme',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _themeOption(
+              context,
+              icon: Icons.settings_suggest_outlined,
+              title: 'System default',
+              isSelected: stateManager.themeMode == ThemeMode.system,
+              onTap: () {
+                stateManager.setThemeMode(ThemeMode.system);
+                Navigator.pop(ctx);
+              },
+            ),
+            const SizedBox(height: 8),
+            _themeOption(
+              context,
+              icon: Icons.light_mode_outlined,
+              title: 'Light theme',
+              isSelected: stateManager.themeMode == ThemeMode.light,
+              onTap: () {
+                stateManager.setThemeMode(ThemeMode.light);
+                Navigator.pop(ctx);
+              },
+            ),
+            const SizedBox(height: 8),
+            _themeOption(
+              context,
+              icon: Icons.dark_mode_outlined,
+              title: 'Dark theme',
+              isSelected: stateManager.themeMode == ThemeMode.dark,
+              onTap: () {
+                stateManager.setThemeMode(ThemeMode.dark);
+                Navigator.pop(ctx);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _themeOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = Theme.of(context).colorScheme.onSurfaceVariant;
+    final activeColor = AppColors.primary;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? activeColor.withValues(alpha: isDark ? 0.15 : 0.08)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? activeColor.withValues(alpha: 0.3)
+                : Colors.transparent,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? activeColor : textColor,
+              size: 22,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: isSelected ? activeColor : textColor,
+                  fontSize: 16,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle_rounded,
+                color: activeColor,
+                size: 20,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -106,23 +228,27 @@ class GeneralSettingsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Settings',
+                  Text('Settings',
                       style: TextStyle(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 32,
                           fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   if (user != null)
                     Text(user.email ?? '',
-                        style: const TextStyle(color: AppColors.textGray400, fontSize: 14)),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
                   const SizedBox(height: 28),
                   _buildSettingItem(
                     context, 'Account', Icons.person_outline,
                     () => context.push('/settings/account'),
+                  ),
+                  _buildSettingItem(
+                    context, 'App Theme', Icons.palette_outlined,
+                    () => _showThemeSelector(context),
                   ),
                   _buildSettingItem(
                     context, 'Help & Support', Icons.help_outline,
@@ -149,31 +275,42 @@ class GeneralSettingsScreen extends StatelessWidget {
     VoidCallback onTap, {
     bool isDestructive = false,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDestructive 
+        ? AppColors.statusDanger 
+        : Theme.of(context).colorScheme.onSurface;
+    final iconColor = isDestructive 
+        ? AppColors.statusDanger 
+        : Theme.of(context).colorScheme.onSurfaceVariant;
+    final chevronColor = isDestructive 
+        ? AppColors.statusDanger 
+        : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5);
+    final containerBg = isDark 
+        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04) 
+        : const Color(0xFFF1F5F9);
+    final borderColor = isDark 
+        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08) 
+        : const Color(0xFFE2E8F0);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
+          color: containerBg,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          border: Border.all(color: borderColor),
         ),
         child: Row(
           children: [
-            Icon(icon,
-                color: isDestructive ? AppColors.statusDanger : Colors.white70,
-                size: 22),
+            Icon(icon, color: iconColor, size: 22),
             const SizedBox(width: 16),
             Expanded(
               child: Text(title,
-                  style: TextStyle(
-                      color: isDestructive ? AppColors.statusDanger : Colors.white70,
-                      fontSize: 16)),
+                  style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.w500)),
             ),
-            Icon(Icons.chevron_right,
-                color: isDestructive ? AppColors.statusDanger : Colors.white38,
-                size: 20),
+            Icon(Icons.chevron_right, color: chevronColor, size: 20),
           ],
         ),
       ),

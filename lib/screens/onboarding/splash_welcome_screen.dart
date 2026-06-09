@@ -91,7 +91,7 @@ class _SplashWelcomeScreenState extends State<SplashWelcomeScreen>
       context: context,
       barrierDismissible: false,
       builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -108,16 +108,16 @@ class _SplashWelcomeScreenState extends State<SplashWelcomeScreen>
                     color: AppColors.primary, size: 36),
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'Privacy & Data Policy',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 20,
                     fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              const SingleChildScrollView(
+              SingleChildScrollView(
                 child: Text(
                   'The Guardian collects location data, app usage statistics, and device information to help you monitor and protect your children.\n\n'
                   '• Data is encrypted and stored securely on Firebase\n'
@@ -126,7 +126,7 @@ class _SplashWelcomeScreenState extends State<SplashWelcomeScreen>
                   '• You can delete your data at any time from Settings\n\n'
                   'By continuing, you agree to our Terms of Service and Privacy Policy.',
                   style: TextStyle(
-                      color: Color(0xFFAAAAAA), fontSize: 13, height: 1.6),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, height: 1.6),
                   textAlign: TextAlign.left,
                 ),
               ),
@@ -146,7 +146,7 @@ class _SplashWelcomeScreenState extends State<SplashWelcomeScreen>
                         borderRadius: BorderRadius.circular(50)),
                   ),
                   child: const Text('I Understand & Accept',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
             ],
@@ -160,7 +160,7 @@ class _SplashWelcomeScreenState extends State<SplashWelcomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -171,27 +171,27 @@ class _SplashWelcomeScreenState extends State<SplashWelcomeScreen>
                 FadeTransition(
                   opacity: _fadeAnim,
                   child: Image.asset(
-                    'assets/Rectangle 69.png',
+                    'assets/logo.png',
                     width: 180,
                     height: 180,
                     fit: BoxFit.contain,
                   ),
                 ),
-                const SizedBox(height: 24),
-                const Text(
+                SizedBox(height: 24),
+                Text(
                   'THE GUARDIAN',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 4,
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
+                SizedBox(height: 8),
+                Text(
                   'Protector of Digital Freedom',
                   style: TextStyle(
-                    color: AppColors.textGray400,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 14,
                     letterSpacing: 1.2,
                   ),

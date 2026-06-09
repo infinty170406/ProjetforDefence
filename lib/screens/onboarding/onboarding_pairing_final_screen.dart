@@ -10,34 +10,34 @@ class OnboardingPairingFinalScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 children: [
-                  const Spacer(),
-                  const Icon(Icons.phonelink_setup,
+                  Spacer(),
+                  Icon(Icons.phonelink_setup,
                       color: AppColors.primary, size: 100),
-                  const SizedBox(height: 32),
-                  const Text(
+                  SizedBox(height: 32),
+                  Text(
                     "You're all set!",
                     style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 32,
                         fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     'Pairing is complete. You can now supervise the device.',
                     textAlign: TextAlign.center,
                     style:
-                        TextStyle(color: AppColors.textGray400, fontSize: 18),
+                        TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 18),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   CustomButton(
                     text: 'Go to Dashboard',
                     onPressed: () => context.go('/dashboard'),

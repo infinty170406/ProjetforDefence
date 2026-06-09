@@ -98,10 +98,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final stateManager = context.watch<AppStateManager>();
+
     return MaterialApp.router(
       title: 'The Guardian',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: stateManager.themeMode,
       routerConfig: AppRouter.router,
       builder: (context, child) => AlertOverlay(child: child!),
     );

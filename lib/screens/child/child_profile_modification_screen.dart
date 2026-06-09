@@ -73,14 +73,14 @@ class _ChildProfileModificationScreenState
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete profile'),
-        content: const Text('Do you really want to delete this child profile?'),
+        title: Text('Delete profile', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+        content: Text('Do you really want to delete this child profile?', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         actions: [
           TextButton(
-              onPressed: () => context.pop(false), child: const Text('Cancel')),
+              onPressed: () => context.pop(false), child: const Text('Cancel', style: TextStyle(color: AppColors.primary))),
           TextButton(
             onPressed: () => context.pop(true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),
@@ -111,52 +111,55 @@ class _ChildProfileModificationScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
-                  const SizedBox(height: 24),
-                  const Text(
+                  SizedBox(height: 24),
+                  Text(
                     'Edit Profile',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(height: 40),
                   CustomTextField(
                     controller: _nameController,
                     hint: "Child's first name",
                     prefixIcon: Icons.child_care,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   CustomTextField(
                     controller: _ageController,
                     hint: 'Age',
                     prefixIcon: Icons.calendar_today,
                     keyboardType: TextInputType.number,
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(height: 40),
                   CustomButton(
                     text: _isLoading
                         ? 'Saving...'
                         : 'Save changes',
                     onPressed: _isLoading ? null : _handleSave,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   CustomButton(
                     text: 'Delete profile',
+                    backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
+                    textColor: Colors.redAccent,
+                    isOutlined: true,
                     onPressed: _isLoading ? null : _handleDelete,
                   ),
                 ],

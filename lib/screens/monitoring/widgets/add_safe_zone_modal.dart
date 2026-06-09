@@ -74,38 +74,38 @@ class _AddSafeZoneModalState extends State<AddSafeZoneModal> {
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
-      decoration: const BoxDecoration(
-        color: AppColors.backgroundDark,
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Add Safe Zone', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
+                Text('Add Safe Zone', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold)),
+                IconButton(icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface), onPressed: () => Navigator.pop(context)),
               ],
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: 16),
             child: Form(
               key: _formKey,
               child: TextFormField(
                 controller: _nameCtrl,
                 focusNode: _nameFocusNode,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 textInputAction: TextInputAction.next,
                 decoration: InputDecoration(
                   hintText: 'Zone Name (e.g. School)',
-                  hintStyle: const TextStyle(color: Colors.white54),
+                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54)),
                   filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.05),
+                  fillColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  errorStyle: const TextStyle(color: Colors.redAccent),
+                  errorStyle: TextStyle(color: Colors.redAccent),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -116,21 +116,21 @@ class _AddSafeZoneModalState extends State<AddSafeZoneModal> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (widget.children.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Apply to child:', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                  const SizedBox(height: 8),
+                  Text('Apply to child:', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 12)),
+                  SizedBox(height: 8),
                   SizedBox(
                     height: 40,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: widget.children.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      separatorBuilder: (_, __) => SizedBox(width: 8),
                       itemBuilder: (context, index) {
                         final child = widget.children[index];
                         final isSelected = _selectedChildId == child['id'];
@@ -139,8 +139,8 @@ class _AddSafeZoneModalState extends State<AddSafeZoneModal> {
                           selected: isSelected,
                           onSelected: (val) => setState(() => _selectedChildId = val ? child['id'] : null),
                           selectedColor: AppColors.primary,
-                          labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.white70),
-                          backgroundColor: Colors.white.withValues(alpha: 0.05),
+                          labelStyle: TextStyle(color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface),
+                          backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
                         );
                       },
                     ),
@@ -150,7 +150,7 @@ class _AddSafeZoneModalState extends State<AddSafeZoneModal> {
             ),
           Expanded(
             child: _isLoadingLoc 
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(child: CircularProgressIndicator())
               : GoogleMap(
                   initialCameraPosition: CameraPosition(
                     target: _center,
@@ -188,11 +188,12 @@ class _AddSafeZoneModalState extends State<AddSafeZoneModal> {
                   compassEnabled: false,
                 ),
           ),
-            padding: const EdgeInsets.all(16),
+          Padding(
+            padding: EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Radius: ${_radius.toInt()} meters', style: const TextStyle(color: Colors.white)),
+                Text('Radius: ${_radius.toInt()} meters', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                 Slider(
                   value: _radius,
                   min: 50,
@@ -204,7 +205,7 @@ class _AddSafeZoneModalState extends State<AddSafeZoneModal> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16).copyWith(top: 0),
+            padding: EdgeInsets.all(16).copyWith(top: 0),
             child: CustomButton(
               text: _isSaving ? 'Saving...' : 'Save Zone',
               onPressed: _isSaving ? null : () async {

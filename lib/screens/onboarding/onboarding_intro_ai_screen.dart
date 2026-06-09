@@ -39,7 +39,7 @@ class _OnboardingIntroAiScreenState extends State<OnboardingIntroAiScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -57,7 +57,7 @@ class _OnboardingIntroAiScreenState extends State<OnboardingIntroAiScreen> {
                         builder: (context, constraints) {
                           final isSmall = constraints.maxHeight < 500;
                           return SingleChildScrollView(
-                            padding: const EdgeInsets.symmetric(
+                            padding: EdgeInsets.symmetric(
                               horizontal: 32.0, vertical: 24.0),
                             child: ConstrainedBox(
                               constraints: BoxConstraints(
@@ -68,7 +68,7 @@ class _OnboardingIntroAiScreenState extends State<OnboardingIntroAiScreen> {
                                   children: [
                                     if (index == 0)
                                       Image.asset(
-                                        'assets/Rectangle 69.png',
+                                        'assets/logo.png',
                                         width: double.infinity,
                                         height: isSmall ? 180 : 260,
                                         fit: BoxFit.contain,
@@ -84,17 +84,17 @@ class _OnboardingIntroAiScreenState extends State<OnboardingIntroAiScreen> {
                                       _pages[index]['title']!,
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: Theme.of(context).colorScheme.onSurface,
                                         fontSize: isSmall ? 24 : 32,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const SizedBox(height: 16),
+                                    SizedBox(height: 16),
                                     Text(
                                       _pages[index]['description']!,
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
-                                        color: AppColors.textGray400,
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                                         fontSize: isSmall ? 15 : 18,
                                         height: 1.5,
                                       ),
@@ -110,7 +110,7 @@ class _OnboardingIntroAiScreenState extends State<OnboardingIntroAiScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(32.0),
+                  padding: EdgeInsets.all(32.0),
                   child: Column(
                     children: [
                       Row(
@@ -120,17 +120,17 @@ class _OnboardingIntroAiScreenState extends State<OnboardingIntroAiScreen> {
                           (index) => Container(
                             width: 8,
                             height: 8,
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            margin: EdgeInsets.symmetric(horizontal: 4),
                             decoration: BoxDecoration(
                               color: _currentPage == index
                                   ? AppColors.primary
-                                  : Colors.white.withValues(alpha: 0.2),
+                                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2),
                               shape: BoxShape.circle,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 32),
+                      SizedBox(height: 32),
                       CustomButton(
                         text: _currentPage == _pages.length - 1
                             ? 'Start'
@@ -148,9 +148,9 @@ class _OnboardingIntroAiScreenState extends State<OnboardingIntroAiScreen> {
                       ),
                       TextButton(
                         onPressed: () => context.go('/login'),
-                        child: const Text(
+                        child: Text(
                           'Skip introduction',
-                          style: TextStyle(color: AppColors.textGray400),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                         ),
                       ),
                     ],

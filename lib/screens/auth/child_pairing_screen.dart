@@ -105,47 +105,47 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
-                  const SizedBox(height: 24),
-                  const Text(
+                  SizedBox(height: 24),
+                  Text(
                     'Pair Device',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     'Enter the 6-digit code displayed on your parent\'s dashboard.',
                     style: TextStyle(
-                      color: AppColors.textGray400,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 16,
                     ),
                   ),
-                  const SizedBox(height: 48),
+                  SizedBox(height: 48),
                   GlassCard(
-                    padding: const EdgeInsets.all(32),
+                    padding: EdgeInsets.all(32),
                     child: Column(
                       children: [
                         TextField(
                           controller: _codeController,
                           maxLength: 6,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.primary,
                             fontSize: 36,
                             fontWeight: FontWeight.bold,
@@ -154,7 +154,7 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
                           decoration: InputDecoration(
                             counterText: '',
                             hintText: '000000',
-                            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.1)),
+                            hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1)),
                             border: InputBorder.none,
                           ),
                           onChanged: (val) {
@@ -164,14 +164,14 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
                           },
                         ),
                         if (_error != null) ...[
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           Text(
                             _error!,
-                            style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                            style: TextStyle(color: Colors.redAccent, fontSize: 13),
                             textAlign: TextAlign.center,
                           ),
                         ],
-                        const SizedBox(height: 32),
+                        SizedBox(height: 32),
                         CustomButton(
                           text: _isLoading ? 'Connecting...' : 'Link My Device',
                           onPressed: _isLoading ? null : _handlePairing,

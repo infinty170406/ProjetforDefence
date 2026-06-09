@@ -34,7 +34,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -54,28 +54,28 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 24, 0),
+      padding: EdgeInsets.fromLTRB(8, 8, 24, 0),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
             onPressed: () => context.pop(),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Alerts',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 24,
                       fontWeight: FontWeight.bold),
                 ),
                 Text(
                   _childName,
-                  style: const TextStyle(color: AppColors.textGray400, fontSize: 14),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14),
                 ),
               ],
             ),
@@ -96,38 +96,38 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: filters.map((f) {
           final isSelected = _filter == f.$1;
           return Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: EdgeInsets.only(right: 8),
             child: GestureDetector(
               onTap: () => setState(() => _filter = f.$1),
               child: Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppColors.primary
-                      : Colors.white.withValues(alpha: 0.08),
+                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: isSelected
                         ? AppColors.primary
-                        : Colors.white.withValues(alpha: 0.15),
+                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
                   ),
                 ),
                 child: Row(
                   children: [
                     Icon(f.$3,
                         size: 14,
-                        color: isSelected ? Colors.black : Colors.white70),
-                    const SizedBox(width: 6),
+                        color: isSelected ? Colors.black : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70)),
+                    SizedBox(width: 6),
                     Text(
                       f.$2,
                       style: TextStyle(
-                        color: isSelected ? Colors.black : Colors.white,
+                        color: isSelected ? Colors.black : Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
@@ -144,9 +144,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   Widget _buildAlertsList() {
     if (_childId.isEmpty) {
-      return const Center(
+      return Center(
         child: Text('Child not found',
-            style: TextStyle(color: AppColors.textGray400)),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
       );
     }
 
@@ -154,7 +154,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
       stream: ChildMonitorService().watchAlerts(_childId, parentId: _parentId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(color: AppColors.primary),
           );
         }
@@ -162,7 +162,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
         if (snapshot.hasError) {
           return Center(
             child: Text('Error: ${snapshot.error}',
-                style: const TextStyle(color: Colors.red)),
+                style: TextStyle(color: Colors.red)),
           );
         }
 
@@ -174,20 +174,20 @@ class _AlertsScreenState extends State<AlertsScreen> {
             : alerts.where((a) => a.type == _filter).toList();
 
         if (filteredAlerts.isEmpty) {
-          return const Center(
+          return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.check_circle_outline, color: AppColors.primary, size: 64),
                 SizedBox(height: 16),
-                Text('No alerts found', style: TextStyle(color: Colors.white, fontSize: 18)),
+                Text('No alerts found', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18)),
               ],
             ),
           );
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           itemCount: filteredAlerts.length,
           itemBuilder: (context, index) {
             final alert = filteredAlerts[index];
@@ -211,22 +211,22 @@ class _AlertsScreenState extends State<AlertsScreen> {
     final batt = alert.metadata?['battery'] as int?;
 
     return GlassCard(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: _alertColor(type).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(_alertIcon(type), color: _alertColor(type), size: 20),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,18 +235,18 @@ class _AlertsScreenState extends State<AlertsScreen> {
                       children: [
                         Text(
                           _alertLabel(type),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
                           ),
                         ),
                         if (isUnread) ...[
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Container(
                             width: 8,
                             height: 8,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               color: AppColors.primary,
                               shape: BoxShape.circle,
                             ),
@@ -255,22 +255,22 @@ class _AlertsScreenState extends State<AlertsScreen> {
                       ],
                     ),
                     Text(time,
-                        style: const TextStyle(
-                            color: AppColors.textGray400, fontSize: 12)),
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                   ],
                 ),
               ),
             ],
           ),
           if (detail.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Text(detail,
-                style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 14)),
           ],
           
           // NEW: Interactive buttons (Allow / Deny)
           if (alert.isInteractive) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
@@ -279,12 +279,12 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green.withValues(alpha: 0.2),
                       foregroundColor: Colors.greenAccent,
-                      side: const BorderSide(color: Colors.greenAccent, width: 0.5),
+                      side: BorderSide(color: Colors.greenAccent, width: 0.5),
                     ),
-                    child: const Text('ALLOW'),
+                    child: Text('ALLOW'),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: TextButton(
                     onPressed: () => _handleAlertAction(alert, 'DENY'),
@@ -292,7 +292,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                       foregroundColor: Colors.redAccent,
                       backgroundColor: Colors.red.withValues(alpha: 0.1),
                     ),
-                    child: const Text('DENY'),
+                    child: Text('DENY'),
                   ),
                 ),
               ],
@@ -300,39 +300,39 @@ class _AlertsScreenState extends State<AlertsScreen> {
           ],
 
           if (isSos && batt != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.battery_std, color: Colors.orange, size: 16),
-                const SizedBox(width: 4),
+                Icon(Icons.battery_std, color: Colors.orange, size: 16),
+                SizedBox(width: 4),
                 Text('Battery: $batt%',
-                    style: const TextStyle(color: Colors.orange, fontSize: 13)),
+                    style: TextStyle(color: Colors.orange, fontSize: 13)),
               ],
             ),
           ],
           if (isSos && lat != null && lng != null) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    icon: const Icon(Icons.map, size: 16),
-                    label: const Text('View on map'),
+                    icon: Icon(Icons.map, size: 16),
+                    label: Text('View on map'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary),
+                      side: BorderSide(color: AppColors.primary),
                     ),
                     onPressed: () => context.push('/map'),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.call, size: 16),
-                    label: const Text('Call'),
+                    icon: Icon(Icons.call, size: 16),
+                    label: Text('Call'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
+                      foregroundColor: Theme.of(context).colorScheme.onSurface,
                     ),
                     onPressed: () async {
                       final phone = alert.metadata?['phone'] ?? '112';

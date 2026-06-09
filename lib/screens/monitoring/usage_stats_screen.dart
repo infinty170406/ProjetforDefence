@@ -140,7 +140,7 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -149,21 +149,21 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
               onRefresh: _loadStats,
               color: AppColors.primary,
               child: _isLoading
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(color: AppColors.primary))
                   : ListView(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16),
                       children: [
                         _buildHeader(context),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         _buildTodaySummary(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         _buildInteractiveStatsCard(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         _buildTopApps(),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         _buildWebUsage(),
-                        const SizedBox(height: 40),
+                        SizedBox(height: 40),
                       ],
                     ),
             ),
@@ -179,20 +179,20 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
       builder: (context, snapshot) {
         final history = snapshot.data ?? [];
         if (history.isEmpty) {
-          return const GlassCard(
+          return GlassCard(
             padding: EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Top websites today',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 18,
                         fontWeight: FontWeight.bold)),
                 SizedBox(height: 12),
                 Text(
                   'No web browsing history yet.\nHistory is recorded from the child\'s browser visits.',
-                  style: TextStyle(color: AppColors.textGray400, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
                 ),
               ],
             ),
@@ -219,16 +219,16 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
         }
 
         if (domainsCount.isEmpty) {
-          return const GlassCard(
+          return GlassCard(
             padding: EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Top websites today',
-                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold)),
                 SizedBox(height: 12),
                 Text('No web history with valid URLs recorded.',
-                    style: TextStyle(color: AppColors.textGray400, fontSize: 13)),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
               ],
             ),
           );
@@ -240,23 +240,23 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
         final maxCount = domainsCount[topDomains.first] ?? 1;
 
         return GlassCard(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Text('Top websites today',
+                  Text('Top websites today',
                       style: TextStyle(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 18,
                           fontWeight: FontWeight.bold)),
-                  const Spacer(),
+                  Spacer(),
                   Text('${history.length} visits',
-                      style: const TextStyle(color: AppColors.textGray400, fontSize: 12)),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               ...topDomains.map((domain) {
                 final count = domainsCount[domain]!;
                 final title = domainTitles[domain] ?? _formatDomainName(domain);
@@ -265,7 +265,7 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                 final faviconUrl = 'https://www.google.com/s2/favicons?domain=$domain&sz=64';
 
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
+                  padding: EdgeInsets.only(bottom: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -286,7 +286,7 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                                 width: 40,
                                 height: 40,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(
+                                errorBuilder: (_, __, ___) => Icon(
                                   Icons.public,
                                   color: AppColors.primary,
                                   size: 20,
@@ -294,15 +294,15 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   title,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurface,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 14,
                                   ),
@@ -311,8 +311,8 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                                 ),
                                 Text(
                                   domain,
-                                  style: const TextStyle(
-                                    color: AppColors.textGray400,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     fontSize: 11,
                                   ),
                                   maxLines: 1,
@@ -323,20 +323,20 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                           ),
                           Text(
                             '$count ${count == 1 ? 'visit' : 'visits'}',
-                            style: const TextStyle(
-                              color: Colors.white70,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70),
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Container(
                         height: 3,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.05),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(1.5),
                         ),
                         child: FractionallySizedBox(
@@ -355,14 +355,14 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                 );
               }),
               // Footer note
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Row(
-                children: const [
+                children: [
                   Icon(Icons.info_outline, color: AppColors.textGray400, size: 12),
                   SizedBox(width: 4),
                   Text(
                     'Based on browser history from child\'s device',
-                    style: TextStyle(color: AppColors.textGray400, fontSize: 10),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10),
                   ),
                 ],
               ),
@@ -378,22 +378,22 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
     return Row(
       children: [
         IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () => context.pop(),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Usage Statistics',
               style: TextStyle(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 22,
                   fontWeight: FontWeight.bold),
             ),
             Text(_childName,
-                style: const TextStyle(color: AppColors.textGray400, fontSize: 13)),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
           ],
         ),
       ],
@@ -408,22 +408,22 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
     final isOverLimit = used >= limit && limit > 0;
 
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Today',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: isOverLimit
                       ? Colors.red.withValues(alpha: 0.2)
@@ -441,21 +441,21 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Row(
             children: [
-              _buildTimeStat('Used', _formatMinutes(used), Colors.white),
-              const SizedBox(width: 32),
+              _buildTimeStat('Used', _formatMinutes(used), Theme.of(context).colorScheme.onSurface),
+              SizedBox(width: 32),
               _buildTimeStat('Allocated', _formatMinutes(limit),
                   AppColors.textGray400),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: Colors.white10,
+              backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
               valueColor: AlwaysStoppedAnimation<Color>(
                 isOverLimit ? Colors.red : AppColors.primary,
               ),
@@ -477,33 +477,33 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                 fontSize: 28,
                 fontWeight: FontWeight.bold)),
         Text(label,
-            style: const TextStyle(color: AppColors.textGray400, fontSize: 13)),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
       ],
     );
   }
 
   Widget _buildInteractiveStatsCard() {
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Activité',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold),
               ),
               Container(
-                padding: const EdgeInsets.all(4),
+                padding: EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  border: Border.all(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -516,7 +516,7 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           _buildPeriodContent(),
         ],
       ),
@@ -534,7 +534,7 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
@@ -549,7 +549,7 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : AppColors.textGray400,
+            color: isSelected ? Theme.of(context).colorScheme.onSurface : AppColors.textGray400,
             fontSize: 12,
             fontWeight: FontWeight.bold,
           ),
@@ -577,12 +577,12 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
 
       final total = catMinutes.values.fold<int>(0, (a, b) => a + b);
       if (total <= 0) {
-        return const SizedBox(
+        return SizedBox(
           height: 120,
           child: Center(
             child: Text(
               'Aucune activité enregistrée aujourd\'hui',
-              style: TextStyle(color: AppColors.textGray400, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
             ),
           ),
         );
@@ -599,11 +599,11 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
             child: Container(
               height: 12,
               width: double.infinity,
-              color: Colors.white.withValues(alpha: 0.05),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
               child: Row(
                 children: sortedCats.map((entry) {
                   final ratio = total > 0 ? entry.value / total : 0.0;
-                  if (ratio <= 0) return const SizedBox();
+                  if (ratio <= 0) return SizedBox();
                   return Expanded(
                     flex: (ratio * 100).toInt().clamp(1, 100),
                     child: Container(
@@ -614,12 +614,12 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           ...sortedCats.map((entry) {
             final mins = entry.value;
             final ratio = total > 0 ? mins / total : 0.0;
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: 12),
               child: Row(
                 children: [
                   Container(
@@ -636,20 +636,20 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Text(
                     _formatCategoryName(entry.key),
-                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13, fontWeight: FontWeight.w500),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   Text(
                     _formatMinutes(mins),
-                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Text(
                     '(${(ratio * 100).toStringAsFixed(0)}%)',
-                    style: const TextStyle(color: AppColors.textGray400, fontSize: 12),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
                   ),
                 ],
               ),
@@ -659,11 +659,11 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
       );
     } else if (_selectedPeriod == 'week') {
       if (_weekStats.isEmpty) {
-        return const SizedBox(
+        return SizedBox(
           height: 120,
           child: Center(
             child: Text('Aucune donnée pour la semaine',
-                style: TextStyle(color: AppColors.textGray400, fontSize: 13)),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
           ),
         );
       }
@@ -685,16 +685,16 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
 
             return Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+                padding: EdgeInsets.symmetric(horizontal: 4),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     if (mins > 0)
                       Text(
                         mins.toInt().toString(),
-                        style: const TextStyle(color: Colors.white60, fontSize: 9, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.60), fontSize: 9, fontWeight: FontWeight.bold),
                       ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Container(
                       height: (ratio * 85).clamp(4.0, 85.0),
                       decoration: BoxDecoration(
@@ -714,10 +714,10 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Text(dayLabel,
-                        style: const TextStyle(
-                            color: AppColors.textGray400, fontSize: 11)),
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
                   ],
                 ),
               ),
@@ -728,11 +728,11 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
     } else {
       // month view
       if (_monthStats.isEmpty) {
-        return const SizedBox(
+        return SizedBox(
           height: 120,
           child: Center(
             child: Text('Aucune donnée pour le mois',
-                style: TextStyle(color: AppColors.textGray400, fontSize: 13)),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
           ),
         );
       }
@@ -745,7 +745,7 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
         scrollDirection: Axis.horizontal,
         reverse: true,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: EdgeInsets.symmetric(horizontal: 4),
           child: SizedBox(
             height: 130,
             child: Row(
@@ -759,16 +759,16 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
 
                 return Container(
                   width: 15,
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  margin: EdgeInsets.symmetric(horizontal: 4),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       if (mins > 0)
                         Text(
                           mins.toInt().toString(),
-                          style: const TextStyle(color: Colors.white54, fontSize: 8, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), fontSize: 8, fontWeight: FontWeight.bold),
                         ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Container(
                         height: (ratio * 80).clamp(4.0, 80.0),
                         decoration: BoxDecoration(
@@ -782,10 +782,10 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                           borderRadius: BorderRadius.circular(3),
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Text(
                         dayNum,
-                        style: const TextStyle(color: AppColors.textGray400, fontSize: 9),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 9),
                       ),
                     ],
                   ),
@@ -854,20 +854,20 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
 
   Widget _buildTopApps() {
     if (_apps.isEmpty) {
-      return const GlassCard(
+      return GlassCard(
         padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Top apps today',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold)),
             SizedBox(height: 20),
             Center(
               child: Text('No app data yet',
-                  style: TextStyle(color: AppColors.textGray400)),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
             ),
           ],
         ),
@@ -883,16 +883,16 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
         0, (sum, a) => sum + ((a['usageMinutes'] as num?)?.toInt() ?? 0));
 
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Top apps today',
+          Text('Top apps today',
               style: TextStyle(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 18,
                   fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           ...top.map((app) {
             final pkg = app['packageName'] as String? ?? '?';
             final mins = (app['usageMinutes'] as num?)?.toInt() ?? 0;

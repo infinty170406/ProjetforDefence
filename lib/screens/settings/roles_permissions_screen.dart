@@ -13,38 +13,38 @@ class RolesPermissionsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     'Manage account access and permissions.',
                     style: TextStyle(
-                      color: AppColors.textGray400,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 16,
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(height: 40),
                   Expanded(
                     child: ListView(
                       children: [
@@ -56,7 +56,7 @@ class RolesPermissionsScreen extends StatelessWidget {
                           isYou: true,
                           icon: Icons.admin_panel_settings,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: 16),
                         _buildRoleItem(
                           context,
                           name: 'Mom',
@@ -65,12 +65,12 @@ class RolesPermissionsScreen extends StatelessWidget {
                           isYou: false,
                           icon: Icons.person_outline,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         GlassCard(
-                          padding: const EdgeInsets.all(20),
+                          padding: EdgeInsets.all(20),
                           child: InkWell(
                             onTap: () {},
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.person_add_alt_1, color: AppColors.primary),
@@ -90,7 +90,7 @@ class RolesPermissionsScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
                   CustomButton(
                     text: 'Finish',
                     onPressed: () => context.pop(),
@@ -111,18 +111,18 @@ class RolesPermissionsScreen extends StatelessWidget {
     required IconData icon,
   }) {
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isYou ? AppColors.primary.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+              color: isYou ? AppColors.primary.withValues(alpha: 0.2) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: isYou ? AppColors.primary : Colors.white, size: 28),
+            child: Icon(icon, color: isYou ? AppColors.primary : Theme.of(context).colorScheme.onSurface, size: 28),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,37 +131,37 @@ class RolesPermissionsScreen extends StatelessWidget {
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     if (isYou) ...[
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Text('You', style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold)),
+                        child: Text('You', style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   role,
-                  style: const TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w500),
+                  style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.w500),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   email,
-                  style: const TextStyle(color: AppColors.textGray400, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
                 ),
               ],
             ),
           ),
           if (!isYou)
             IconButton(
-              icon: const Icon(Icons.more_vert, color: Colors.white54),
+              icon: Icon(Icons.more_vert, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54)),
               onPressed: () {},
             ),
         ],

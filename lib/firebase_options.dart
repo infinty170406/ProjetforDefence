@@ -7,9 +7,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -20,6 +18,15 @@ class DefaultFirebaseOptions {
         );
     }
   }
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyCV_rdZoHo-yV2Ozr3okVjuwqswabYnv6w',
+    appId: '1:638981354516:web:d27d53086eb293df3a6301',
+    messagingSenderId: '638981354516',
+    projectId: 'control-parental-5f115',
+    authDomain: 'control-parental-5f115.firebaseapp.com',
+    storageBucket: 'control-parental-5f115.firebasestorage.app',
+  );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCV_rdZoHo-yV2Ozr3okVjuwqswabYnv6w',
