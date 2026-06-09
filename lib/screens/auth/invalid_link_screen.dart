@@ -10,7 +10,7 @@ class InvalidLinkScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.backgroundLight,
       body: Stack(
         children: [
           // Background glows
@@ -71,12 +71,12 @@ class InvalidLinkScreen extends StatelessWidget {
                                 GestureDetector(
                                   onTap: () => Navigator.pop(context),
                                   child: const Icon(Icons.close,
-                                      color: Colors.white, size: 24),
+                                      color: AppColors.textDark, size: 24),
                                 ),
                                 const Text(
                                   'The Guardian',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: AppColors.textDark,
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -134,7 +134,7 @@ class InvalidLinkScreen extends StatelessWidget {
                                               ? 'Link Expired'
                                               : 'Invalid Link',
                                       style: const TextStyle(
-                                        color: Colors.white,
+                                        color: AppColors.textDark,
                                         fontSize: 30,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -186,14 +186,14 @@ class InvalidLinkScreen extends StatelessWidget {
                                             Text(
                                               'Retry',
                                               style: TextStyle(
-                                                color: Colors.white,
+                                                color: AppColors.textDark,
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 17,
                                               ),
                                             ),
                                             SizedBox(width: 8),
                                             Icon(Icons.refresh,
-                                                color: Colors.white, size: 20),
+                                                color: AppColors.textDark, size: 20),
                                           ],
                                         ),
                                         style: ElevatedButton.styleFrom(

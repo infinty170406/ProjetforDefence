@@ -28,7 +28,7 @@ class WelcomeScreen extends StatelessWidget {
                         child: Column(
                           children: [
                             Image.asset(
-                              'assets/images/Rectangle 69.png',
+                              'assets/images/logo.png',
                               width: 80,
                               height: 80,
                               fit: BoxFit.contain,
@@ -175,7 +175,7 @@ class WelcomeScreen extends StatelessWidget {
                                             ),
                                             child: const Icon(
                                                 Icons.verified_user,
-                                                color: Colors.white,
+                                                color: AppColors.textDark,
                                                 size: 32),
                                           ),
                                         ),
@@ -190,7 +190,7 @@ class WelcomeScreen extends StatelessWidget {
                                 'Connect this device',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textDark,
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -309,11 +309,11 @@ class _GuardianButton extends StatelessWidget {
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: onTap,
-        icon: Icon(icon, color: Colors.white),
+        icon: Icon(icon, color: AppColors.textDark),
         label: Text(
           label,
           style: const TextStyle(
-            color: Colors.white,
+            color: AppColors.textDark,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),

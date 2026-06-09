@@ -101,12 +101,12 @@ class _ConnectingScreenState extends State<ConnectingScreen>
                     Opacity(
                       opacity: 0.4,
                       child:
-                          Icon(Icons.arrow_back, color: Colors.white, size: 24),
+                          Icon(Icons.arrow_back, color: AppColors.textDark, size: 24),
                     ),
                     Text(
                       'The Guardian',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textDark,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -173,7 +173,7 @@ class _ConnectingScreenState extends State<ConnectingScreen>
                       'Connecting to parent\naccount…',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textDark,
                         fontSize: 24,
                         fontWeight: FontWeight.w500,
                         height: 1.3,
@@ -221,7 +221,7 @@ class _ConnectingScreenState extends State<ConnectingScreen>
                     Text(
                       'SECURED',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.3),
+                        color: AppColors.textDark.withValues(alpha: 0.3),
                         fontSize: 10,
                         letterSpacing: 3,
                         fontWeight: FontWeight.bold,

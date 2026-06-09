@@ -38,6 +38,9 @@
     <!-- Battery optimization -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- Package Visibility for Android 11+ -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+
     <!-- Divers -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
@@ -148,6 +151,30 @@
                 <action android:name="app.theguardian.child.GUARDIAN_WATCHDOG"/>
             </intent-filter>
         </receiver>
+
+        <!-- DEVICE ADMIN RECEIVER -->
+        <receiver
+            android:name=".GuardianDeviceAdminReceiver"
+            android:label="The Guardian Protection"
+            android:description="@string/device_admin_description"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="true">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin_receiver" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- BLOCK ACTIVITY -->
+        <activity
+            android:name=".BlockActivity"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:launchMode="singleInstance"
+            android:stateNotNeeded="true"
+            android:excludeFromRecents="true"
+            android:exported="false" />
 
         <meta-data android:name="flutterEmbedding" android:value="2"/>
 

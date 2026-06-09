@@ -20,6 +20,7 @@ class AppColors {
 
   // Couleurs de texte
   static const Color textWhite = Colors.white;
+  static const Color textDark = Color(0xFF1F2937); // Gris très foncé
   static const Color textGray300 = Color(0xFFD1D5DB);
   static const Color textGray400 = Color(0xFF9CA3AF);
   static const Color textGray500 = Color(0xFF6B7280);
@@ -71,6 +72,44 @@ class AppTheme {
             fontSize: 14,
             fontWeight: FontWeight.w400,
             color: AppColors.textGray400,
+          ),
+        ),
+      ),
+      useMaterial3: true,
+    );
+  }
+
+  static ThemeData get lightTheme {
+    return ThemeData(
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: AppColors.backgroundLight,
+      primaryColor: AppColors.primary,
+      colorScheme: const ColorScheme.light(
+        primary: AppColors.primary,
+        secondary: AppColors.primaryDark,
+        surface: AppColors.backgroundLight,
+      ),
+      textTheme: GoogleFonts.workSansTextTheme(
+        const TextTheme(
+          displayLarge: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w300,
+            color: AppColors.textDark,
+          ),
+          displayMedium: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textDark,
+          ),
+          bodyLarge: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
+            color: AppColors.textDark,
+          ),
+          bodyMedium: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: AppColors.textGray500,
           ),
         ),
       ),

@@ -8,7 +8,7 @@ class ConnectionSuccessScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.backgroundLight,
       body: Stack(
         children: [
           // Background gradient
@@ -39,7 +39,7 @@ class ConnectionSuccessScreen extends StatelessWidget {
                       Row(
                         children: [
                           Image.asset(
-                            'assets/images/Rectangle 69.png',
+                            'assets/images/logo.png',
                             width: 28,
                             height: 28,
                             fit: BoxFit.contain,
@@ -48,7 +48,7 @@ class ConnectionSuccessScreen extends StatelessWidget {
                           const Text(
                             'The Guardian',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.textDark,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
@@ -58,7 +58,7 @@ class ConnectionSuccessScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.05),
+                          color: AppColors.textDark.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: const Icon(Icons.close,
@@ -97,19 +97,19 @@ class ConnectionSuccessScreen extends StatelessWidget {
                             width: 140,
                             height: 140,
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.04),
+                              color: AppColors.textDark.withValues(alpha: 0.04),
                               borderRadius: BorderRadius.circular(28),
                               border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.1)),
+                                  color: AppColors.textDark.withValues(alpha: 0.1)),
                             ),
                             child: Stack(
                               alignment: Alignment.center,
                               children: [
                                 Image.asset(
-                                  'assets/images/Rectangle 69.png',
+                                  'assets/images/logo.png',
                                   width: 80,
                                   height: 80,
-                                  color: Colors.white.withValues(alpha: 0.2),
+                                  color: AppColors.textDark.withValues(alpha: 0.2),
                                   colorBlendMode: BlendMode.modulate,
                                   fit: BoxFit.contain,
                                 ),
@@ -158,7 +158,7 @@ class ConnectionSuccessScreen extends StatelessWidget {
                       const Text(
                         'Device connected',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textDark,
                           fontSize: 30,
                           fontWeight: FontWeight.bold,
                         ),
@@ -233,14 +233,14 @@ class ConnectionSuccessScreen extends StatelessWidget {
                               Text(
                                 'Continue',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textDark,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                               SizedBox(width: 8),
                               Icon(Icons.arrow_forward,
-                                  color: Colors.white, size: 22),
+                                  color: AppColors.textDark, size: 22),
                             ],
                           ),
                         ),
@@ -282,9 +282,9 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: AppColors.textDark.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppColors.textDark.withValues(alpha: 0.08)),
       ),
       child: Column(
         children: [
@@ -326,7 +326,7 @@ class _StatCard extends StatelessWidget {
               value,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.textDark,
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
               ),

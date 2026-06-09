@@ -174,7 +174,7 @@ class _BlockingScreenState extends State<BlockingScreen>
                       const Text(
                         'Appel d\'urgence & SOS',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textDark,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -228,7 +228,7 @@ class _BlockingScreenState extends State<BlockingScreen>
                         minimumSize: const Size(double.infinity, 54),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
-                          side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                          side: BorderSide(color: AppColors.textDark.withValues(alpha: 0.1)),
                         ),
                       ),
                       child: Row(
@@ -263,15 +263,15 @@ class _BlockingScreenState extends State<BlockingScreen>
                   ] else ...[
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.03),
+                        color: AppColors.textDark.withValues(alpha: 0.03),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                        border: Border.all(color: AppColors.textDark.withValues(alpha: 0.08)),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: TextField(
                         controller: phoneController,
                         keyboardType: TextInputType.phone,
-                        style: const TextStyle(color: Colors.white),
+                        style: const TextStyle(color: AppColors.textDark),
                         decoration: InputDecoration(
                           hintText: 'Entrez le numéro du parent',
                           hintStyle: TextStyle(color: Colors.grey[600]),
@@ -415,7 +415,7 @@ class _BlockingScreenState extends State<BlockingScreen>
                   child: Row(
                     children: [
                       Image.asset(
-                        'assets/images/Rectangle 69.png',
+                        'assets/images/logo.png',
                         width: 28,
                         height: 28,
                         fit: BoxFit.contain,
@@ -424,7 +424,7 @@ class _BlockingScreenState extends State<BlockingScreen>
                       const Text(
                         'The Guardian',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textDark,
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
                         ),
@@ -485,7 +485,7 @@ class _BlockingScreenState extends State<BlockingScreen>
                           const Text(
                             'Accès restreint',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.textDark,
                               fontSize: 30,
                               fontWeight: FontWeight.bold,
                             ),
@@ -532,7 +532,7 @@ class _BlockingScreenState extends State<BlockingScreen>
                             Text(
                               _formatCountdown(nextUnlock),
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.textDark,
                                 fontSize: 42,
                                 fontWeight: FontWeight.w300,
                                 letterSpacing: 2,
@@ -569,7 +569,7 @@ class _BlockingScreenState extends State<BlockingScreen>
                                 Text(
                                   '$_secondsRemaining',
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: AppColors.textDark,
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -590,7 +590,7 @@ class _BlockingScreenState extends State<BlockingScreen>
                                 minimumSize: const Size(190, 50),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(25),
-                                  side: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
+                                  side: BorderSide(color: AppColors.textDark.withValues(alpha: 0.1), width: 1.5),
                                 ),
                                 elevation: 0,
                               ),
@@ -646,7 +646,7 @@ class _BlockingScreenState extends State<BlockingScreen>
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.03),
+                          color: AppColors.textDark.withValues(alpha: 0.03),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(color: Colors.grey[850]!),
                         ),

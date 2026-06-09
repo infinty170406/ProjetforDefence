@@ -9,12 +9,15 @@ import 'services/link_handler_service.dart';
 import 'services/auth_service.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
+import 'firebase_options.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   debugPrint('Main: Flutter binding and Firebase initialized.');
 
   // Vérifier Google Play Services (crucial pour Firestore sur Xiaomi/Huawei)
@@ -85,7 +88,9 @@ class TheGuardianApp extends StatelessWidget {
       navigatorKey: navigatorKey,
       title: 'The Guardian Child',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      themeMode: ThemeMode.light,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
       home: const SplashScreen(),
     );
   }

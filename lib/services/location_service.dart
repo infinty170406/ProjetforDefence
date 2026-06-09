@@ -62,7 +62,7 @@ class LocationService {
     }
 
     // Permission "Toujours" pour le background sur Android 10+
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       permission = await geo.Geolocator.checkPermission();
       if (permission != geo.LocationPermission.always) {
         debugPrint("LocationService: Background permission (always) not granted.");

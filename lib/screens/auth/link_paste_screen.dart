@@ -92,7 +92,7 @@ class _LinkPasteScreenState extends State<LinkPasteScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.backgroundLight,
       body: Stack(
         children: [
           // Background glows
@@ -204,7 +204,7 @@ class _LinkPasteScreenState extends State<LinkPasteScreen> {
                                         .withValues(alpha: 0.2)),
                               ),
                               child: Image.asset(
-                                'assets/images/Rectangle 69.png',
+                                'assets/images/logo.png',
                                 width: 80,
                                 height: 80,
                                 fit: BoxFit.contain,
@@ -216,7 +216,7 @@ class _LinkPasteScreenState extends State<LinkPasteScreen> {
                         const Text(
                           "Enter activation link",
                           style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textDark,
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
                             height: 1.2,
@@ -234,17 +234,17 @@ class _LinkPasteScreenState extends State<LinkPasteScreen> {
                         // Text area
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.04),
+                            color: AppColors.textDark.withValues(alpha: 0.04),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1),
+                              color: AppColors.textDark.withValues(alpha: 0.1),
                             ),
                           ),
                           child: TextField(
                             controller: _controller,
                             maxLines: 3,
                             style: const TextStyle(
-                                color: Colors.white, fontSize: 15),
+                                color: AppColors.textDark, fontSize: 15),
                             decoration: InputDecoration(
                               prefixIcon: const Padding(
                                 padding: EdgeInsets.only(
@@ -327,7 +327,7 @@ class _LinkPasteScreenState extends State<LinkPasteScreen> {
                                   width: 24,
                                   height: 24,
                                   child: CircularProgressIndicator(
-                                    color: Colors.white,
+                                    color: AppColors.textDark,
                                     strokeWidth: 2,
                                   ),
                                 )
@@ -337,14 +337,14 @@ class _LinkPasteScreenState extends State<LinkPasteScreen> {
                                     Text(
                                       "Connect device",
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: AppColors.textDark,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                       ),
                                     ),
                                     SizedBox(width: 8),
                                     Icon(Icons.sensors,
-                                        color: Colors.white, size: 20),
+                                        color: AppColors.textDark, size: 20),
                                   ],
                                 ),
                           style: ElevatedButton.styleFrom(

@@ -99,7 +99,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.backgroundLight,
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -110,7 +110,7 @@ class _SplashScreenState extends State<SplashScreen>
                 FadeTransition(
                   opacity: _fadeAnim,
                   child: Image.asset(
-                    'assets/images/Rectangle 69.png',
+                    'assets/images/logo.png',
                     width: 220,
                     height: 220,
                     fit: BoxFit.contain,
@@ -120,7 +120,7 @@ class _SplashScreenState extends State<SplashScreen>
                 const Text(
                   'THE GUARDIAN',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textDark,
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 4,

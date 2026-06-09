@@ -92,7 +92,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         backgroundColor: const Color(0xFF1A1A1A),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Envoyer une alerte SOS ?',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold)),
         content: Text(
           'Vos parents recevront immédiatement votre position et une alerte.',
           style: TextStyle(color: Colors.grey[400], height: 1.5),
@@ -111,7 +111,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
             child: const Text('Envoyer',
                 style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold)),
+                    color: AppColors.textDark, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -165,7 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     return Consumer<AppState>(
       builder: (context, appState, _) {
         return Scaffold(
-          backgroundColor: AppColors.backgroundDark,
+          backgroundColor: AppColors.backgroundLight,
           body: SafeArea(
             child: Column(
               children: [
@@ -239,7 +239,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 children: [
                   const Text('The Guardian',
                       style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textDark,
                           fontSize: 18,
                           fontWeight: FontWeight.bold)),
                   if (appState.childName.isNotEmpty)
@@ -283,7 +283,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     Text(
                       title,
                       style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textDark,
                           fontWeight: FontWeight.bold,
                           fontSize: 14),
                     ),
@@ -396,7 +396,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               children: [
                 const Text('Appareil protégé',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textDark,
                         fontSize: 16,
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
@@ -438,7 +438,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.02),
+        color: AppColors.textDark.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey[850]!),
       ),
@@ -727,7 +727,7 @@ class _RuleRow extends StatelessWidget {
         Text(
           value,
           style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.textDark,
               fontSize: 13,
               fontWeight: FontWeight.w600),
         ),

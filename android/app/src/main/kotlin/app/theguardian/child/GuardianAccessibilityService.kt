@@ -156,6 +156,34 @@ class GuardianAccessibilityService : AccessibilityService() {
             return
         }
 
+        // 0. Auto-défense : Empêcher l'enfant de désactiver le Guardian dans les paramètres
+        if (pkg == "com.android.settings") {
+            val rootNode = rootInActiveWindow
+            if (rootNode != null) {
+                val screenText = extractTextFromNode(rootNode).lowercase()
+                val dangerousWords = setOf(
+                    "accessibility", "accessibilité", 
+                    "device admin", "administrateur",
+                    "désinstaller", "uninstall", 
+                    "guardian"
+                )
+                for (word in dangerousWords) {
+                    if (screenText.contains(word)) {
+                        Log.i(TAG, "Preventing settings bypass: $word detected. Redirecting home.")
+                        performGlobalAction(GLOBAL_ACTION_HOME)
+                        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                            addCategory(Intent.CATEGORY_HOME)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(homeIntent)
+                        rootNode.recycle()
+                        return
+                    }
+                }
+                rootNode.recycle()
+            }
+        }
+
         // Ne pas traiter les apps système pures (sauf si elles sont dans la liste bloquée)
         if (!blockedPackages.contains(pkg) && isSystemPackage(pkg)) {
             if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
@@ -286,17 +314,15 @@ class GuardianAccessibilityService : AccessibilityService() {
         }
         sendBroadcast(broadcastIntent)
 
-        // 3. Lancer MainActivity directement (fonctionne même si elle était tuée)
-        //    FIX BUG #5 : bringToForeground ne marche pas depuis l'isolate background
-        val mainIntent = Intent(applicationContext, MainActivity::class.java).apply {
+        // 3. Lancer BlockActivity directement
+        val blockIntent = Intent(applicationContext, BlockActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
             addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            putExtra("SHOW_BLOCK", true)
             putExtra("BLOCK_REASON", reason)
             putExtra("BLOCK_PACKAGE", pkg)
         }
-        startActivity(mainIntent)
+        startActivity(blockIntent)
     }
 
     private fun blockUrl(pkg: String, blockedDomain: String) {
@@ -322,16 +348,15 @@ class GuardianAccessibilityService : AccessibilityService() {
         }
         sendBroadcast(broadcastIntent)
 
-        // 3. Lancer MainActivity directement
-        val mainIntent = Intent(applicationContext, MainActivity::class.java).apply {
+        // 3. Lancer BlockActivity directement
+        val blockIntent = Intent(applicationContext, BlockActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
             addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            putExtra("SHOW_BLOCK", true)
             putExtra("BLOCK_REASON", reason)
             putExtra("BLOCK_PACKAGE", pkg)
         }
-        startActivity(mainIntent)
+        startActivity(blockIntent)
     }
 
     private fun broadcastForegroundPackage(pkg: String) {

@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:usage_stats/usage_stats.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
-// import 'package_service.dart'; // Unused in background isolate
+import 'package_service.dart';
 import 'device_status_service.dart';
 import 'enforcement_service.dart';
 import 'location_service.dart';
@@ -39,6 +39,7 @@ class MonitoringService {
 
   Timer? _syncTimer;
   bool _isMonitoring = false;
+  DateTime? _lastAppSync;
 
   // ── Classification ────────────────────────────────────────────────────────
 
@@ -117,12 +118,32 @@ class MonitoringService {
 
     // ── B. Démarrer la collecte des stats (boucle 15min) ─────────────────
     await _syncUsageStats();
-    // Déclencher la synchronisation complète des applications et icônes installées sur le main isolate
+    
+    // Synchronisation complète des applications et icônes installées directement depuis le background
+    try {
+      await PackageService().syncInstalledApps();
+      _lastAppSync = DateTime.now();
+    } catch (e) {
+      debugPrint('MonitoringService: Background app sync error: $e');
+    }
+    
     service.invoke('triggerAppSync');
-
+ 
     _syncTimer = Timer.periodic(const Duration(minutes: 2), (_) async {
       await _syncUsageStats();
       await _syncBrowserHistory();
+      
+      // Synchronisation périodique des applications (toutes les 6 heures)
+      final now = DateTime.now();
+      if (_lastAppSync == null || now.difference(_lastAppSync!) > const Duration(hours: 6)) {
+        try {
+          debugPrint('MonitoringService: Running periodic app sync...');
+          await PackageService().syncInstalledApps();
+          _lastAppSync = now;
+        } catch (e) {
+          debugPrint('MonitoringService: Periodic background app sync error: $e');
+        }
+      }
     });
 
     debugPrint('MonitoringService: Started (enforcement + collection).');

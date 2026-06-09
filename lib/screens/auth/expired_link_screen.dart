@@ -8,7 +8,7 @@ class ExpiredLinkScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.backgroundLight,
       body: SafeArea(
         child: Column(
           children: [
@@ -28,13 +28,13 @@ class ExpiredLinkScreen extends StatelessWidget {
                         color: Colors.transparent,
                       ),
                       child: const Icon(Icons.arrow_back,
-                          color: Colors.white, size: 22),
+                          color: AppColors.textDark, size: 22),
                     ),
                   ),
                   const Text(
                     'The Guardian',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textDark,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -94,7 +94,7 @@ class ExpiredLinkScreen extends StatelessWidget {
                       const Text(
                         'Link expired',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textDark,
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
                         ),
@@ -131,7 +131,7 @@ class ExpiredLinkScreen extends StatelessWidget {
                           child: const Text(
                             'Back',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.textDark,
                               fontSize: 17,
                               fontWeight: FontWeight.bold,
                             ),
@@ -163,7 +163,7 @@ class ExpiredLinkScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Image.asset(
-                      'assets/images/Rectangle 69.png',
+                      'assets/images/logo.png',
                       width: 14,
                       height: 14,
                       fit: BoxFit.contain,
@@ -172,7 +172,7 @@ class ExpiredLinkScreen extends StatelessWidget {
                     const Text(
                       'SECURITY BY THE GUARDIAN',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textDark,
                         fontSize: 9,
                         letterSpacing: 2,
                         fontWeight: FontWeight.w600,

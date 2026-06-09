@@ -444,13 +444,22 @@ class RulesService {
         .collection('geofences')
         .where('childId', isEqualTo: childId)
         .snapshots()
-        .listen((snap) {
+        .listen((snap) async {
       final geos = snap.docs
           .map((doc) => Geofence.fromFirestore({...doc.data(), 'id': doc.id}))
           .toList();
       
       _current = _current.copyWith(geofences: geos);
       debugPrint('RulesService: Geofences updated → ${geos.length} zones');
+      
+      // Sauvegarder dans le cache local
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_cacheKey, json.encode(_current.toMap()));
+      } catch (e) {
+        debugPrint('RulesService: Failed to cache geofences offline: $e');
+      }
+
       _notifyListeners();
     });
   }

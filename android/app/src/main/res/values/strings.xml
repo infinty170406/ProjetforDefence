@@ -6,4 +6,7 @@
         et appliquer les règles de contrôle parental configurées par vos parents.
         Aucune donnée personnelle du contenu des écrans n\'est collectée.
     </string>
+    <string name="device_admin_description">
+        Cette autorisation empêche l\'enfant de désinstaller ou de désactiver la protection The Guardian de manière non autorisée.
+    </string>
 </resources>

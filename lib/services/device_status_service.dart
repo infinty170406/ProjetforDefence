@@ -70,6 +70,8 @@ class DeviceStatusService {
       await _firestore.doc(childPath).update({
         'deviceStatus': status,
         'lastHeartbeat': FieldValue.serverTimestamp(), // Aligné avec les règles Firestore
+        'batteryLevel': batteryLevel,
+        'isCharging': isCharging,
       });
     } catch (e) {
       debugPrint('DeviceStatusService: Error updating status: $e');

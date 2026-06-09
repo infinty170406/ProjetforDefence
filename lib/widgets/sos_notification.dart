@@ -141,7 +141,7 @@ class _SosNotificationOverlayState extends State<SosNotificationOverlay>
                                     child: const Text(
                                       'sos',
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: AppColors.textDark,
                                         fontSize: 10,
                                         fontWeight: FontWeight.w900,
                                       ),
@@ -151,7 +151,7 @@ class _SosNotificationOverlayState extends State<SosNotificationOverlay>
                                   Text(
                                     widget.success ? 'Alerte Envoyée !' : 'Échec SOS',
                                     style: const TextStyle(
-                                      color: Colors.white,
+                                      color: AppColors.textDark,
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 0.5,

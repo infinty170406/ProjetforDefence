@@ -21,17 +21,28 @@ class GuardianWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, param
 
         if (lastHeartbeat == 0L || elapsedMs > fiveMinutes) {
             Log.w("GuardianWorker",
-                "Service heartbeat stale (${elapsedMs / 1000}s ago). Attempting restart via MainActivity.")
+                "Service heartbeat stale (${elapsedMs / 1000}s ago). Attempting silent restart.")
             try {
-                // Relancer MainActivity qui redémarre le BackgroundService Flutter
-                val intent = Intent(applicationContext, MainActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                    putExtra("RESTART_SERVICE", true)
+                val serviceIntent = Intent(applicationContext, id.flutter.flutter_background_service.BackgroundService::class.java)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    applicationContext.startForegroundService(serviceIntent)
+                } else {
+                    applicationContext.startService(serviceIntent)
                 }
-                applicationContext.startActivity(intent)
+                Log.i("GuardianWorker", "Directly and silently started background service.")
             } catch (e: Exception) {
-                Log.e("GuardianWorker", "Failed to restart service: ${e.message}")
+                Log.w("GuardianWorker", "Failed to start service directly: ${e.message}. Falling back to MainActivity.")
+                try {
+                    // Relancer MainActivity qui redémarre le BackgroundService Flutter
+                    val intent = Intent(applicationContext, MainActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        putExtra("RESTART_SERVICE", true)
+                    }
+                    applicationContext.startActivity(intent)
+                } catch (ex: Exception) {
+                    Log.e("GuardianWorker", "Failed to restart service via MainActivity: ${ex.message}")
+                }
             }
         } else {
             Log.d("GuardianWorker", "Service is alive (heartbeat ${elapsedMs / 1000}s ago).")

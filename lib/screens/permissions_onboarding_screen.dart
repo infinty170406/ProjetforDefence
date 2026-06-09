@@ -75,7 +75,7 @@ class _PermissionsOnboardingScreenState extends State<PermissionsOnboardingScree
     final appState = context.watch<AppState>();
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.backgroundLight,
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -95,7 +95,7 @@ class _PermissionsOnboardingScreenState extends State<PermissionsOnboardingScree
                     const Text(
                       'Setup Required',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textDark,
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
                       ),
@@ -103,7 +103,7 @@ class _PermissionsOnboardingScreenState extends State<PermissionsOnboardingScree
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'Five permissions are essential for parental protection to work correctly.',
+                      'Six permissions are essential for parental protection to work correctly.',
                       style: TextStyle(
                         color: AppColors.textGray400,
                         fontSize: 15,
@@ -133,6 +133,13 @@ class _PermissionsOnboardingScreenState extends State<PermissionsOnboardingScree
                       description: 'Necessary to calculate screen time.',
                       isGranted: appState.hasUsagePermission,
                       onTap: appState.requestUsagePermission,
+                    ),
+                    const SizedBox(height: 16),
+                    _PermissionCard(
+                      title: 'Device Administrator',
+                      description: 'Prevents unauthorized uninstallation of the app.',
+                      isGranted: appState.hasDeviceAdminPermission,
+                      onTap: appState.requestDeviceAdminPermission,
                     ),
                     const SizedBox(height: 16),
                     _PermissionCard(
@@ -198,7 +205,7 @@ class _PermissionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: AppColors.textDark.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isGranted ? Colors.green.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05),
@@ -228,7 +235,7 @@ class _PermissionCard extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textDark,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),

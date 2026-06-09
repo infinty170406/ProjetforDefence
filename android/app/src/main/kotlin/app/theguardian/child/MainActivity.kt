@@ -47,12 +47,21 @@ class MainActivity : FlutterActivity() {
         WatchdogReceiver.schedule(this)
         // FIX BUG #5: gérer un SHOW_BLOCK au cold start (AccessibilityService a lancé l'app)
         handleBlockIntent(intent)
+        handleRestartIntent(intent)
     }
 
     // FIX BUG #5: gérer un SHOW_BLOCK quand l'app était déjà ouverte
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleBlockIntent(intent)
+        handleRestartIntent(intent)
+    }
+
+    private fun handleRestartIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra("RESTART_SERVICE", false) == true) {
+            android.util.Log.i("MainActivity", "RESTART_SERVICE received, sending app to background")
+            moveTaskToBack(true)
+        }
     }
 
     private fun handleBlockIntent(intent: Intent?) {
@@ -199,6 +208,25 @@ class MainActivity : FlutterActivity() {
                     "requestIgnoreBatteryOptimizations" -> {
                         val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                             data = android.net.Uri.parse("package:$packageName")
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                        result.success(null)
+                    }
+
+                    "isDeviceAdminEnabled" -> {
+                        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+                        val adminComponent = android.content.ComponentName(this, GuardianDeviceAdminReceiver::class.java)
+                        result.success(dpm.isAdminActive(adminComponent))
+                    }
+
+                    "requestDeviceAdmin" -> {
+                        val adminComponent = android.content.ComponentName(this, GuardianDeviceAdminReceiver::class.java)
+                        val intent = Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                            putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
+                            val resId = resources.getIdentifier("device_admin_description", "string", packageName)
+                            val explanation = if (resId != 0) getString(resId) else "Cette autorisation empêche l\'enfant de désinstaller ou de désactiver la protection."
+                            putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION, explanation)
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
                         startActivity(intent)

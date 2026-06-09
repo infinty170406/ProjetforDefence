@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -25,6 +26,7 @@ class AppState extends ChangeNotifier {
   bool _hasOverlayPermission = false;
   bool _hasLocationPermission = false;
   bool _hasBatteryExemption = false;
+  bool _hasDeviceAdminPermission = false;
   ChildProfile? _childProfile;
   ActiveRules _activeRules = ActiveRules.empty;
 
@@ -41,6 +43,7 @@ class AppState extends ChangeNotifier {
   bool get hasOverlayPermission => _hasOverlayPermission;
   bool get hasLocationPermission => _hasLocationPermission;
   bool get hasBatteryExemption => _hasBatteryExemption;
+  bool get hasDeviceAdminPermission => _hasDeviceAdminPermission;
   ChildProfile? get childProfile => _childProfile;
   String get childName  => _childProfile?.name ?? '';
   ActiveRules get activeRules => _activeRules;
@@ -192,12 +195,27 @@ class AppState extends ChangeNotifier {
   }
 
   Future<bool> checkAllPermissions() async {
+    if (kIsWeb) {
+      _hasUsagePermission = true;
+      _hasAccessibilityPermission = true;
+      _hasOverlayPermission = true;
+      _hasLocationPermission = true;
+      _hasBatteryExemption = true;
+      _hasDeviceAdminPermission = true;
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('onboarding_complete', true);
+      notifyListeners();
+      return true;
+    }
+
     final r = await Future.wait([
       UsageStats.checkUsagePermission(),
       const MethodChannel('app.theguardian.child/system').invokeMethod<bool>('isAccessibilityEnabled'),
       const MethodChannel('app.theguardian.child/system').invokeMethod<bool>('hasOverlayPermission'),
       Permission.location.isGranted,
       const MethodChannel('app.theguardian.child/system').invokeMethod<bool>('isIgnoringBatteryOptimizations'),
+      const MethodChannel('app.theguardian.child/system').invokeMethod<bool>('isDeviceAdminEnabled'),
     ]);
 
     _hasUsagePermission         = r[0] ?? false;
@@ -205,12 +223,14 @@ class AppState extends ChangeNotifier {
     _hasOverlayPermission       = r[2] ?? false;
     _hasLocationPermission      = r[3] ?? false;
     _hasBatteryExemption        = r[4] ?? false;
+    _hasDeviceAdminPermission   = r[5] ?? false;
     
-    // NOUVEAU : Onboarding considéré fini si le trio critique (Usage + A11y + Overlay) est là.
+    // NOUVEAU : Onboarding considéré fini si le trio critique (Usage + A11y + Overlay + Device Admin) est là.
     // La localisation est importante pour le parent mais ne bloque pas l'enforcement des apps.
     final hasCriticalPermissions = _hasUsagePermission && 
                                   _hasAccessibilityPermission && 
-                                  _hasOverlayPermission;
+                                  _hasOverlayPermission &&
+                                  _hasDeviceAdminPermission;
 
     if (hasCriticalPermissions) {
       final prefs = await SharedPreferences.getInstance();
@@ -249,6 +269,13 @@ class AppState extends ChangeNotifier {
   Future<void> requestBatteryExemption() async {
     await const MethodChannel('app.theguardian.child/system')
         .invokeMethod('requestIgnoreBatteryOptimizations');
+    await Future.delayed(const Duration(seconds: 2));
+    await checkAllPermissions();
+  }
+
+  Future<void> requestDeviceAdminPermission() async {
+    await const MethodChannel('app.theguardian.child/system')
+        .invokeMethod('requestDeviceAdmin');
     await Future.delayed(const Duration(seconds: 2));
     await checkAllPermissions();
   }

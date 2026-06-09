@@ -46,9 +46,25 @@ class WatchdogReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         Log.d(TAG, "Watchdog heartbeat: ${intent.action}")
         
-        // On ne lance plus MainActivity ici pour éviter de déranger l'enfant.
-        // Le Foreground Service est déjà configuré comme "sticky" et se relance
-        // via le BootReceiver ou le WorkManager si nécessaire.
+        // Vérifier si le service est vivant via le heartbeat SharedPreferences
+        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val lastHeartbeat = prefs.getLong("flutter.guardian_service_heartbeat", 0L)
+        val now = System.currentTimeMillis()
+        
+        // Si aucun heartbeat depuis plus de 5 minutes, on tente de relancer le service silencieusement
+        if (now - lastHeartbeat > 5 * 60 * 1000L) {
+            Log.w(TAG, "Heartbeat stale or missing ($lastHeartbeat). Restarting service silently.")
+            try {
+                val serviceIntent = Intent(context, id.flutter.flutter_background_service.BackgroundService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent)
+                } else {
+                    context.startService(serviceIntent)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to restart service from Watchdog: ${e.message}")
+            }
+        }
         
         // On replanifie immédiatement pour maintenir la chaîne d'alarmes
         schedule(context)

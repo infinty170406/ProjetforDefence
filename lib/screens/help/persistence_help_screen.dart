@@ -8,7 +8,7 @@ class PersistenceHelpScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
+      backgroundColor: AppColors.backgroundLight,
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -78,7 +78,7 @@ class PersistenceHelpScreen extends StatelessWidget {
                               child: Text(
                                 'Ces étapes garantissent que votre enfant ne pourra pas désactiver la protection en fermant simplement l\'application.',
                                 style: TextStyle(
-                                  color: AppColors.textWhite,
+                                  color: AppColors.textDark,
                                   fontSize: 13,
                                   height: 1.4,
                                 ),
@@ -129,7 +129,7 @@ class _HelpStep extends StatelessWidget {
             child: Text(
               index,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.textDark,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -147,7 +147,7 @@ class _HelpStep extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textDark,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
