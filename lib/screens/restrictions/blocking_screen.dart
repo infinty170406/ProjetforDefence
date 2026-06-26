@@ -436,202 +436,205 @@ class _BlockingScreenState extends State<BlockingScreen>
                 // Contenu central
                 Expanded(
                   child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Icône de blocage avec pulse (SANS secousses)
-                          Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              ScaleTransition(
-                                scale: Tween<double>(begin: 1.0, end: 1.2).animate(
-                                  CurvedAnimation(
-                                    parent: _pulseController,
-                                    curve: Curves.easeInOut,
-                                  ),
-                                ),
-                                child: Container(
-                                  width: 120,
-                                  height: 120,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: AppColors.statusDanger.withValues(alpha: 0.05),
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                width: 110,
-                                height: 110,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppColors.statusDanger.withValues(alpha: 0.1),
-                                  border: Border.all(
-                                    color: AppColors.statusDanger.withValues(alpha: 0.3),
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.lock_outline_rounded,
-                                  color: AppColors.statusDanger,
-                                  size: 50,
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 36),
-                          const Text(
-                            'Accès restreint',
-                            style: TextStyle(
-                              color: AppColors.textDark,
-                              fontSize: 30,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Raison du blocage
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 14),
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: AppColors.statusDanger.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: AppColors.statusDanger.withValues(alpha: 0.2),
-                              ),
-                            ),
-                            child: Text(
-                              widget.reason,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.grey[300],
-                                fontSize: 15,
-                                height: 1.6,
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // COMPTEUR DE DÉBLOCAGE GLOBAL
-                          if (_isGlobalBlock && nextUnlock != null) ...[
-                            Text(
-                              'DÉVERROUILLAGE DANS',
-                              style: TextStyle(
-                                color: Colors.grey[500],
-                                fontSize: 11,
-                                letterSpacing: 1.2,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _formatCountdown(nextUnlock),
-                              style: const TextStyle(
-                                color: AppColors.textDark,
-                                fontSize: 42,
-                                fontWeight: FontWeight.w300,
-                                letterSpacing: 2,
-                                fontFeatures: [FontFeature.tabularFigures()],
-                              ),
-                            ),
-                          ],
-
-                          // COMPTEUR DE FERMETURE AUTOMATIQUE (BLOCAGE SPÉCIFIQUE)
-                          if (!_isGlobalBlock) ...[
-                            Text(
-                              'RETOUR AU TABLEAU DE BORD DANS',
-                              style: TextStyle(
-                                color: Colors.grey[500],
-                                fontSize: 11,
-                                letterSpacing: 1.2,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Icône de blocage avec pulse (SANS secousses)
                             Stack(
                               alignment: Alignment.center,
                               children: [
-                                SizedBox(
-                                  width: 70,
-                                  height: 70,
-                                  child: CircularProgressIndicator(
-                                    value: _secondsRemaining / 3,
-                                    color: AppColors.accentTeal,
-                                    backgroundColor: Colors.white.withValues(alpha: 0.05),
-                                    strokeWidth: 4,
+                                ScaleTransition(
+                                  scale: Tween<double>(begin: 1.0, end: 1.2).animate(
+                                    CurvedAnimation(
+                                      parent: _pulseController,
+                                      curve: Curves.easeInOut,
+                                    ),
+                                  ),
+                                  child: Container(
+                                    width: 120,
+                                    height: 120,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppColors.statusDanger.withValues(alpha: 0.05),
+                                    ),
                                   ),
                                 ),
-                                Text(
-                                  '$_secondsRemaining',
-                                  style: const TextStyle(
-                                    color: AppColors.textDark,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
+                                Container(
+                                  width: 110,
+                                  height: 110,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppColors.statusDanger.withValues(alpha: 0.1),
+                                    border: Border.all(
+                                      color: AppColors.statusDanger.withValues(alpha: 0.3),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.lock_outline_rounded,
+                                    color: AppColors.statusDanger,
+                                    size: 50,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 28),
+
+                            const SizedBox(height: 36),
+                            const Text(
+                              'Accès restreint',
+                              style: TextStyle(
+                                color: AppColors.textDark,
+                                fontSize: 30,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Raison du blocage
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 14),
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: AppColors.statusDanger.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: AppColors.statusDanger.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Text(
+                                widget.reason,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.grey[300],
+                                  fontSize: 15,
+                                  height: 1.6,
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // COMPTEUR DE DÉBLOCAGE GLOBAL
+                            if (_isGlobalBlock && nextUnlock != null) ...[
+                              Text(
+                                'DÉVERROUILLAGE DANS',
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 11,
+                                  letterSpacing: 1.2,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _formatCountdown(nextUnlock),
+                                style: const TextStyle(
+                                  color: AppColors.textDark,
+                                  fontSize: 42,
+                                  fontWeight: FontWeight.w300,
+                                  letterSpacing: 2,
+                                  fontFeatures: [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ],
+
+                            // COMPTEUR DE FERMETURE AUTOMATIQUE (BLOCAGE SPÉCIFIQUE)
+                            if (!_isGlobalBlock) ...[
+                              Text(
+                                'RETOUR AU TABLEAU DE BORD DANS',
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 11,
+                                  letterSpacing: 1.2,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 70,
+                                    height: 70,
+                                    child: CircularProgressIndicator(
+                                      value: _secondsRemaining / 3,
+                                      color: AppColors.accentTeal,
+                                      backgroundColor: Colors.white.withValues(alpha: 0.05),
+                                      strokeWidth: 4,
+                                    ),
+                                  ),
+                                  Text(
+                                    '$_secondsRemaining',
+                                    style: const TextStyle(
+                                      color: AppColors.textDark,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 28),
+                              ElevatedButton.icon(
+                                onPressed: _goToDashboard,
+                                icon: const Icon(Icons.close, size: 20),
+                                label: const Text(
+                                  'Fermer et retour',
+                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white.withValues(alpha: 0.05),
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size(190, 50),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(25),
+                                    side: BorderSide(color: AppColors.textDark.withValues(alpha: 0.1), width: 1.5),
+                                  ),
+                                  elevation: 0,
+                                ),
+                              ),
+                            ],
+
+                            const SizedBox(height: 32),
+                            
+                            // SOS Emergency Call Button
                             ElevatedButton.icon(
-                              onPressed: _goToDashboard,
-                              icon: const Icon(Icons.close, size: 20),
+                              onPressed: _showEmergencySheet,
+                              icon: const Icon(Icons.phone_in_talk, size: 20),
                               label: const Text(
-                                'Fermer et retour',
+                                'Appel d\'urgence / SOS',
                                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                               ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white.withValues(alpha: 0.05),
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size(190, 50),
+                                backgroundColor: AppColors.statusDanger.withValues(alpha: 0.15),
+                                foregroundColor: AppColors.statusDanger,
+                                minimumSize: const Size(220, 50),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(25),
-                                  side: BorderSide(color: AppColors.textDark.withValues(alpha: 0.1), width: 1.5),
+                                  side: BorderSide(color: AppColors.statusDanger.withValues(alpha: 0.35), width: 1.5),
                                 ),
                                 elevation: 0,
                               ),
                             ),
-                          ],
 
-                          const SizedBox(height: 32),
-                          
-                          // SOS Emergency Call Button
-                          ElevatedButton.icon(
-                            onPressed: _showEmergencySheet,
-                            icon: const Icon(Icons.phone_in_talk, size: 20),
-                            label: const Text(
-                              'Appel d\'urgence / SOS',
-                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.statusDanger.withValues(alpha: 0.15),
-                              foregroundColor: AppColors.statusDanger,
-                              minimumSize: const Size(220, 50),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(25),
-                                side: BorderSide(color: AppColors.statusDanger.withValues(alpha: 0.35), width: 1.5),
+                            const SizedBox(height: 20),
+                            Text(
+                              _isGlobalBlock 
+                                  ? 'Contactez vos parents pour modifier\nles restrictions.'
+                                  : 'L\'application non autorisée a été fermée.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 13,
+                                height: 1.4,
                               ),
-                              elevation: 0,
                             ),
-                          ),
-
-                          const SizedBox(height: 20),
-                          Text(
-                            _isGlobalBlock 
-                                ? 'Contactez vos parents pour modifier\nles restrictions.'
-                                : 'L\'application non autorisée a été fermée.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 13,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),

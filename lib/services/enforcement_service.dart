@@ -149,6 +149,7 @@ class EnforcementService {
   };
 
   Timer? _checkTimer;
+  Timer? _checkingTimeoutTimer;
   bool _isRunning = false;
   bool _isChecking = false;
   String? _lastPackage;
@@ -159,6 +160,7 @@ class EnforcementService {
   StreamSubscription? _webSubscription;
   StreamSubscription? _keywordSubscription;
   int _lastReportedMinutes = 0;
+  bool _initialFastTickDone = false; // Permet un tick rapide au démarrage
 
   // ── Throttling d'alertes ─────────────────────────────────────────────────
   DateTime? _lastOutsideHoursAlert;
@@ -237,15 +239,25 @@ class EnforcementService {
     // Appliquer les règles initiales à l'AccessibilityService
     _onRulesChanged(_rulesService.current);
 
-    // Boucle de vérification toutes les 60 secondes (optimisation batterie)
-    _checkTimer = Timer.periodic(const Duration(seconds: 60), (_) => _tick());
+    // FIX #3 : Tick rapide (5s) au démarrage pour une réaction immédiate,
+    // puis passage au tick régulier de 10 secondes pour le débogage/réactivité.
+    Timer(const Duration(seconds: 5), () async {
+      if (_isRunning) {
+        await _tick();
+        _initialFastTickDone = true;
+        _checkTimer = Timer.periodic(const Duration(seconds: 10), (_) => _tick());
+        debugPrint('EnforcementService: Switched to 10s periodic timer.');
+      }
+    });
 
-    debugPrint('EnforcementService: Started.');
+    debugPrint('EnforcementService: Started (initial fast tick in 5s).');
   }
 
   Future<void> stop() async {
     _checkTimer?.cancel();
     _checkTimer = null;
+    _checkingTimeoutTimer?.cancel();
+    _checkingTimeoutTimer = null;
     await _webSubscription?.cancel();
     _webSubscription = null;
     await _keywordSubscription?.cancel();
@@ -253,6 +265,7 @@ class EnforcementService {
     _rulesService.removeListener(_onRulesChanged);
     await _rulesService.stop();
     _isRunning = false;
+    _isChecking = false;
     debugPrint('EnforcementService: Stopped.');
   }
 
@@ -319,10 +332,15 @@ class EnforcementService {
       debugPrint('EnforcementService: Failed to write blocked packages to SharedPreferences: $e');
     }
 
+    // In the background isolate the native MethodChannel has no handler — it is
+    // registered by MainActivity on the main (UI) isolate. Relay through the
+    // background service so the main isolate performs the native call, then
+    // return to avoid a guaranteed MissingPluginException every tick.
     if (_backgroundService != null) {
       _backgroundService!.invoke('updateNativeBlockedPackages', {
         'packages': packageList,
       });
+      return;
     }
 
     try {
@@ -345,10 +363,13 @@ class EnforcementService {
       debugPrint('EnforcementService: Failed to write custom keywords to SharedPreferences: $e');
     }
 
+    // Background isolate: relay to the main isolate and return (see
+    // updateNativeBlockedPackages for why the direct channel call is skipped).
     if (_backgroundService != null) {
       _backgroundService!.invoke('updateNativeCustomKeywords', {
         'keywords': keywordList,
       });
+      return;
     }
 
     try {
@@ -371,10 +392,13 @@ class EnforcementService {
       debugPrint('EnforcementService: Failed to write blocked websites to SharedPreferences: $e');
     }
 
+    // Background isolate: relay to the main isolate and return (see
+    // updateNativeBlockedPackages for why the direct channel call is skipped).
     if (_backgroundService != null) {
       _backgroundService!.invoke('updateNativeBlockedWebsites', {
         'websites': websiteList,
       });
+      return;
     }
 
     try {
@@ -448,6 +472,14 @@ class EnforcementService {
   Future<void> _tick() async {
     if (_isChecking) return;
     _isChecking = true;
+    // FIX #4 : timeout de sécurité — si _tick() dure > 30s, libérer le verrou
+    _checkingTimeoutTimer?.cancel();
+    _checkingTimeoutTimer = Timer(const Duration(seconds: 30), () {
+      if (_isChecking) {
+        debugPrint('EnforcementService: ⚠️ _isChecking timeout — force releasing lock.');
+        _isChecking = false;
+      }
+    });
     try {
       debugPrint('EnforcementService: _tick() executing...');
       if (!Platform.isAndroid) return;
@@ -487,6 +519,9 @@ class EnforcementService {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.reload(); // IMPORTANT: Obligatoire pour voir les changements de l'autre isolate
+      // FIX #1 : onboarding_complete ne bloque plus le BLOCAGE des apps.
+      // Il sert uniquement à décider si on envoie des alertes Firestore (pour éviter
+      // de spammer des alertes pendant la phase de configuration du device).
       final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
 
       // Déterminer les restrictions dynamiques
@@ -509,6 +544,8 @@ class EnforcementService {
         final end = rules.allowedTimeEnd ?? '';
         blockReason = 'Utilisation hors heures autorisées ($start – $end).';
 
+        // FIX #1 : alerte Firestore uniquement si onboarding terminé (évite le spam)
+        // Le BLOCAGE lui-même est toujours actif.
         if (onboardingComplete && isActivelyTrying) {
           if (_lastOutsideHoursAlert == null ||
               now.difference(_lastOutsideHoursAlert!).inMinutes >= 10) {
@@ -530,6 +567,7 @@ class EnforcementService {
         debugPrint('EnforcementService: BLOCK -> Daily limit reached');
         blockReason = 'Temps d\'écran journalier écoulé.';
 
+        // FIX #1 : alerte Firestore uniquement si onboarding terminé
         if (onboardingComplete && isActivelyTrying) {
           if (_lastTimeLimitAlert == null ||
               now.difference(_lastTimeLimitAlert!).inMinutes >= 10) {
@@ -555,6 +593,7 @@ class EnforcementService {
             blockReason = 'Limite de temps pour cette application atteinte.';
             activeBlocked.add(frontPackage);
 
+            // FIX #1 : alerte Firestore uniquement si onboarding terminé
             if (onboardingComplete) {
               await _alertService.sendAlert(
                 type: AlertType.appTimeLimit,
@@ -571,13 +610,16 @@ class EnforcementService {
         debugPrint('EnforcementService: BLOCK -> App is in blocked list: $frontPackage');
         blockReason = 'Cette application est bloquée par vos parents.';
 
-        if (onboardingComplete && frontPackage != _lastPackage) {
+        // FIX #1 : le blocage est TOUJOURS actif, l'alerte Firestore est conditionnelle
+        if (frontPackage != _lastPackage) {
           _lastPackage = frontPackage;
-          await _alertService.sendAlert(
-            type: AlertType.blockedApp,
-            detail:
-                'Alerte de sécurité : Votre enfant a tenté d\'ouvrir l\'application ${_getAppName(frontPackage)}, qui fait partie des applications que vous avez bloquées.',
-          );
+          if (onboardingComplete) {
+            await _alertService.sendAlert(
+              type: AlertType.blockedApp,
+              detail:
+                  'Alerte de sécurité : Votre enfant a tenté d\'ouvrir l\'application ${_getAppName(frontPackage)}, qui fait partie des applications que vous avez bloquées.',
+            );
+          }
         }
       } else if (frontPackage != null && !baseBlocked.contains(frontPackage)) {
         _lastPackage = null;
@@ -597,6 +639,8 @@ class EnforcementService {
     } catch (e, stack) {
       debugPrint('EnforcementService: Error in _tick: $e\n$stack');
     } finally {
+      _checkingTimeoutTimer?.cancel();
+      _checkingTimeoutTimer = null;
       _isChecking = false;
     }
   }

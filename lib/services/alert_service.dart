@@ -59,13 +59,17 @@ extension AlertTypeExtension on AlertType {
 
 /// AlertService
 ///
-/// Écrit les alertes dans la collection Firestore [alerts].
-/// Structure :
-///   alerts/{alertId}
-///     → childId   : String
-///     → type      : "SOS" | "BLOCKED_APP" | "TIME_LIMIT" | "OUTSIDE_HOURS"
-///     → detail    : String
-///     → timestamp : Timestamp
+/// Écrit les alertes dans la collection Firestore lue par l'app parent /
+/// GuardianAgent :
+///   {childPath}/alerts/notifications/items/{alertId}
+///     → childId      : String
+///     → type         : "SOS" | "BLOCKED_APP" | "TIME_LIMIT" | "OUTSIDE_HOURS" | ...
+///     → description  : String  (lu par AlertModel parent)
+///     → detail       : String  (lu par GuardianAgent)
+///     → severity     : "CRITICAL" | "HIGH"
+///     → timestamp    : Timestamp
+///     → createdAt    : Timestamp (ordre du stream agent côté parent)
+///     → ai_processed : bool (drapeau de traitement par GuardianAgent)
 ///
 /// Anti-spam : même type d'alerte = max 1 envoi par minute.
 class AlertService {
@@ -101,15 +105,27 @@ class AlertService {
       final severity = type.genre == 'security' ? 'CRITICAL' : 'HIGH';
 
       final alertData = {
-        'childId':     childId,
-        'type':        type.value,
-        'title':       type.title,
-        'description': detail,
-        'severity':    severity,
-        'status':      'unread',
-        'genre':       type.genre,
-        'read':        false,
-        'timestamp':   FieldValue.serverTimestamp(),
+        'childId':      childId,
+        'type':         type.value,
+        'title':        type.title,
+        // GuardianAgent (app parent) lit le champ 'detail' ; l'AlertModel parent
+        // lit 'description'. On écrit les deux pour rester compatible (§6.2).
+        'description':  detail,
+        'detail':       detail,
+        'severity':     severity,
+        'status':       'unread',
+        'genre':        type.genre,
+        'read':         false,
+        // FirestoreService.watchAlerts() (app parent) ordonne par 'createdAt',
+        // alors que l'app enfant écrivait seulement 'timestamp' (Piège 2).
+        // On écrit les deux pour que le stream de l'agent fonctionne.
+        'timestamp':    FieldValue.serverTimestamp(),
+        'createdAt':    FieldValue.serverTimestamp(),
+        // Drapeau consommé par GuardianAgentService.start() côté parent :
+        // l'agent filtre where('ai_processed', isEqualTo: false), traite
+        // l'alerte, puis le passe à true (Piège 4). Sans ce champ, l'agent
+        // re-traiterait toutes les alertes historiques à chaque démarrage.
+        'ai_processed': false,
       };
 
       // 1. Écriture sur le chemin unique lu par le parent

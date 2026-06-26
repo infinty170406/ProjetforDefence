@@ -531,6 +531,27 @@ class _DashboardScreenState extends State<DashboardScreen>
                     ].join(', '),
                   ),
                 ],
+                // [NEW] Limites d'applications
+                if (rules.appTimeLimits.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _RuleRow(
+                    icon: Icons.timer_outlined,
+                    label: 'Limites d\'applications',
+                    value: '${rules.appTimeLimits.length} app(s)',
+                  ),
+                ],
+                // [NEW] Protection de contenu
+                if (rules.blockAdultContent || rules.blockViolence || rules.blockGambling || 
+                    rules.blockDrugs || rules.blockSexualPredators || rules.blockAnxietyDepression ||
+                    rules.blockSelfHarm || rules.blockCyberbullying || rules.blockMatureContent ||
+                    rules.blockEatingDisorders) ...[
+                  const SizedBox(height: 8),
+                  _RuleRow(
+                    icon: Icons.security_outlined,
+                    label: 'Protection de contenu',
+                    value: 'Active',
+                  ),
+                ],
                 // [NEW] Filtrage Web
                 if (appState.blockedWebsiteCount > 0 || appState.isWebFilteringActive) ...[
                   const SizedBox(height: 8),

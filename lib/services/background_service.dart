@@ -83,6 +83,14 @@ class BackgroundService {
       }
     });
 
+    service.on('updateNativeBlockedWebsites').listen((data) {
+      if (data != null && data.containsKey('websites')) {
+        final websites = List<String>.from(data['websites'] as List);
+        const MethodChannel('app.theguardian.child/system')
+            .invokeMethod('updateBlockedWebsites', websites);
+      }
+    });
+
     service.on('updateNativeVpnState').listen((data) {
       if (data != null && data.containsKey('start')) {
         final start = data['start'] as bool;
@@ -138,8 +146,27 @@ class BackgroundService {
       service.setAsForegroundService();
     }
 
+    // Re-register every plugin in this background isolate so that
+    // shared_preferences / firebase / etc. work here. The
+    // flutter_background_service_android plugin intentionally throws from its
+    // registerWith() when called outside the main isolate. Flutter's generated
+    // registrant catches that and prints a misleading "may not function as
+    // expected" warning via print(). We only use [ServiceInstance] in this
+    // isolate, so the warning is harmless — swallow just that line while
+    // forwarding everything else.
     try {
-      DartPluginRegistrant.ensureInitialized();
+      runZoned(
+        () => DartPluginRegistrant.ensureInitialized(),
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) {
+            if (line.contains('flutter_background_service_android') &&
+                line.contains('threw an error')) {
+              return;
+            }
+            parent.print(zone, line);
+          },
+        ),
+      );
     } catch (_) {}
 
     if (service is AndroidServiceInstance) {

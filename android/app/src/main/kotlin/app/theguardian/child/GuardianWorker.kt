@@ -5,6 +5,7 @@ import android.content.Intent
 import android.util.Log
 import androidx.work.*
 import java.util.concurrent.TimeUnit
+import id.flutter.flutter_background_service.BackgroundService
 
 class GuardianWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
     override fun doWork(): Result {
@@ -23,7 +24,7 @@ class GuardianWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, param
             Log.w("GuardianWorker",
                 "Service heartbeat stale (${elapsedMs / 1000}s ago). Attempting silent restart.")
             try {
-                val serviceIntent = Intent(applicationContext, id.flutter.flutter_background_service.BackgroundService::class.java)
+                val serviceIntent = Intent(applicationContext, BackgroundService::class.java)
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                     applicationContext.startForegroundService(serviceIntent)
                 } else {

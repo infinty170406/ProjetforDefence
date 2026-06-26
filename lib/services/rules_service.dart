@@ -206,6 +206,14 @@ class ActiveRules {
       blockAdultContent ||
       blockViolence ||
       blockGambling ||
+      blockDrugs ||
+      blockSexualPredators ||
+      blockAnxietyDepression ||
+      blockSelfHarm ||
+      blockCyberbullying ||
+      blockMatureContent ||
+      blockEatingDisorders ||
+      appTimeLimits.isNotEmpty ||
       customKeywords.isNotEmpty ||
       geofences.isNotEmpty;
 
@@ -266,7 +274,10 @@ class RulesService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  StreamSubscription<QuerySnapshot>? _subscription;
+  // dynamic car ce subscription écoute soit un DocumentSnapshot (chemin direct
+  // parents/{parentId}/children/{childId}/rules/active), soit un QuerySnapshot
+  // (fallback collectionGroup('rules')). Les deux usages partagent cette variable.
+  StreamSubscription<dynamic>? _subscription;
   StreamSubscription<QuerySnapshot>? _geofencesSub;
   StreamSubscription<User?>? _authSub;
   ActiveRules _current = ActiveRules.empty;
@@ -313,20 +324,23 @@ class RulesService {
         }
       }
 
+      final parentId = prefs.getString('parent_id');
+      final childId  = prefs.getString('child_id');
       final childDeviceUid = prefs.getString('device_uid') ?? FirebaseAuth.instance.currentUser?.uid;
-      debugPrint('RulesService: Resolved childDeviceUid = $childDeviceUid');
+      debugPrint('RulesService: Resolved childDeviceUid = $childDeviceUid, parentId = $parentId, childId = $childId');
 
-      if (childDeviceUid == null) {
-        debugPrint('RulesService: ⚠️ childDeviceUid not set — cannot start rules listener.');
+      if (parentId != null && childId != null) {
+        _listenToFirestoreDirect(parentId, childId, firstLoadCompleter: firstLoadCompleter);
+      } else if (childDeviceUid != null) {
+        _listenToFirestore(childDeviceUid, firstLoadCompleter: firstLoadCompleter);
+      } else {
+        debugPrint('RulesService: ⚠️ Neither parentId/childId nor childDeviceUid set — cannot start rules listener.');
         _isStarting = false;
         if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
           firstLoadCompleter.complete();
         }
         return;
       }
-
-      // Écouter Firestore via collectionGroup
-      _listenToFirestore(childDeviceUid, firstLoadCompleter: firstLoadCompleter);
 
       // 2. Écouter aussi les Geofences
       _checkAndStartGeofences(prefs);
@@ -375,8 +389,77 @@ class RulesService {
     }
   }
 
+  void _listenToFirestoreDirect(String parentId, String childId, {Completer<void>? firstLoadCompleter}) {
+    _subscription?.cancel();
+    final docRef = _firestore
+        .collection('parents')
+        .doc(parentId)
+        .collection('children')
+        .doc(childId)
+        .collection('rules')
+        .doc('active');
+
+    debugPrint('RulesService: Listening directly to document path: ${docRef.path}');
+    _subscription = docRef.snapshots().listen(
+      (snap) async {
+        _retryCount = 0; // Reset retry on success
+        
+        if (!snap.exists) {
+          debugPrint('RulesService (Direct): ❌ Rules document active does not exist at ${docRef.path}');
+          _current = ActiveRules.empty;
+        } else {
+          final data = snap.data();
+          if (data == null) {
+            debugPrint('RulesService (Direct): 📄 Rules data is null');
+            _current = ActiveRules.empty;
+          } else {
+            debugPrint('RulesService (Direct): 📄 Raw data received: $data');
+            try {
+              final newRules = ActiveRules.fromFirestore(data);
+              
+              final hasGeofencesInDoc = data['geofences'] != null && (data['geofences'] as List).isNotEmpty;
+              if (!hasGeofencesInDoc && _current.geofences.isNotEmpty) {
+                debugPrint('RulesService (Direct): 🛡️ Preserving ${_current.geofences.length} existing geofences from sub-collection.');
+                _current = newRules.copyWith(geofences: _current.geofences);
+              } else {
+                _current = newRules;
+              }
+              
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString(_cacheKey, json.encode(_current.toMap()));
+            } catch (e) {
+              debugPrint('RulesService (Direct): ❌ Parsing failed. Retaining current rules. Error: $e');
+            }
+          }
+        }
+
+        debugPrint('RulesService (Direct): ✅ Rules updated → $_current');
+        _notifyListeners();
+        
+        if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
+          firstLoadCompleter.complete();
+        }
+      },
+      onError: (e) {
+        debugPrint('RulesService (Direct): Firestore error: $e. Falling back to collectionGroup query.');
+        if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
+          firstLoadCompleter.complete();
+        }
+        
+        // Si la souscription directe échoue, on tente le fallback par collectionGroup
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          _listenToFirestore(user.uid);
+        } else {
+          _handleRetryDirect(parentId, childId);
+        }
+      },
+    );
+  }
+
   void _listenToFirestore(String childDeviceUid, {Completer<void>? firstLoadCompleter}) {
     _subscription?.cancel();
+    debugPrint('RulesService: Subscribed via collectionGroup for childDeviceUid: $childDeviceUid');
     _subscription = _firestore
         .collectionGroup('rules')
         .where('childDeviceUid', isEqualTo: childDeviceUid)
@@ -462,6 +545,14 @@ class RulesService {
 
       _notifyListeners();
     });
+  }
+
+  void _handleRetryDirect(String parentId, String childId) {
+    _retryCount++;
+    final delay = Duration(seconds: (_retryCount * 5).clamp(5, 60));
+    debugPrint('RulesService (Direct): Retrying in ${delay.inSeconds}s (attempt $_retryCount)...');
+    
+    Timer(delay, () => _listenToFirestoreDirect(parentId, childId));
   }
 
   void _handleRetry(String childDeviceUid) {

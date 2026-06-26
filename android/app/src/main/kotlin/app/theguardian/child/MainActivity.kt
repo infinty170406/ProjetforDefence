@@ -240,27 +240,37 @@ class MainActivity : FlutterActivity() {
                     }
 
                     "getInstalledApps" -> {
-                        val pm = packageManager
-                        val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-                        val appList = mutableListOf<Map<String, String>>()
-                        
-                        for (app in packages) {
-                            if (pm.getLaunchIntentForPackage(app.packageName) != null) {
-                                val iconBase64 = try {
-                                    val icon = pm.getApplicationIcon(app.packageName)
-                                    getIconBase64(icon)
-                                } catch (e: Exception) {
-                                    ""
-                                }
+                        Thread {
+                            try {
+                                val pm = packageManager
+                                val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+                                val appList = mutableListOf<Map<String, String>>()
+                                
+                                for (app in packages) {
+                                    if (pm.getLaunchIntentForPackage(app.packageName) != null) {
+                                        val iconBase64 = try {
+                                            val icon = pm.getApplicationIcon(app.packageName)
+                                            getIconBase64(icon)
+                                        } catch (e: Exception) {
+                                            ""
+                                        }
 
-                                appList.add(mapOf(
-                                    "packageName" to app.packageName,
-                                    "appName" to pm.getApplicationLabel(app).toString(),
-                                    "iconBase64" to iconBase64
-                                ))
+                                        appList.add(mapOf(
+                                            "packageName" to app.packageName,
+                                            "appName" to pm.getApplicationLabel(app).toString(),
+                                            "iconBase64" to iconBase64
+                                        ))
+                                    }
+                                }
+                                runOnUiThread {
+                                    result.success(appList)
+                                }
+                            } catch (e: Exception) {
+                                runOnUiThread {
+                                    result.error("GET_APPS_FAILED", e.message, null)
+                                }
                             }
-                        }
-                        result.success(appList)
+                        }.start()
                     }
 
                     "startVpn" -> {
@@ -472,13 +482,18 @@ class MainActivity : FlutterActivity() {
 
     private fun sendDataToBackground(context: Context, data: Map<String, Any>) {
         try {
-            val pref = context.getSharedPreferences("id.flutter.background_service", Context.MODE_PRIVATE)
-            val json = JSONObject(data).toString()
-            pref.edit().putString("data", json).apply()
-
-            val intent = Intent("id.flutter.background_service.DATA_CHANGED")
-            intent.setPackage(context.packageName)
-            context.sendBroadcast(intent)
+            val action = data["action"] as? String ?: return
+            val args = JSONObject()
+            for ((key, value) in data) {
+                if (key != "action") {
+                    args.put(key, value)
+                }
+            }
+            val json = JSONObject().apply {
+                put("method", action)
+                put("args", args)
+            }
+            FlutterBackgroundServicePlugin.servicePipe.invoke(json)
         } catch (e: Exception) {
             e.printStackTrace()
         }

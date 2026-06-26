@@ -1,13 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Configuration du GuardianAccessibilityService.
-    TYPE_WINDOW_STATE_CHANGED : déclenché à chaque changement d'app au premier plan.
-    canRetrieveWindowContent  : false — on n'a pas besoin de lire le contenu des écrans.
+
+    accessibilityEventTypes : on écoute tous les types d'événements utilisés
+    par le service (changement de fenêtre, changement de contenu, saisie de
+    texte, défilement) — sans ça, le filtrage web et la détection de mots-clés
+    ne reçoivent jamais d'événement, même si le code Kotlin tente de les
+    déclarer dynamiquement via serviceInfo.apply{} dans onServiceConnected().
+
+    canRetrieveWindowContent : DOIT être true. Le service lit le contenu de
+    l'écran (rootInActiveWindow) pour extraire les URLs des navigateurs et
+    détecter les mots-clés. À false, rootInActiveWindow renvoie toujours null
+    et toutes les fonctions de lecture d'écran échouent silencieusement.
+
+    packageNames : attribut volontairement OMIS (pas de valeur vide) pour que
+    le service reçoive les événements de TOUS les packages. Une chaîne vide
+    ("") peut être mal interprétée sur certains OEM (ex: MIUI) et bloquer
+    la réception d'événements.
 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewTextChanged|typeViewScrolled"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagDefault"
-    android:canRetrieveWindowContent="false"
-    android:notificationTimeout="100"
-    android:packageNames="" />
+    android:accessibilityFlags="flagDefault|flagReportViewIds|flagRetrieveInteractiveWindows"
+    android:canRetrieveWindowContent="true"
+    android:notificationTimeout="100" />

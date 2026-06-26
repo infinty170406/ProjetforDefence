@@ -90,6 +90,14 @@ class GuardianAccessibilityService : AccessibilityService() {
     private val SCREEN_READ_COOLDOWN_MS = 2000L // 2 secondes
     private var prefsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
 
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val reloadRunnable = object : Runnable {
+        override fun run() {
+            loadRulesFromPrefs()
+            handler.postDelayed(this, 5000)
+        }
+    }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
@@ -113,6 +121,9 @@ class GuardianAccessibilityService : AccessibilityService() {
             }
         }
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
+        
+        // Start periodic reload to guarantee cross-process updates
+        handler.postDelayed(reloadRunnable, 5000)
         
         Log.i(TAG, "AccessibilityService connected — ready to enforce and filter web.")
     }
@@ -138,6 +149,9 @@ class GuardianAccessibilityService : AccessibilityService() {
             val newWebsites = mutableSetOf<String>()
             for (i in 0 until websitesArray.length()) newWebsites.add(websitesArray.getString(i))
             blockedWebsites = newWebsites
+
+            // LOG DIAGNOSTIC TEMPORAIRE
+            Log.i(TAG, "loadRulesFromPrefs: blockedPackages=$blockedPackages (raw json=$appsJson)")
             
         } catch (e: Exception) {
             Log.e(TAG, "Error in loadRulesFromPrefs: ${e.message}")
@@ -150,6 +164,9 @@ class GuardianAccessibilityService : AccessibilityService() {
         if (event == null) return
         
         val pkg = event.packageName?.toString() ?: return
+
+        // LOG DIAGNOSTIC TEMPORAIRE
+        Log.i(TAG, "onAccessibilityEvent: pkg=$pkg type=${event.eventType} blockedPackages=$blockedPackages")
 
         // Ne jamais se bloquer soi-même ni les apps système UI
         if (pkg == OWN_PACKAGE || pkg.startsWith("com.android.systemui")) {
@@ -557,6 +574,7 @@ class GuardianAccessibilityService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        handler.removeCallbacks(reloadRunnable)
         val prefs = applicationContext.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         prefsListener?.let { prefs.unregisterOnSharedPreferenceChangeListener(it) }
         instance = null

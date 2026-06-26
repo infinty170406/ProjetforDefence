@@ -8,7 +8,8 @@ plugins {
 android {
     namespace = "app.theguardian.child"
     compileSdk = 36
-    ndkVersion = "28.2.13676358"
+    buildToolsVersion = "36.1.0"
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
