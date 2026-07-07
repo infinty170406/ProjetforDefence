@@ -12,7 +12,7 @@ exports.notifyParentOnAlert = onDocumentCreated('parents/{parentId}/children/{ch
   if (!alert) return;
 
   try {
-    // Récupérer le document parent pour les tokens FCM
+    // Récupérer le document parent pour les tokens FCM     
     const parentDoc = await getFirestore().doc(`parents/${parentId}`).get();
     if (!parentDoc.exists) {
       console.log(`Parent ${parentId} not found`);

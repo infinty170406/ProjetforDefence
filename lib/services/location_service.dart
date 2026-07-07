@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart' as geo;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'alert_service.dart';
 import 'rules_service.dart';
+import '../utils/child_path_helper.dart';
 
 /// LocationService
 ///
@@ -215,13 +216,8 @@ class LocationService {
 
   Future<void> _saveLocationToFirestore(geo.Position position) async {
     final prefs = await SharedPreferences.getInstance();
-    final rawChildPath = prefs.getString("child_path");
-    if (rawChildPath == null || rawChildPath.isEmpty) return;
-
-    // Assurez-vous qu'il n'y a pas de slash final pour éviter les chemins invalides
-    final childPath = rawChildPath.endsWith('/') 
-        ? rawChildPath.substring(0, rawChildPath.length - 1) 
-        : rawChildPath;
+    final childPath = await readChildPath(prefs);
+    if (childPath == null) return;
 
     try {
       final locationData = {

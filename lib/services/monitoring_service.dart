@@ -9,6 +9,8 @@ import 'package_service.dart';
 import 'device_status_service.dart';
 import 'enforcement_service.dart';
 import 'location_service.dart';
+import '../utils/child_path_helper.dart';
+import '../utils/system_app_classifier.dart';
 
 /// Catégories d'applications.
 enum AppCategory { socialMedia, gaming, education, browser, messaging, other }
@@ -131,8 +133,7 @@ class MonitoringService {
  
     _syncTimer = Timer.periodic(const Duration(minutes: 2), (_) async {
       await _syncUsageStats();
-      await _syncBrowserHistory();
-      
+
       // Synchronisation périodique des applications (toutes les 6 heures)
       final now = DateTime.now();
       if (_lastAppSync == null || now.difference(_lastAppSync!) > const Duration(hours: 6)) {
@@ -165,8 +166,7 @@ class MonitoringService {
     if (!Platform.isAndroid) return;
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
-    final childPath = prefs.getString('child_path');
+    final childPath = await readChildPath(prefs);
     final childId   = prefs.getString('child_id');
     final parentId  = prefs.getString('parent_id');
     if (childPath == null || childId == null || parentId == null) return;
@@ -185,7 +185,7 @@ class MonitoringService {
         // BUG FIX #5 : Ne pas exclure com.google.android.youtube / com.android.chrome
         // si le parent les a bloqués. Les stats doivent refléter l'usage réel.
         // On garde seulement l'exclusion des paquets génériques Android/constructeur.
-        return ms > 0 && !_isSystemApp(pkg);
+        return ms > 0 && !SystemAppClassifier.forUsageStats(pkg);
       }).toList()
         ..sort((a, b) {
           final aMs = int.tryParse(a.totalTimeInForeground ?? '0') ?? 0;
@@ -196,6 +196,30 @@ class MonitoringService {
       final totalMs      = filtered.fold<int>(0, (s, e) =>
           s + (int.tryParse(e.totalTimeInForeground ?? '0') ?? 0));
       final totalMinutes = totalMs ~/ 60000;
+
+      // ── ENRICHISSEMENT POUR L'AGENT IA (côté parent) ──────────────────────
+      // Agrégation des minutes par catégorie (signal "apps addictives", §8)
+      // calculée sur l'ensemble des apps filtrées, pas seulement le top 20.
+      final Map<String, int> categoryMinutes = {};
+      for (final s in filtered) {
+        final pkg = s.packageName ?? '';
+        if (pkg.isEmpty) continue;
+        final minutes = (int.tryParse(s.totalTimeInForeground ?? '0') ?? 0) ~/ 60000;
+        if (minutes <= 0) continue;
+        final cat = _catStr(_classify(pkg));
+        categoryMinutes[cat] = (categoryMinutes[cat] ?? 0) + minutes;
+      }
+
+      // Application la plus utilisée (signal "usage intensif", §8).
+      String? topAppPkg;
+      int topAppMinutes = 0;
+      if (filtered.isNotEmpty) {
+        topAppPkg = filtered.first.packageName;
+        topAppMinutes = (int.tryParse(filtered.first.totalTimeInForeground ?? '0') ?? 0) ~/ 60000;
+      }
+
+      // Usage nocturne (22h-6h) — signal "usage nocturne excessif", §8.
+      final nightUsageMinutes = await _computeNightUsageMinutes(now);
 
       final Map<String, dynamic> appsData = {};
       for (final s in filtered.take(20)) {
@@ -238,6 +262,11 @@ class MonitoringService {
         'usedMinutes':        totalMinutes, // Requis par le parent
         'totalMinutes':       totalMinutes,
         'apps':               appsData,
+        // Champs enrichis consommés par GuardianAgentService (§1, §8).
+        'categories':         categoryMinutes,
+        if (topAppPkg != null) 'topApp': {'package': topAppPkg, 'minutes': topAppMinutes},
+        // N'écrit le champ qu'en période nocturne pour ne pas écraser la valeur de la nuit.
+        if (nightUsageMinutes > 0) 'nightUsageMinutes': nightUsageMinutes,
         'lastSync':           FieldValue.serverTimestamp(),
       };
 
@@ -252,130 +281,33 @@ class MonitoringService {
     }
   }
 
-  // BUG FIX #5 : _isSystemApp() ne filtre que les paquets génériques système.
-  // YouTube (com.google.android.youtube) et Chrome (com.android.chrome) PEUVENT
-  // être bloqués explicitement par le parent, donc ils ne doivent pas être
-  // systématiquement ignorés.
-  // Dans les stats : ils sont inclus (usage réel).
-  // Dans le blocage : voir enforcement_service.dart (blockedByParent a la priorité).
-  bool _isSystemApp(String pkg) =>
-      // Paquets purement système / constructeur sans intérêt éducatif
-      pkg.startsWith('com.miui.') ||
-      pkg.startsWith('com.xiaomi.') ||
-      pkg.startsWith('com.qualcomm.') ||
-      pkg.startsWith('com.mediatek.') ||
-      pkg.startsWith('com.samsung.') ||
-      pkg.startsWith('com.huawei.') ||
-      pkg.startsWith('com.oppo.') ||
-      pkg.startsWith('com.vivo.') ||
-      pkg.startsWith('com.oneplus.') ||
-      pkg.startsWith('com.coloros.') ||
-      pkg.startsWith('com.heytap.') ||
-      pkg.startsWith('com.bbk.') ||
-      // Services Android génériques sans contenu utilisateur
-      pkg == 'android' ||
-      pkg == 'com.android.systemui' ||
-      pkg == 'com.android.launcher' ||
-      pkg == 'com.android.launcher3' ||
-      pkg == 'com.android.settings' ||
-      pkg == 'com.android.phone' ||
-      pkg == 'com.android.inputmethod.latin' ||
-      pkg == 'com.google.android.inputmethod.latin' ||
-      pkg == 'com.google.android.gms' ||
-      pkg == 'com.google.android.gsf' ||
-      pkg == 'com.miui.home' ||
-      pkg == 'com.miui.securitycenter' ||
-      pkg == 'com.miui.msa.global' ||
-      pkg == 'com.miui.bugreport' ||
-      pkg == 'com.miui.daemon' ||
-      pkg == 'com.miui.analytics' ||
-      pkg == 'com.xiaomi.market' ||
-      pkg == 'com.xiaomi.simactivate.service' ||
-      pkg == 'com.lbe.security.miui' ||
-      pkg == 'app.theguardian.child';
-      // NOTE : com.android.chrome, com.google.android.youtube, etc.
-      // sont INTENTIONNELLEMENT absents pour permettre le blocage parental.
-
-  static const _browserPackages = {
-    'com.android.chrome',
-    'org.mozilla.firefox',
-    'com.opera.browser',
-    'com.brave.browser',
-    'com.microsoft.emmx',
-    'com.UCMobile.intl',
-  };
-
-  /// Syncs browser history by reading recent UsageEvents for known browser apps.
-  /// This bypasses the EventChannel limitation in background isolates.
-  Future<void> _syncBrowserHistory() async {
-    if (!Platform.isAndroid) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
-    final childPath = prefs.getString('child_path');
-    if (childPath == null) return;
+  /// Calcule les minutes d'utilisation pendant la plage nocturne (22h-6h).
+  ///
+  /// Utilisé par l'agent IA pour détecter un usage nocturne excessif (§8).
+  /// Retourne 0 en dehors de la plage nocturne. La valeur correspond à la
+  /// session nocturne en cours (depuis 22h, ou depuis 22h la veille avant 6h).
+  Future<int> _computeNightUsageMinutes(DateTime now) async {
+    if (!Platform.isAndroid) return 0;
+    DateTime nightStart;
+    if (now.hour >= 22) {
+      nightStart = DateTime(now.year, now.month, now.day, 22);
+    } else if (now.hour < 6) {
+      final y = now.subtract(const Duration(days: 1));
+      nightStart = DateTime(y.year, y.month, y.day, 22);
+    } else {
+      return 0; // Hors plage nocturne.
+    }
 
     try {
-      final now = DateTime.now();
-      final since = now.subtract(const Duration(minutes: 3));
-      final events = await UsageStats.queryEvents(since, now);
-
-      final Set<String> reportedDomains = {};
-      final today = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-
-      for (final event in events.reversed) {
-        final pkg = event.packageName ?? '';
-        if (!_browserPackages.contains(pkg)) continue;
-        // Event type 1 = MOVE_TO_FOREGROUND (user switched to browser)
-        if (event.eventType != '1') continue;
-
-        // We can't get the URL directly, but we can record browser usage
-        // by package to at least provide some history signal.
-        if (reportedDomains.contains(pkg)) continue;
-        reportedDomains.add(pkg);
-
-        final browserName = pkg.split('.').last;
-        final domain = '$browserName.browser.session';
-
-        // Write to linear history collection
-        await _firestore.collection('$childPath/inventory/websites/history').add({
-          'url': 'browser://$pkg',
-          'domain': domain,
-          'package': pkg,
-          'title': _browserFriendlyName(pkg),
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-
-        // Write to aggregated websites stats
-        final webStatsPath = '$childPath/alerts/usage/websites/$today';
-        await _firestore.doc(webStatsPath).set({
-          'websites': {
-            domain.replaceAll('.', '_'): {
-              'domain': domain,
-              'lastVisit': FieldValue.serverTimestamp(),
-              'visits': FieldValue.increment(1),
-            },
-          },
-          'lastSync': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-
-        debugPrint('MonitoringService: 🌐 Browser usage detected: $pkg');
-      }
+      final stats = await UsageStats.queryUsageStats(nightStart, now);
+      final ms = stats
+          .where((s) => !SystemAppClassifier.forUsageStats(s.packageName ?? ''))
+          .fold<int>(0, (acc, e) => acc + (int.tryParse(e.totalTimeInForeground ?? '0') ?? 0));
+      return ms ~/ 60000;
     } catch (e) {
-      debugPrint('MonitoringService: _syncBrowserHistory error: $e');
+      debugPrint('MonitoringService: _computeNightUsageMinutes error: $e');
+      return 0;
     }
-  }
-
-  String _browserFriendlyName(String pkg) {
-    const names = {
-      'com.android.chrome': 'Google Chrome',
-      'org.mozilla.firefox': 'Firefox',
-      'com.opera.browser': 'Opera',
-      'com.brave.browser': 'Brave',
-      'com.microsoft.emmx': 'Microsoft Edge',
-      'com.UCMobile.intl': 'UC Browser',
-    };
-    return names[pkg] ?? pkg.split('.').last;
   }
 
   Future<void> forceSyncNow() => _syncUsageStats();

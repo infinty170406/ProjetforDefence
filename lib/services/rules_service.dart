@@ -181,6 +181,15 @@ class ActiveRules {
         'radius': g.radius,
       }).toList(),
       'appTimeLimits':     appTimeLimits,
+      'blockDrugs':        blockDrugs,
+      'blockSexualPredators': blockSexualPredators,
+      'blockAnxietyDepression': blockAnxietyDepression,
+      'blockSelfHarm':     blockSelfHarm,
+      'blockCyberbullying': blockCyberbullying,
+      'blockMatureContent': blockMatureContent,
+      'blockEatingDisorders': blockEatingDisorders,
+      'monitorAccountActivity': monitorAccountActivity,
+      'locationAlerts':    locationAlerts,
     };
   }
 
@@ -231,6 +240,15 @@ class ActiveRules {
     Set<String>? customKeywords,
     List<Geofence>? geofences,
     Map<String, int>? appTimeLimits,
+    bool? blockDrugs,
+    bool? blockSexualPredators,
+    bool? blockAnxietyDepression,
+    bool? blockSelfHarm,
+    bool? blockCyberbullying,
+    bool? blockMatureContent,
+    bool? blockEatingDisorders,
+    bool? monitorAccountActivity,
+    bool? locationAlerts,
   }) {
     return ActiveRules(
       blockedApps:       blockedApps ?? this.blockedApps,
@@ -246,6 +264,15 @@ class ActiveRules {
       customKeywords:    customKeywords ?? this.customKeywords,
       geofences:         geofences ?? this.geofences,
       appTimeLimits:     appTimeLimits ?? this.appTimeLimits,
+      blockDrugs:        blockDrugs ?? this.blockDrugs,
+      blockSexualPredators: blockSexualPredators ?? this.blockSexualPredators,
+      blockAnxietyDepression: blockAnxietyDepression ?? this.blockAnxietyDepression,
+      blockSelfHarm:     blockSelfHarm ?? this.blockSelfHarm,
+      blockCyberbullying: blockCyberbullying ?? this.blockCyberbullying,
+      blockMatureContent: blockMatureContent ?? this.blockMatureContent,
+      blockEatingDisorders: blockEatingDisorders ?? this.blockEatingDisorders,
+      monitorAccountActivity: monitorAccountActivity ?? this.monitorAccountActivity,
+      locationAlerts:    locationAlerts ?? this.locationAlerts,
     );
   }
 

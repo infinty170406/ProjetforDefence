@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/child_path_helper.dart';
 
 class NotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
@@ -110,7 +111,7 @@ class NotificationService {
   /// parents/{parentId}/children/{childId} (cohérent avec l'activation).
   Future<void> _saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
-    final childPath = prefs.getString('child_path');
+    final childPath = await readChildPath(prefs);
 
     if (childPath == null) {
       debugPrint('NotificationService: child_path not set, cannot save FCM token.');

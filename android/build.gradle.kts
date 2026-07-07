@@ -9,9 +9,13 @@ allprojects {
     }
 }
 
-rootProject.buildDir = file("../build")
+// API moderne (Gradle 8+) au lieu de rootProject.buildDir / project.buildDir,
+// dépréciés et sources d'avertissements bloquants avec Gradle 8.13.
+rootProject.layout.buildDirectory.set(file("../build"))
 subprojects {
-    project.buildDir = file("${rootProject.buildDir}/${project.name}")
+    project.layout.buildDirectory.set(
+        file("${rootProject.layout.buildDirectory.get().asFile}/${project.name}")
+    )
 }
 subprojects {
     project.evaluationDependsOn(":app")
@@ -39,6 +43,27 @@ subprojects {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Fix Build Tools : certains plugins Flutter (ex. app_links) ne déclarent pas
+// leur propre buildToolsVersion et retombent sur le défaut d'AGP (34.0.0).
+// On force donc la même version sur tous les sous-modules. Note : on utilise
+// buildToolsVersion (String), PAS compileSdk (Int), qui n'existe pas sur
+// BaseExtension.
+// ---------------------------------------------------------------------------
+subprojects {
+    val configureAction = Action<Project> {
+        extensions.findByType(com.android.build.gradle.BaseExtension::class.java)
+            ?.buildToolsVersion = "36.1.0"
+    }
+    if (state.executed) {
+        configureAction.execute(this)
+    } else {
+        afterEvaluate {
+            configureAction.execute(this@subprojects)
+        }
+    }
+}
+
 tasks.register<Delete>("clean") {
-    delete(rootProject.buildDir)
+    delete(rootProject.layout.buildDirectory)
 }

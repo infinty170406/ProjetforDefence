@@ -389,17 +389,32 @@ class MainActivity : FlutterActivity() {
                 val url = intent.getStringExtra(GuardianAccessibilityService.EXTRA_URL) ?: return
                 val pkg = intent.getStringExtra(GuardianAccessibilityService.EXTRA_URL_PACKAGE) ?: ""
                 val searchQuery = intent.getStringExtra(GuardianAccessibilityService.EXTRA_SEARCH_QUERY)
+                val title = intent.getStringExtra("title")
+                val category = intent.getStringExtra("category")
+                val riskLevel = intent.getStringExtra("risk_level")
+                val isSiteBlocked = intent.getBooleanExtra("is_site_blocked", false)
+                val isWordBlocked = intent.getBooleanExtra("is_word_blocked", false)
+                val status = intent.getStringExtra("status")
+                val date = intent.getStringExtra("date")
+                val time = intent.getStringExtra("time")
                 
                 val eventMap = mutableMapOf<String, Any>("url" to url, "package" to pkg)
                 if (searchQuery != null) {
                     eventMap["searchQuery"] = searchQuery
                 }
+                if (title != null) eventMap["title"] = title
+                if (category != null) eventMap["category"] = category
+                if (riskLevel != null) eventMap["riskLevel"] = riskLevel
+                eventMap["isSiteBlocked"] = isSiteBlocked
+                eventMap["isWordBlocked"] = isWordBlocked
+                if (status != null) eventMap["status"] = status
+                if (date != null) eventMap["date"] = date
+                if (time != null) eventMap["time"] = time
                 
                 // 1. Envoyer à l'UI si elle est ouverte
                 webEventSink?.success(eventMap)
                 
                 // 2. Envoyer au service de background (Isolate séparé)
-                // C'est ici que réside la logique EnforcementService
                 eventMap["action"] = "web_event"
                 sendDataToBackground(context, eventMap)
             }

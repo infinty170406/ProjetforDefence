@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
@@ -325,6 +326,16 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    try {
+      final service = FlutterBackgroundService();
+      if (await service.isRunning()) {
+        service.invoke('stopService');
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    } catch (e) {
+      debugPrint('AuthService: stopService error: $e');
+    }
+
     _cachedChildId = null;
     _cachedParentId = null;
     _cachedChildPath = null;
@@ -332,8 +343,15 @@ class AuthService {
     await _secureStorage.deleteAll();
 
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_childIdKey);
+    await prefs.remove(_parentIdKey);
+    await prefs.remove(_childPathKey);
+    await prefs.remove(_deviceUidKey);
     await prefs.remove(_migratedKey);
+    await prefs.remove('onboarding_complete');
+    await prefs.remove('cached_rules');
 
     await FirebaseAuth.instance.signOut();
+    debugPrint('AuthService: Logout complete — session and background monitoring cleared.');
   }
 }

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/child_path_helper.dart';
 
 /// Types d'alertes générées par l'app enfant.
 enum AlertType {
@@ -71,7 +72,7 @@ extension AlertTypeExtension on AlertType {
 ///     → createdAt    : Timestamp (ordre du stream agent côté parent)
 ///     → ai_processed : bool (drapeau de traitement par GuardianAgent)
 ///
-/// Anti-spam : même type d'alerte = max 1 envoi par minute.
+/// Anti-spam : même type + même sujet (app, mot-clé…) = max 1 envoi par minute.
 class AlertService {
   static final AlertService _instance = AlertService._internal();
   factory AlertService() => _instance;
@@ -84,16 +85,18 @@ class AlertService {
   Future<void> sendAlert({
     required AlertType type,
     String detail = '',
+    String? cooldownKey,
   }) async {
-    // Anti-spam
-    final key = type.value;
+    // Anti-spam : par type seul si pas de sujet, sinon par type + sujet
+    final key = cooldownKey != null && cooldownKey.isNotEmpty
+        ? '${type.value}|$cooldownKey'
+        : type.value;
     final last = _lastSent[key];
     if (last != null && DateTime.now().difference(last) < _cooldown) return;
     _lastSent[key] = DateTime.now();
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
-    final childPath = prefs.getString('child_path');
+    final childPath = await readChildPath(prefs);
     final childId   = prefs.getString('child_id');
     final parentId  = prefs.getString('parent_id');
     if (childPath == null || childId == null || parentId == null) return;

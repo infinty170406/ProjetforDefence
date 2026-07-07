@@ -9,6 +9,8 @@ import 'package:usage_stats/usage_stats.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'rules_service.dart';
 import 'alert_service.dart';
+import '../utils/child_path_helper.dart';
+import '../utils/system_app_classifier.dart';
 
 /// EnforcementService
 ///
@@ -16,12 +18,13 @@ import 'alert_service.dart';
 ///
 /// Responsabilités :
 ///   1. Écouter les règles via [RulesService] (stream Firestore temps réel)
-///   2. Vérifier toutes les 5s l'app au premier plan (UsageStats) + plages horaires
-///   3. Notifier Flutter via [EventChannel] quand un blocage doit s'afficher
+///   2. Vérifier l'app au premier plan (AccessibilityService + fallback UsageStats)
+///      — tick immédiat à chaque changement de foreground, filet de sécurité toutes les 60s
+///   3. Notifier Flutter quand un blocage doit s'afficher
 ///   4. Mettre à jour l'AccessibilityService avec les packages bloqués
 ///   5. Incrémenter le compteur de temps d'écran dans Firestore
 ///   6. Écrire les alertes (type BLOCKED_APP, TIME_LIMIT, OUTSIDE_HOURS, APP_TIME_LIMIT)
-///   7. Filtrage Web & Historique via EventChannel natif
+///   7. Filtrage Web & Historique via queue SharedPreferences (web_event)
 class EnforcementService {
   static final EnforcementService _instance = EnforcementService._internal();
   factory EnforcementService() => _instance;
@@ -32,12 +35,6 @@ class EnforcementService {
   final RulesService _rulesService = RulesService();
 
   static const _methodChannel = MethodChannel('app.theguardian.child/system');
-  static const _webEventChannel = EventChannel(
-    'app.theguardian.child/web_events',
-  );
-  static const _keywordEventChannel = EventChannel(
-    'app.theguardian.child/keyword_events',
-  );
 
   // ── Packages par catégorie ───────────────────────────────────────────────
   static const socialMedia = {
@@ -157,10 +154,15 @@ class EnforcementService {
   String? _lastReportedUrl;
   DateTime? _lastScreenTimeReport;
   DateTime? _lastUiUpdate;
-  StreamSubscription? _webSubscription;
-  StreamSubscription? _keywordSubscription;
   int _lastReportedMinutes = 0;
   bool _initialFastTickDone = false; // Permet un tick rapide au démarrage
+
+  // FIX boucle de blocage : ne ré-afficher l'écran de blocage Flutter que sur
+  // une transition non-bloqué -> bloqué, pas à chaque tick tant que c'est bloqué.
+  // Sans ça, onBlockRequired est rappelé en boucle (toutes les 60s ou à chaque
+  // changement de règles) tant que frontPackage reste sur l'app bloquée, ce qui
+  // empile sans fin de nouveaux BlockingScreen via pushAndRemoveUntil.
+  String? _lastBlockedSignature;
 
   // ── Throttling d'alertes ─────────────────────────────────────────────────
   DateTime? _lastOutsideHoursAlert;
@@ -240,13 +242,13 @@ class EnforcementService {
     _onRulesChanged(_rulesService.current);
 
     // FIX #3 : Tick rapide (5s) au démarrage pour une réaction immédiate,
-    // puis passage au tick régulier de 10 secondes pour le débogage/réactivité.
+    // puis passage au tick régulier de 60 secondes.
     Timer(const Duration(seconds: 5), () async {
       if (_isRunning) {
         await _tick();
         _initialFastTickDone = true;
-        _checkTimer = Timer.periodic(const Duration(seconds: 10), (_) => _tick());
-        debugPrint('EnforcementService: Switched to 10s periodic timer.');
+        _checkTimer = Timer.periodic(const Duration(seconds: 60), (_) => _tick());
+        debugPrint('EnforcementService: Switched to 60s periodic timer.');
       }
     });
 
@@ -258,10 +260,6 @@ class EnforcementService {
     _checkTimer = null;
     _checkingTimeoutTimer?.cancel();
     _checkingTimeoutTimer = null;
-    await _webSubscription?.cancel();
-    _webSubscription = null;
-    await _keywordSubscription?.cancel();
-    _keywordSubscription = null;
     _rulesService.removeListener(_onRulesChanged);
     await _rulesService.stop();
     _isRunning = false;
@@ -278,6 +276,7 @@ class EnforcementService {
     updateNativeBlockedPackages(blocked);
     updateNativeCustomKeywords(rules.customKeywords);
     updateNativeBlockedWebsites(rules.blockedWebsites);
+    updateNativeCategoryFilters(rules);
 
     // Le VPN est désactivé au profit de l'Accessibilité
     /*
@@ -319,6 +318,24 @@ class EnforcementService {
     }
   }
   */
+
+  Future<void> updateNativeCategoryFilters(ActiveRules rules) async {
+    if (!Platform.isAndroid) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('guardian_block_adult', rules.blockAdultContent);
+      await prefs.setBool('guardian_block_violence', rules.blockViolence);
+      await prefs.setBool('guardian_block_gambling', rules.blockGambling);
+      await prefs.setBool('guardian_block_drugs', rules.blockDrugs);
+      await prefs.setBool('guardian_block_sexual_predators', rules.blockSexualPredators);
+      await prefs.setBool('guardian_block_self_harm', rules.blockSelfHarm);
+      await prefs.setBool('guardian_block_cyberbullying', rules.blockCyberbullying);
+      await prefs.setBool('guardian_block_eating_disorders', rules.blockEatingDisorders);
+      debugPrint('EnforcementService: Wrote category filters to SharedPreferences');
+    } catch (e) {
+      debugPrint('EnforcementService: Failed to write category filters to SharedPreferences: $e');
+    }
+  }
 
   Future<void> updateNativeBlockedPackages(Set<String> packages) async {
     if (!Platform.isAndroid) return;
@@ -595,11 +612,12 @@ class EnforcementService {
 
             // FIX #1 : alerte Firestore uniquement si onboarding terminé
             if (onboardingComplete) {
-              await _alertService.sendAlert(
-                type: AlertType.appTimeLimit,
-                detail:
-                    'Alerte de temps : Votre enfant a essayé d\'ouvrir l\'application ${_getAppName(frontPackage)}, mais sa limite d\'utilisation pour cette application ($appLimit minutes) est atteinte.',
-              );
+            await _alertService.sendAlert(
+              type: AlertType.appTimeLimit,
+              cooldownKey: frontPackage,
+              detail:
+                  'Alerte de temps : Votre enfant a essayé d\'ouvrir l\'application ${_getAppName(frontPackage)}, mais sa limite d\'utilisation pour cette application ($appLimit minutes) est atteinte.',
+            );
             }
           }
         }
@@ -616,6 +634,7 @@ class EnforcementService {
           if (onboardingComplete) {
             await _alertService.sendAlert(
               type: AlertType.blockedApp,
+              cooldownKey: frontPackage,
               detail:
                   'Alerte de sécurité : Votre enfant a tenté d\'ouvrir l\'application ${_getAppName(frontPackage)}, qui fait partie des applications que vous avez bloquées.',
             );
@@ -629,9 +648,23 @@ class EnforcementService {
       if (blockReason != null && frontPackage != null) {
         await prefs.setString('guardian_block_reason', blockReason);
         await prefs.setString('guardian_block_reason_$frontPackage', blockReason);
-        onBlockRequired?.call(blockReason);
+
+        // FIX boucle de blocage : signature unique de cet état de blocage
+        // (app + motif). On ne notifie l'UI que si cette signature est
+        // nouvelle par rapport au tick précédent — pas à chaque tick tant
+        // que la même app reste bloquée au premier plan.
+        final blockSignature = '$frontPackage|$blockReason';
+        if (blockSignature != _lastBlockedSignature) {
+          _lastBlockedSignature = blockSignature;
+          onBlockRequired?.call(blockReason);
+        }
       } else if (frontPackage != null) {
         await prefs.remove('guardian_block_reason_$frontPackage');
+        _lastBlockedSignature = null;
+      } else {
+        // Aucune app au premier plan détectée (ex: retour à l'accueil) :
+        // on réinitialise pour permettre un nouveau blocage à la prochaine détection.
+        _lastBlockedSignature = null;
       }
 
       // Mettre à jour la liste des packages bloqués
@@ -657,13 +690,31 @@ class EnforcementService {
 
   void handleNativeForegroundEvent(Map<dynamic, dynamic> data) {
     final pkg = data['package'] as String?;
-    if (pkg != null && pkg.isNotEmpty && !_isSystemApp(pkg)) {
-      if (_currentForegroundPackage != pkg) {
-        _currentForegroundPackage = pkg;
-        debugPrint('EnforcementService: Foreground package updated: $pkg');
+    if (pkg == null || pkg.isEmpty) return;
+
+    if (pkg == 'app.theguardian.child' || _isSystemApp(pkg)) {
+      // FIX boucle de blocage : un retour à l'accueil (launcher système) ou
+      // sur Guardian lui-même doit LIBÉRER frontPackage, pas être ignoré.
+      // L'ancien code ignorait silencieusement ces événements, ce qui
+      // laissait _currentForegroundPackage figé sur la dernière app bloquée
+      // indéfiniment — chaque tick redétectait alors cette app comme "au
+      // premier plan" et redéclenchait le blocage en boucle, même quand
+      // l'enfant était revenu sur le dashboard de Guardian.
+      if (_currentForegroundPackage != null) {
+        debugPrint('EnforcementService: Foreground returned to system/self ($pkg) — clearing frontPackage.');
+        _currentForegroundPackage = null;
         if (!_isChecking) {
           Future.microtask(_tick);
         }
+      }
+      return;
+    }
+
+    if (_currentForegroundPackage != pkg) {
+      _currentForegroundPackage = pkg;
+      debugPrint('EnforcementService: Foreground package updated: $pkg');
+      if (!_isChecking) {
+        Future.microtask(_tick);
       }
     }
   }
@@ -726,6 +777,14 @@ class EnforcementService {
     final url = (event['url'] as String? ?? '').toLowerCase();
     final pkg = (event['package'] as String? ?? '');
     String? searchQuery = event['searchQuery'] as String?;
+    final String? title = event['title'] as String?;
+    final String? category = event['category'] as String?;
+    final String? riskLevel = event['riskLevel'] as String?;
+    final bool isSiteBlocked = event['isSiteBlocked'] as bool? ?? false;
+    final bool isWordBlocked = event['isWordBlocked'] as bool? ?? false;
+    final String status = event['status'] as String? ?? 'Autorisé';
+    final String? date = event['date'] as String?;
+    final String? time = event['time'] as String?;
     final rules = _rulesService.current;
 
     if (url.isEmpty) return;
@@ -735,37 +794,61 @@ class EnforcementService {
       searchQuery = _extractSearchQuery(url);
     }
 
-    // Historique (Supporte maintenant les URLs "nues" sans http)
+    // Historique
     if (url != _lastReportedUrl) {
       _lastReportedUrl = url;
-      _reportUrlHistory(url, pkg, searchQuery: searchQuery);
+      _reportUrlHistory(
+        url,
+        pkg,
+        searchQuery: searchQuery,
+        title: title,
+        category: category,
+        riskLevel: riskLevel,
+        isSiteBlocked: isSiteBlocked,
+        isWordBlocked: isWordBlocked,
+        status: status,
+        date: date,
+        time: time,
+      );
+    }
+
+    if (status == 'Bloqué') {
+      final domain = Uri.tryParse(url)?.host ?? url;
+      _alertService.sendAlert(
+        type: AlertType.blockedApp,
+        cooldownKey: isWordBlocked ? 'search:$searchQuery' : 'web:$domain',
+        detail: isWordBlocked
+            ? 'Alerte de recherche : Votre enfant a recherché "$searchQuery" (Mot ou catégorie bloqué(e)).'
+            : 'Alerte de navigation : Votre enfant a tenté de visiter le site restreint $url.',
+      );
+      return;
     }
 
     if (searchQuery != null && searchQuery.isNotEmpty) {
-      // 2. Détecter si la recherche porte sur des catégories restreintes
+      // 2. Détecter si la recherche porte sur des catégories restreintes (fallback)
       bool shouldBlock = false;
-      String category = '';
+      String cat = '';
 
       if (rules.blockAdultContent && _matchesKeywords(searchQuery, _adultKeywords)) {
-        shouldBlock = true; category = 'Contenu Adulte';
+        shouldBlock = true; cat = 'Contenu Adulte';
       } else if (rules.blockViolence && _matchesKeywords(searchQuery, _violenceKeywords)) {
-        shouldBlock = true; category = 'Violence';
+        shouldBlock = true; cat = 'Violence';
       } else if (rules.blockGambling && _matchesKeywords(searchQuery, _gamblingKeywords)) {
-        shouldBlock = true; category = 'Jeux d\'argent';
+        shouldBlock = true; cat = 'Jeux d\'argent';
       } else if (rules.blockDrugs && _matchesKeywords(searchQuery, _drugsKeywords)) {
-        shouldBlock = true; category = 'Drogues';
+        shouldBlock = true; cat = 'Drogues';
       } else if (rules.blockSexualPredators && _matchesKeywords(searchQuery, _predatorsKeywords)) {
-        shouldBlock = true; category = 'Rencontres/Prédateurs';
+        shouldBlock = true; cat = 'Rencontres/Prédateurs';
       } else if (rules.blockSelfHarm && _matchesKeywords(searchQuery, _selfHarmKeywords)) {
-        shouldBlock = true; category = 'Auto-mutilation';
+        shouldBlock = true; cat = 'Auto-mutilation';
       } else if (rules.blockCyberbullying && _matchesKeywords(searchQuery, _bullyingKeywords)) {
-        shouldBlock = true; category = 'Cyber-harcèlement';
+        shouldBlock = true; cat = 'Cyber-harcèlement';
       } else if (rules.blockEatingDisorders && _matchesKeywords(searchQuery, _eatingKeywords)) {
-        shouldBlock = true; category = 'Troubles alimentaires';
+        shouldBlock = true; cat = 'Troubles alimentaires';
       }
 
       if (shouldBlock) {
-        _triggerWebSearchBlock(url, searchQuery, category);
+        _triggerWebSearchBlock(url, searchQuery, cat);
         return;
       }
     }
@@ -853,6 +936,7 @@ class EnforcementService {
 
     await _alertService.sendAlert(
       type: AlertType.blockedApp,
+      cooldownKey: 'search:$searchQuery',
       detail: 'Votre enfant a cherché "$searchQuery"',
     );
 
@@ -863,10 +947,22 @@ class EnforcementService {
     }
   }
 
-  Future<void> _reportUrlHistory(String url, String package, {String? searchQuery}) async {
+  Future<void> _reportUrlHistory(
+    String url,
+    String package, {
+    String? searchQuery,
+    String? title,
+    String? category,
+    String? riskLevel,
+    bool? isSiteBlocked,
+    bool? isWordBlocked,
+    String? status,
+    String? date,
+    String? time,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final childPath = prefs.getString('child_path');
+      final childPath = await readChildPath(prefs);
       if (childPath == null) return;
 
       final today = _todayString();
@@ -894,15 +990,22 @@ class EnforcementService {
         'domain': domain,
         'package': package,
         'searchQuery': searchQuery,
-        'title': searchQuery != null && searchQuery.isNotEmpty 
+        'title': title ?? (searchQuery != null && searchQuery.isNotEmpty 
             ? 'Recherche : "$searchQuery"'
             : (Uri.tryParse(url)?.path != null && Uri.tryParse(url)!.path.length > 1 
                 ? Uri.tryParse(url)!.path 
-                : domain),
+                : domain)),
+        'category': category ?? 'Aucune',
+        'riskLevel': riskLevel ?? 'Faible',
+        'isSiteBlocked': isSiteBlocked ?? false,
+        'isWordBlocked': isWordBlocked ?? false,
+        'status': status ?? 'Autorisé',
+        'date': date ?? today,
+        'time': time ?? '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      debugPrint('EnforcementService: 🌐 Web stats and history synced.');
+      debugPrint('EnforcementService: 🌐 Enriched web history synced to Firestore.');
     } catch (e) {
       debugPrint('EnforcementService: _reportUrlHistory error: $e');
     }
@@ -924,6 +1027,7 @@ class EnforcementService {
 
     await _alertService.sendAlert(
       type: AlertType.blockedApp,
+      cooldownKey: 'web:$domain',
       detail:
           'Alerte de navigation : Votre enfant a tenté de visiter le site web restreint suivant : $url',
     );
@@ -955,6 +1059,7 @@ class EnforcementService {
 
     await _alertService.sendAlert(
       type: AlertType.keywordDetected,
+      cooldownKey: keyword,
       detail:
           'Alerte de contenu : Le mot-clé sensible "$keyword" a été détecté pendant l\'utilisation de l\'application ${_getAppName(pkg)}.',
     );
@@ -994,8 +1099,17 @@ class EnforcementService {
       for (final event in foregroundEvents) {
         final pkg = event.packageName;
         if (pkg == null || pkg.isEmpty) continue;
-        if (pkg == 'app.theguardian.child') continue;
-        if (_isSystemApp(pkg)) continue;
+        // FIX boucle de blocage : si l'événement le plus récent est un retour
+        // à l'accueil / au launcher / à Guardian lui-même, cela signifie que
+        // l'utilisateur a QUITTÉ l'app précédente. Il ne faut pas continuer à
+        // chercher plus loin dans le passé (sinon on retombe sur l'ancienne
+        // app, ex: WhatsApp, alors que l'enfant est en réalité revenu sur le
+        // dashboard) — il faut s'arrêter et considérer qu'aucune app
+        // utilisateur n'est au premier plan.
+        if (pkg == 'app.theguardian.child' || _isSystemApp(pkg)) {
+          _currentForegroundPackage = null;
+          return null;
+        }
         _currentForegroundPackage = pkg;
         return pkg;
       }
@@ -1042,7 +1156,7 @@ class EnforcementService {
     _lastReportedMinutes = minutes;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final childPath = prefs.getString('child_path');
+      final childPath = await readChildPath(prefs);
       final childId = prefs.getString('child_id');
       final parentId = prefs.getString('parent_id');
       if (childPath == null || childId == null) return;
@@ -1095,66 +1209,11 @@ class EnforcementService {
     return h * 60 + m;
   }
 
-  bool _isSystemApp(String pkg) {
-    // ✅ Ne jamais considérer comme système une app explicitement bloquée
-    final rules = _rulesService.current;
-    if (rules.blockedApps.contains(pkg)) return false;
-    if (socialMedia.contains(pkg)) return false;
-    if (gaming.contains(pkg)) return false;
-
-    // Apps Google utilisateur (bloquables)
-    const userGoogleApps = {
-      'com.google.android.youtube',
-      'com.google.android.apps.youtube.kids',
-      'com.google.android.apps.maps',
-      'com.google.android.gm',
-      'com.google.android.googlequicksearchbox',
-    };
-    if (userGoogleApps.contains(pkg)) return false;
-
-    // Apps Android utilisateur (bloquables)
-    const userAndroidApps = {
-      'com.android.chrome',
-      'com.android.vending',
-    };
-    if (userAndroidApps.contains(pkg)) return false;
-
-    // Apps MIUI utilisateur (bloquables)
-    const userMiuiApps = {
-      'com.miui.gallery',
-      'com.miui.video',
-      'com.miui.player',
-      'com.miui.notes',
-      'com.miui.browser',
-    };
-    if (userMiuiApps.contains(pkg)) return false;
-
-    return pkg.startsWith('com.android.') ||
-        pkg.startsWith('com.google.android.') ||
-        pkg.startsWith('com.miui.') ||
-        pkg.startsWith('com.xiaomi.') ||
-        pkg.startsWith('com.qualcomm.') ||
-        pkg.startsWith('com.mediatek.') ||
-        pkg.startsWith('com.samsung.') ||
-        pkg.startsWith('com.huawei.') ||
-        pkg.startsWith('com.oppo.') ||
-        pkg.startsWith('com.vivo.') ||
-        pkg.startsWith('com.oneplus.') ||
-        pkg.startsWith('com.coloros.') ||
-        pkg.startsWith('com.heytap.') ||
-        pkg.startsWith('com.bbk.') ||
-        pkg == 'android' ||
-        pkg == 'com.miui.home' ||
-        pkg == 'com.miui.securitycenter' ||
-        pkg == 'com.miui.msa.global' ||
-        pkg == 'com.miui.bugreport' ||
-        pkg == 'com.miui.daemon' ||
-        pkg == 'com.miui.analytics' ||
-        pkg == 'com.xiaomi.market' ||
-        pkg == 'com.xiaomi.simactivate.service' ||
-        pkg == 'com.lbe.security.miui' ||
-        pkg == 'app.theguardian.child';
-  }
+  bool _isSystemApp(String pkg) => SystemAppClassifier.forEnforcement(
+        pkg,
+        blockedByParent: _rulesService.current.blockedApps,
+        additionalUserPackages: {...socialMedia, ...gaming},
+      );
 
   String _todayString() {
     final n = DateTime.now();

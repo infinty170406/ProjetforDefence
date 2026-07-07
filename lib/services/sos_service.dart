@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/child_path_helper.dart';
 
 /// SosService
 ///
@@ -40,7 +41,7 @@ class SosService {
       final prefs = await SharedPreferences.getInstance();
       final childId = prefs.getString('child_id');
       final parentId = prefs.getString('parent_id');
-      final childPath = prefs.getString('child_path');
+      final childPath = await readChildPath(prefs);
       if (childId == null || childPath == null || parentId == null) {
         debugPrint('SosService: child_id, parent_id or child_path not found.');
         return false;

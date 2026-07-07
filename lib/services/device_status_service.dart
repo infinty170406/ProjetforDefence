@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:battery_plus/battery_plus.dart';
+import '../utils/child_path_helper.dart';
 
 /// DeviceStatusService
 ///
@@ -55,8 +56,7 @@ class DeviceStatusService {
 
   Future<void> _updateStatus(String status) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.reload(); // IMPORTANT : recharger les données depuis le disque
-    final childPath = prefs.getString('child_path');
+    final childPath = await readChildPath(prefs);
     if (childPath == null) {
       debugPrint('DeviceStatusService: ⚠️ Cannot update status: child_path is NULL in SharedPreferences.');
       return;

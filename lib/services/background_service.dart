@@ -175,8 +175,11 @@ class BackgroundService {
     }
 
     service.on('stopService').listen((_) async {
-      await MonitoringService().stopMonitoring();
-      service.stopSelf();
+      try {
+        await MonitoringService().stopMonitoring();
+      } finally {
+        service.stopSelf();
+      }
     });
 
     // L'app UI nous prévient quand le jumelage est fini

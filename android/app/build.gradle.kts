@@ -57,6 +57,7 @@ dependencies {
     implementation("androidx.core:core:1.13.1")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+    testImplementation("junit:junit:4.13.2")
 }
 
 configurations.all {
@@ -66,5 +67,19 @@ configurations.all {
         force("androidx.appcompat:appcompat:1.6.1")
         force("androidx.emoji2:emoji2:1.4.0")
         force("androidx.emoji2:emoji2-views-helper:1.4.0")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Fix : certains plugins Flutter (ex. app_links) ne déclarent pas leur propre
+// buildToolsVersion et retombent sur la version par défaut d'AGP 8.7.0, qui
+// est 34.0.0 — même si ce module "app" force 36.1.0. On force donc la même
+// version de Build Tools sur TOUS les sous-projets pour éviter que Gradle
+// aille chercher une version non installée.
+// ---------------------------------------------------------------------------
+rootProject.subprojects {
+    afterEvaluate {
+        extensions.findByType(com.android.build.gradle.BaseExtension::class.java)
+            ?.buildToolsVersion = "36.1.0"
     }
 }

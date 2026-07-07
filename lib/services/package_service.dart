@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import '../utils/child_path_helper.dart';
 
 /// PackageService
 ///
@@ -18,8 +19,7 @@ class PackageService {
   /// et les envoie dans Firestore pour que le parent puisse les bloquer.
   Future<void> syncInstalledApps() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
-    final childPath = prefs.getString('child_path');
+    final childPath = await readChildPath(prefs);
     if (childPath == null) {
       debugPrint('PackageService: Aborting sync - child_path is null');
       return;

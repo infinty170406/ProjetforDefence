@@ -80,7 +80,7 @@ class LinkHandlerService {
               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
             ),
             SizedBox(width: 16),
-            Text('Pairing device...'),
+            Text('Jumelage en cours...'),
           ],
         ),
         duration: Duration(seconds: 20),
@@ -104,7 +104,7 @@ class LinkHandlerService {
       case LinkStatus.success:
         ScaffoldMessenger.of(currentContext).showSnackBar(
           const SnackBar(
-            content: Text('✅ Device paired successfully!'),
+            content: Text('✅ Appareil jumelé avec succès !'),
             backgroundColor: Colors.green,
           ),
         );
@@ -134,11 +134,11 @@ class LinkHandlerService {
       case LinkStatus.networkError:
         ScaffoldMessenger.of(currentContext).showSnackBar(
           SnackBar(
-            content: Text(result.errorMessage ?? 'Network error during activation.'),
+            content: Text(result.errorMessage ?? 'Erreur réseau lors de l\'activation.'),
             backgroundColor: Colors.redAccent,
             duration: const Duration(seconds: 6),
             action: SnackBarAction(
-              label: 'RETRY',
+              label: 'RÉESSAYER',
               textColor: Colors.white,
               onPressed: () => _handleLink(link),
             ),
