@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
+import 'package:fl_chart/fl_chart.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/app_tile_with_details.dart';
@@ -139,8 +140,60 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width >= 800;
+    final paddingVal = isWide ? 32.0 : 16.0;
+
+    Widget content;
+    if (_isLoading) {
+      content = Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
+    } else if (isWide) {
+      content = Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left Column
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTodaySummary(),
+                const SizedBox(height: 24),
+                _buildInteractiveStatsCard(),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          // Right Column
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTopApps(),
+                const SizedBox(height: 24),
+                _buildWebUsage(),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else {
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildTodaySummary(),
+          const SizedBox(height: 24),
+          _buildInteractiveStatsCard(),
+          const SizedBox(height: 24),
+          _buildTopApps(),
+          const SizedBox(height: 24),
+          _buildWebUsage(),
+        ],
+      );
+    }
+
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -148,24 +201,20 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
             child: RefreshIndicator(
               onRefresh: _loadStats,
               color: AppColors.primary,
-              child: _isLoading
-                  ? Center(
-                      child: CircularProgressIndicator(color: AppColors.primary))
-                  : ListView(
-                      padding: EdgeInsets.all(16),
-                      children: [
-                        _buildHeader(context),
-                        SizedBox(height: 24),
-                        _buildTodaySummary(),
-                        SizedBox(height: 24),
-                        _buildInteractiveStatsCard(),
-                        SizedBox(height: 24),
-                        _buildTopApps(),
-                        SizedBox(height: 24),
-                        _buildWebUsage(),
-                        SizedBox(height: 40),
-                      ],
-                    ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: isWide ? 1200 : double.infinity),
+                  child: ListView(
+                    padding: EdgeInsets.all(paddingVal),
+                    children: [
+                      _buildHeader(context),
+                      const SizedBox(height: 24),
+                      content,
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -358,7 +407,7 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
               SizedBox(height: 4),
               Row(
                 children: [
-                  Icon(Icons.info_outline, color: AppColors.textGray400, size: 12),
+                  Icon(Icons.info_outline, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 12),
                   SizedBox(width: 4),
                   Text(
                     'Based on browser history from child\'s device',
@@ -447,7 +496,7 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
               _buildTimeStat('Used', _formatMinutes(used), Theme.of(context).colorScheme.onSurface),
               SizedBox(width: 32),
               _buildTimeStat('Allocated', _formatMinutes(limit),
-                  AppColors.textGray400),
+                  Theme.of(context).colorScheme.onSurfaceVariant),
             ],
           ),
           SizedBox(height: 16),
@@ -549,7 +598,9 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Theme.of(context).colorScheme.onSurface : AppColors.textGray400,
+            color: isSelected
+                ? Colors.white
+                : Theme.of(context).colorScheme.onSurfaceVariant,
             fontSize: 12,
             fontWeight: FontWeight.bold,
           ),
@@ -591,72 +642,7 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
       final sortedCats = catMinutes.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              height: 12,
-              width: double.infinity,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
-              child: Row(
-                children: sortedCats.map((entry) {
-                  final ratio = total > 0 ? entry.value / total : 0.0;
-                  if (ratio <= 0) return SizedBox();
-                  return Expanded(
-                    flex: (ratio * 100).toInt().clamp(1, 100),
-                    child: Container(
-                      color: _categoryColor(entry.key),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-          SizedBox(height: 20),
-          ...sortedCats.map((entry) {
-            final mins = entry.value;
-            final ratio = total > 0 ? mins / total : 0.0;
-            return Padding(
-              padding: EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: _categoryColor(entry.key),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: _categoryColor(entry.key).withValues(alpha: 0.4),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Text(
-                    _formatCategoryName(entry.key),
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13, fontWeight: FontWeight.w500),
-                  ),
-                  Spacer(),
-                  Text(
-                    _formatMinutes(mins),
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    '(${(ratio * 100).toStringAsFixed(0)}%)',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ],
-      );
+      return _buildDonutChart(sortedCats, total);
     } else if (_selectedPeriod == 'week') {
       if (_weekStats.isEmpty) {
         return SizedBox(
@@ -796,6 +782,196 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
         ),
       );
     }
+  }
+
+  int _touchedIndex = -1;
+
+  Widget _buildDonutChart(List<MapEntry<String, int>> sortedCats, int total) {
+    final sections = <PieChartSectionData>[];
+    for (int i = 0; i < sortedCats.length; i++) {
+      final entry = sortedCats[i];
+      final ratio = total > 0 ? entry.value / total : 0.0;
+      final isTouched = i == _touchedIndex;
+      final radius = isTouched ? 68.0 : 58.0;
+      final fontSize = isTouched ? 13.0 : 11.0;
+
+      sections.add(PieChartSectionData(
+        color: _categoryColor(entry.key),
+        value: entry.value.toDouble(),
+        title: '${(ratio * 100).toStringAsFixed(0)}%',
+        radius: radius,
+        titleStyle: TextStyle(
+          fontSize: fontSize,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+          shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
+        ),
+        badgeWidget: null,
+      ));
+    }
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 220,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              PieChart(
+                PieChartData(
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                      setState(() {
+                        if (!event.isInterestedForInteractions ||
+                            pieTouchResponse == null ||
+                            pieTouchResponse.touchedSection == null) {
+                          _touchedIndex = -1;
+                          return;
+                        }
+                        _touchedIndex =
+                            pieTouchResponse.touchedSection!.touchedSectionIndex;
+                      });
+                    },
+                  ),
+                  sectionsSpace: 3,
+                  centerSpaceRadius: 58,
+                  sections: sections,
+                  startDegreeOffset: -90,
+                ),
+                swapAnimationDuration: const Duration(milliseconds: 400),
+                swapAnimationCurve: Curves.easeInOutCubic,
+              ),
+              // Centre du donut : temps total
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _formatMinutes(total),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Total',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Légende
+        Wrap(
+          spacing: 16,
+          runSpacing: 10,
+          children: sortedCats.asMap().entries.map((e) {
+            final i = e.key;
+            final entry = e.value;
+            final mins = entry.value;
+            final ratio = total > 0 ? mins / total : 0.0;
+            final isSelected = i == _touchedIndex;
+            return GestureDetector(
+              onTap: () => setState(() => _touchedIndex = isSelected ? -1 : i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? _categoryColor(entry.key).withValues(alpha: 0.15)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? _categoryColor(entry.key)
+                        : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: _categoryColor(entry.key),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _categoryColor(entry.key).withValues(alpha: 0.4),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _formatCategoryName(entry.key),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${(ratio * 100).toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
+        // Détail de la catégorie touchée
+        if (_touchedIndex >= 0 && _touchedIndex < sortedCats.length)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: _categoryColor(sortedCats[_touchedIndex].key).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: _categoryColor(sortedCats[_touchedIndex].key).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _formatCategoryName(sortedCats[_touchedIndex].key),
+                    style: TextStyle(
+                      color: _categoryColor(sortedCats[_touchedIndex].key),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '— ${_formatMinutes(sortedCats[_touchedIndex].value)}',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   Color _categoryColor(String cat) {

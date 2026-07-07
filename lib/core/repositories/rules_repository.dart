@@ -25,7 +25,7 @@ class RulesRepository {
   /// Sauvegarde les règles avec validation
   Future<void> saveRules(String childId, ChildRules rules) async {
     // La validation est faite dans le constructeur de ChildRules
-    final data = rules.toJson();
+    final data = rules.copyWith(rulesConfigured: true).toJson();
     // NOTE: childDeviceUid n'est PAS défini ici — il est défini une seule fois
     // lors de l'appairage (child_pairing_screen) avec l'UID Auth anonyme
     // de l'appareil enfant. Le parent ne le connaît pas et ne doit jamais l'écraser.
@@ -46,6 +46,7 @@ class RulesRepository {
       'blockedApps': block 
           ? FieldValue.arrayUnion([packageName]) 
           : FieldValue.arrayRemove([packageName]),
+      'rulesConfigured': true,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -56,6 +57,7 @@ class RulesRepository {
       'blockedWebsites': block
           ? FieldValue.arrayUnion([domain])
           : FieldValue.arrayRemove([domain]),
+      'rulesConfigured': true,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -74,6 +76,7 @@ class RulesRepository {
   Future<void> updateDailyLimit(String childId, int limit) async {
     await _rulesDoc(childId).set({
       'dailyLimitMinutes': limit,
+      'rulesConfigured': true,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
     // Sync to child doc
@@ -95,6 +98,7 @@ class RulesRepository {
   Future<void> updateBlockedApps(String childId, List<String> blockedApps) async {
     await _rulesDoc(childId).set({
       'blockedApps': blockedApps,
+      'rulesConfigured': true,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

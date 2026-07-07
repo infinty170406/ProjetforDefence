@@ -230,60 +230,96 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width > 800;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    Widget body = Column(
+      children: [
+        _buildHeader(),
+        Expanded(
+          child: _isLoading
+              ? Center(
+                  child: CircularProgressIndicator(
+                      color: AppColors.primary))
+              : RefreshIndicator(
+                  onRefresh: _fetchChildren,
+                  color: AppColors.primary,
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.all(isWide ? 32 : 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildGreetingSection(),
+                        const SizedBox(height: 32),
+                        if (_currentState == GuardianState.noChild) ...[
+                          _buildEmptyState(),
+                        ] else if (isWide) ...[
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Left column: Children list
+                              Expanded(
+                                flex: 3,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildFamilyOverviewHeader(),
+                                    const SizedBox(height: 12),
+                                    ...(_children
+                                        .map((child) => _buildChildCard(child))),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 32),
+                              // Right column: AI orchestrator & KYC banners
+                              Expanded(
+                                flex: 2,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 48), // aligns with overview header
+                                    _buildAiOrchestratorBanner(),
+                                    if (!ApiService().isKycVerified) ...[
+                                      const SizedBox(height: 16),
+                                      _buildKycBanner(),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ] else ...[
+                          _buildFamilyOverviewHeader(),
+                          ...(_children
+                              .map((child) => _buildChildCard(child))),
+                          const SizedBox(height: 16),
+                          _buildAiOrchestratorBanner(),
+                          if (!ApiService().isKycVerified) ...[
+                            const SizedBox(height: 8),
+                            _buildKycBanner(),
+                          ],
+                        ],
+                        const SizedBox(height: 100),
+                      ],
+                    ),
+                  ),
+                ),
+        ),
+      ],
+    );
+
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
       body: Stack(
         children: [
-          if (Theme.of(context).brightness == Brightness.dark)
+          if (isDark)
             const Positioned.fill(child: LiquidBackground()),
           SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(),
-                Expanded(
-                  child: _isLoading
-                      ? Center(
-                          child: CircularProgressIndicator(
-                              color: AppColors.primary))
-                      : RefreshIndicator(
-                          onRefresh: _fetchChildren,
-                          color: AppColors.primary,
-                          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                          child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: EdgeInsets.all(24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildGreetingSection(),
-                                SizedBox(height: 32),
-                                if (_currentState == GuardianState.noChild) ...[
-                                  _buildEmptyState(),
-                                ] else ...[
-                                  _buildFamilyOverviewHeader(),
-                                  ...(_children
-                                      .map((child) => _buildChildCard(child))),
-                                  SizedBox(height: 16),
-                                  _buildAiOrchestratorBanner(),
-                                  SizedBox(height: 8),
-                                  _buildKycBanner(),
-                                ],
-                                SizedBox(height: 100),
-                              ],
-                            ),
-                          ),
-                        ),
-                ),
-              ],
-            ),
+            child: body,
           ),
-          Positioned(
-              bottom: 24, left: 0, right: 0, child: _buildFloatingNavBar()),
-          Positioned(
-              bottom: 24,
-              left: 0,
-              right: 0,
-              child: _buildCenterFloatingButton()),
         ],
       ),
     );
@@ -734,7 +770,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // SAME: floating navbar - no design change
   Widget _buildFloatingNavBar() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final double navWidth = MediaQuery.of(context).size.width * 0.9;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double navWidth = screenWidth > 800 ? 500.0 : screenWidth * 0.9;
     final double itemWidth = (navWidth - 24) / 5;
 
     return Center(

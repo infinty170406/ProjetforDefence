@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
+import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_text_field.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/notification_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool isAdmin;
+  const LoginScreen({super.key, this.isAdmin = false});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -60,7 +62,9 @@ class _LoginScreenState extends State<LoginScreen> {
       // SYNC PUSH TOKEN
       await NotificationService().syncToken();
       
-      if (mounted) context.go('/dashboard');
+      if (mounted) {
+        context.go(widget.isAdmin ? '/admin' : '/dashboard');
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -80,7 +84,9 @@ class _LoginScreenState extends State<LoginScreen> {
       // SYNC PUSH TOKEN
       await NotificationService().syncToken();
       
-      if (mounted) context.go('/dashboard');
+      if (mounted) {
+        context.go(widget.isAdmin ? '/admin' : '/dashboard');
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -103,96 +109,113 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isWebWide = width > 800;
+
+    Widget content = SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 48),
+          Text('Login',
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text('Happy to see you again.',
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 18)),
+          const SizedBox(height: 40),
+          _buildGoogleButton(),
+          const SizedBox(height: 20),
+          _buildDivider(),
+          const SizedBox(height: 20),
+          CustomTextField(
+            controller: _emailController,
+            hint: 'Email',
+            prefixIcon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            errorText: _emailError,
+          ),
+          const SizedBox(height: 16),
+          CustomTextField(
+            controller: _passwordController,
+            hint: 'Password',
+            prefixIcon: Icons.lock_outline,
+            obscureText: _obscurePassword,
+            suffixIcon: _obscurePassword
+                ? Icons.visibility_off
+                : Icons.visibility,
+            onSuffixTap: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
+            errorText: _passwordError,
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => context.push('/forgot-password'),
+              child: const Text('Forgot password?',
+                  style: TextStyle(color: AppColors.primary)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          CustomButton(
+            text: _isLoading ? 'Logging in...' : 'Login',
+            onPressed: _isLoading ? null : _handleLogin,
+          ),
+          const SizedBox(height: 28),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text("Don't have an account? ",
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70))),
+              GestureDetector(
+                onTap: () => context.push('/signup'),
+                child: const Text('Sign Up',
+                    style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Center(
+            child: TextButton.icon(
+              icon: const Icon(Icons.phonelink_setup, size: 16),
+              label: const Text('Setup child device'),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.60),
+              ),
+              onPressed: () => context.push('/child/pair'),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (isWebWide) {
+      content = Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: GlassCard(
+            margin: const EdgeInsets.symmetric(vertical: 40),
+            padding: const EdgeInsets.all(8),
+            child: content,
+          ),
+        ),
+      );
+    } else {
+      content = SafeArea(child: content);
+    }
+
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 48),
-                  Text('Login',
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 40,
-                          fontWeight: FontWeight.bold)),
-                  SizedBox(height: 8),
-                  Text('Happy to see you again.',
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 18)),
-                  SizedBox(height: 40),
-                  _buildGoogleButton(),
-                  SizedBox(height: 20),
-                  _buildDivider(),
-                  SizedBox(height: 20),
-                  CustomTextField(
-                    controller: _emailController,
-                    hint: 'Email',
-                    prefixIcon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    errorText: _emailError,
-                  ),
-                  SizedBox(height: 16),
-                  CustomTextField(
-                    controller: _passwordController,
-                    hint: 'Password',
-                    prefixIcon: Icons.lock_outline,
-                    obscureText: _obscurePassword,
-                    suffixIcon: _obscurePassword
-                        ? Icons.visibility_off
-                        : Icons.visibility,
-                    onSuffixTap: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                    errorText: _passwordError,
-                  ),
-                  SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => context.push('/forgot-password'),
-                      child: Text('Forgot password?',
-                          style: TextStyle(color: AppColors.primary)),
-                    ),
-                  ),
-                  SizedBox(height: 12),
-                  CustomButton(
-                    text: _isLoading ? 'Logging in...' : 'Login',
-                    onPressed: _isLoading ? null : _handleLogin,
-                  ),
-                  SizedBox(height: 28),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text("Don't have an account? ",
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70))),
-                      GestureDetector(
-                        onTap: () => context.push('/signup'),
-                        child: Text('Sign Up',
-                            style: TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 24),
-                  Center(
-                    child: TextButton.icon(
-                      icon: Icon(Icons.phonelink_setup, size: 16),
-                      label: Text('Setup child device'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.60),
-                      ),
-                      onPressed: () => context.push('/child/pair'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          content,
         ],
       ),
     );

@@ -4,6 +4,7 @@ import 'alert_model.dart';
 import 'chat_message.dart';
 import 'app_state.dart';
 import '../services/global_monitor_service.dart';
+import '../services/ai/guardian_agent_service.dart';
 
 class AppStateManager extends ChangeNotifier {
   GuardianState _state = GuardianState.unauthenticated;
@@ -54,8 +55,11 @@ class AppStateManager extends ChangeNotifier {
     _state = newState;
     if (newState == GuardianState.authenticated) {
       GlobalMonitorService().initialize(this);
+      // Démarre l'agent IA (surveillance + enrichissement des alertes en continu).
+      GuardianAgentService().start();
     } else if (newState == GuardianState.unauthenticated) {
       GlobalMonitorService().dispose();
+      GuardianAgentService().stop();
       _alerts.clear();
       _chatHistory.clear();
     }
@@ -85,6 +89,7 @@ class AppStateManager extends ChangeNotifier {
   @override
   void dispose() {
     GlobalMonitorService().dispose();
+    GuardianAgentService().stop();
     super.dispose();
   }
-}
+}

@@ -26,6 +26,7 @@ class ChildRules {
   final String? childDeviceUid;
   final String? blockReason;
   final DateTime? updatedAt;
+  final bool rulesConfigured;
 
   ChildRules({
     this.blockedApps = const [],
@@ -53,6 +54,7 @@ class ChildRules {
     this.childDeviceUid,
     this.blockReason,
     this.updatedAt,
+    this.rulesConfigured = false,
   }) {
     // Validation
     if (dailyLimitMinutes < 0) {
@@ -89,6 +91,7 @@ class ChildRules {
       updatedAt: json['updatedAt'] != null 
           ? (json['updatedAt'] as Timestamp).toDate() 
           : null,
+      rulesConfigured: json['rulesConfigured'] ?? false,
     );
   }
 
@@ -119,6 +122,7 @@ class ChildRules {
       if (childDeviceUid != null) 'childDeviceUid': childDeviceUid,
       if (blockReason != null) 'block_reason': blockReason,
       'updatedAt': FieldValue.serverTimestamp(),
+      'rulesConfigured': rulesConfigured,
     };
   }
 
@@ -147,6 +151,7 @@ class ChildRules {
     String? parentId,
     String? childDeviceUid,
     String? blockReason,
+    bool? rulesConfigured,
   }) {
     return ChildRules(
       blockedApps: blockedApps ?? this.blockedApps,
@@ -173,6 +178,7 @@ class ChildRules {
       parentId: parentId ?? this.parentId,
       childDeviceUid: childDeviceUid ?? this.childDeviceUid,
       blockReason: blockReason ?? this.blockReason,
+      rulesConfigured: rulesConfigured ?? this.rulesConfigured,
     );
   }
 }

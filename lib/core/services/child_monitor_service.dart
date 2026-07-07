@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../utils/device_status_helper.dart';
 
 class ChildMonitorService {
   static final ChildMonitorService _instance = ChildMonitorService._internal();
@@ -28,7 +29,7 @@ class ChildMonitorService {
   Stream<String> watchDeviceStatus(String childId, {String? parentId}) => _db
       .doc(_childPath(childId, parentId: parentId))
       .snapshots()
-      .map((s) => (s.data()?['deviceStatus'] as String?) ?? 'OFFLINE');
+      .map((s) => resolveDeviceStatus(s.data()));
 
   // ── GPS Location ──────────────────────────────────────────────────────────
 
@@ -75,8 +76,6 @@ class ChildMonitorService {
   Future<List<Map<String, dynamic>>> getWeekStats(String childId, {String? parentId}) async {
     final appSnap = await _db
         .collection(_statsAppsPath(childId, parentId: parentId))
-        .orderBy(FieldPath.documentId, descending: true)
-        .limit(7)
         .get();
     
     final stats = appSnap.docs.map((d) {
@@ -84,14 +83,14 @@ class ChildMonitorService {
       data['date'] = d.id;
       return data;
     }).toList();
-    return stats;
+
+    stats.sort((a, b) => b['date'].toString().compareTo(a['date'].toString()));
+    return stats.take(7).toList();
   }
 
   Future<List<Map<String, dynamic>>> getMonthStats(String childId, {String? parentId}) async {
     final appSnap = await _db
         .collection(_statsAppsPath(childId, parentId: parentId))
-        .orderBy(FieldPath.documentId, descending: true)
-        .limit(30)
         .get();
     
     final stats = appSnap.docs.map((d) {
@@ -99,7 +98,9 @@ class ChildMonitorService {
       data['date'] = d.id;
       return data;
     }).toList();
-    return stats;
+
+    stats.sort((a, b) => b['date'].toString().compareTo(a['date'].toString()));
+    return stats.take(30).toList();
   }
 
   // ── App inventory ─────────────────────────────────────────────────────────
@@ -141,7 +142,10 @@ class ChildMonitorService {
       .orderBy('timestamp', descending: true)
       .limit(50)
       .snapshots()
-      .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList());
+      .map((s) => s.docs
+          .map((d) => {'id': d.id, ...d.data()})
+          .where((item) => !_isGenericBrowserSession(item))
+          .toList());
 
   Future<QuerySnapshot<Map<String, dynamic>>> getAlertsPaginated(
     String childId, {
@@ -168,7 +172,14 @@ class ChildMonitorService {
         .orderBy('timestamp', descending: true)
         .limit(limit);
     if (startAfter != null) query = query.startAfterDocument(startAfter);
-    return await query.get();
+    final snap = await query.get();
+    return snap;
+  }
+
+  /// Exclut les entrées génériques `browser://…` écrites par l'ancien pipeline UsageStats.
+  bool _isGenericBrowserSession(Map<String, dynamic> item) {
+    final url = item['url'] as String? ?? '';
+    return url.startsWith('browser://');
   }
 
   Stream<Map<String, dynamic>?> watchSingleChild(String childId, {String? parentId}) => _db

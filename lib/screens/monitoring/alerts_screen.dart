@@ -33,18 +33,25 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width >= 800;
+
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(context),
-                _buildFilterBar(),
-                Expanded(child: _buildAlertsList()),
-              ],
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isWide ? 1200 : double.infinity),
+                child: Column(
+                  children: [
+                    _buildHeader(context),
+                    _buildFilterBar(),
+                    Expanded(child: _buildAlertsList()),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -54,14 +61,14 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(8, 8, 24, 0),
+      padding: const EdgeInsets.fromLTRB(8, 8, 24, 0),
       child: Row(
         children: [
           IconButton(
             icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
             onPressed: () => context.pop(),
           ),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,17 +103,17 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: filters.map((f) {
           final isSelected = _filter == f.$1;
           return Padding(
-            padding: EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 8),
             child: GestureDetector(
               onTap: () => setState(() => _filter = f.$1),
               child: Container(
                 padding:
-                    EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppColors.primary
@@ -123,7 +130,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     Icon(f.$3,
                         size: 14,
                         color: isSelected ? Colors.black : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70)),
-                    SizedBox(width: 6),
+                    const SizedBox(width: 6),
                     Text(
                       f.$2,
                       style: TextStyle(
@@ -149,6 +156,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
             style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
       );
     }
+
+    final width = MediaQuery.of(context).size.width;
 
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: ChildMonitorService().watchAlerts(_childId, parentId: _parentId),
@@ -179,21 +188,46 @@ class _AlertsScreenState extends State<AlertsScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.check_circle_outline, color: AppColors.primary, size: 64),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text('No alerts found', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18)),
               ],
             ),
           );
         }
 
-        return ListView.builder(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          itemCount: filteredAlerts.length,
-          itemBuilder: (context, index) {
-            final alert = filteredAlerts[index];
-            return _buildAlertCard(alert);
-          },
-        );
+        if (width < 600) {
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: filteredAlerts.length,
+            itemBuilder: (context, index) {
+              final alert = filteredAlerts[index];
+              return _buildAlertCard(alert);
+            },
+          );
+        } else {
+          final int cols = width <= 1024 ? 2 : 3;
+          final List<List<AlertModel>> columns = List.generate(cols, (_) => []);
+          for (int i = 0; i < filteredAlerts.length; i++) {
+            columns[i % cols].add(filteredAlerts[i]);
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: List.generate(cols, (colIndex) {
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Column(
+                      children: columns[colIndex].map((alert) => _buildAlertCard(alert)).toList(),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          );
+        }
       },
     );
   }
@@ -213,6 +247,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
     return GlassCard(
       margin: EdgeInsets.only(bottom: 12),
       padding: EdgeInsets.all(16),
+      // Tap → écran de détail enrichi par l'agent IA (§4).
+      onTap: () => context.push('/alert/details', extra: {
+        'alert': alert,
+        'child': widget.child,
+      }),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -267,7 +306,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
             Text(detail,
                 style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 14)),
           ],
-          
+
+          // Analyse Guardian (§4) — commentaire IA + badge de risque si présent.
+          if (alert.hasAiAnalysis) _buildAiBadge(alert),
+
           // NEW: Interactive buttons (Allow / Deny)
           if (alert.isInteractive) ...[
             SizedBox(height: 16),
@@ -355,6 +397,76 @@ class _AlertsScreenState extends State<AlertsScreen> {
         ],
       ),
     );
+  }
+
+  /// Encart compact présentant l'analyse de l'agent IA sur la carte d'alerte.
+  Widget _buildAiBadge(AlertModel alert) {
+    final risk = alert.aiRisk ?? 'low';
+    final riskColor = _riskColor(risk);
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: AppColors.accentTeal, size: 15),
+              const SizedBox(width: 6),
+              Text('Analyse Guardian',
+                  style: TextStyle(
+                      color: AppColors.accentTeal,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: riskColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: riskColor.withValues(alpha: 0.4)),
+                ),
+                child: Text(_riskLabel(risk),
+                    style: TextStyle(color: riskColor, fontSize: 10, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(alert.aiComment ?? '',
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
+                  fontSize: 13,
+                  height: 1.4)),
+        ],
+      ),
+    );
+  }
+
+  Color _riskColor(String risk) {
+    switch (risk.toLowerCase()) {
+      case 'critical':
+        return Colors.redAccent;
+      case 'moderate':
+        return Colors.orangeAccent;
+      default:
+        return Colors.greenAccent;
+    }
+  }
+
+  String _riskLabel(String risk) {
+    switch (risk.toLowerCase()) {
+      case 'critical':
+        return 'CRITIQUE';
+      case 'moderate':
+        return 'MODÉRÉ';
+      default:
+        return 'FAIBLE';
+    }
   }
 
   void _handleAlertAction(AlertModel alert, String action) async {

@@ -15,6 +15,7 @@ dependencies:
   google_fonts: ^6.1.0
   flutter_svg: ^2.0.9
   shimmer: ^3.0.0
+  fl_chart: ^0.69.0
 
   # Navigation
   go_router: ^14.6.3
@@ -71,4 +72,6 @@ flutter:
     - .env
     - assets/logo.png
     - assets/guardian_logo.svg
+    - assets/laptop_dashboard_display.png
+    - assets/smartphone_app_display.png
     - assets/model/

@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/child_enforcement_service.dart';
 
 class SplashWelcomeScreen extends StatefulWidget {
   const SplashWelcomeScreen({super.key});
@@ -64,7 +65,10 @@ class _SplashWelcomeScreenState extends State<SplashWelcomeScreen>
             // Non-critical: Firestore reads may fail until next pairing.
           }
         }
-        if (mounted) context.go('/child/dashboard');
+        if (mounted) {
+          await ChildEnforcementService().start();
+          context.go('/child/dashboard');
+        }
         return;
       }
 

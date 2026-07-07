@@ -2,14 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/models/chat_message.dart';
 import '../../core/models/app_state_manager.dart';
 import '../../core/services/firestore_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
-import '../../core/services/ai_webhook_service.dart';
-import '../../core/services/open_router_service.dart';
+import '../../core/services/ai/guardian_agent_service.dart';
 
 class HubChatAiScreen extends StatefulWidget {
   const HubChatAiScreen({super.key});
@@ -22,8 +20,8 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
     with TickerProviderStateMixin {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final OpenRouterService _openRouterService = OpenRouterService();
-  final AiWebhookService _aiWebhookService = AiWebhookService();
+  // Cerveau unique : l'agent IA Guardian (Gemini + contexte Firestore temps réel).
+  final GuardianAgentService _agent = GuardianAgentService();
   final FirestoreService _firestoreService = FirestoreService();
 
   bool _isTyping = false;
@@ -235,14 +233,10 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
         enrichedContext['rules'] = rules;
         enrichedContext['recentAlerts'] = alerts;
       }
-      // Using local Webhook for testing (n8n)
-      final parentId = FirebaseAuth.instance.currentUser?.uid ?? 'unknown_parent';
-      final childId = _selectedChildId ?? 'unknown_child';
-      
-      final response = await _aiWebhookService.sendMessage(
+
+      // Délégation à l'agent IA Guardian (§5 — chat avec contexte temps réel).
+      final response = await _agent.repondreQuestion(
         text,
-        parentId: parentId,
-        childId: childId,
         childContext: enrichedContext,
       );
       if (mounted) {
@@ -317,7 +311,7 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
           stateManager: stateManager,
           onClear: () {
             Navigator.pop(ctx);
-            _openRouterService.clearHistory();
+            _agent.clearChatHistory();
             stateManager.clearChatHistory();
             _sendWelcomeMessage();
           },

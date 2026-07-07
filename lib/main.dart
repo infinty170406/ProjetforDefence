@@ -18,7 +18,8 @@ import 'core/repositories/child_repository.dart';
 import 'core/repositories/rules_repository.dart';
 import 'core/repositories/alert_repository.dart';
 import 'core/repositories/stats_repository.dart';
-import 'services/native_bridge_service.dart';
+import 'core/services/child_enforcement_service.dart';
+import 'core/services/storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,7 +68,7 @@ void main() async {
     ApiService().initialize(),
     NotificationService().initialize(),
     FirestoreService().updateLastActive(),
-    NativeBridgeService.startForegroundService(),
+    _startChildEnforcementIfNeeded(),
   ]).then((_) {
     debugPrint('APP_LOG: Background services initialized.');
   }).catchError((e) {
@@ -80,7 +81,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: stateManager),
-        ChangeNotifierProvider(create: (_) => ApiService()),
+        ChangeNotifierProvider.value(value: ApiService()),
         Provider(create: (_) => ChildRepository()),
         Provider(create: (_) => RulesRepository()),
         Provider(create: (_) => AlertRepository()),
@@ -91,7 +92,14 @@ void main() async {
   );
 }
 
-
+Future<void> _startChildEnforcementIfNeeded() async {
+  final pairing = await StorageService().getChildPairing();
+  if (pairing['mode'] == 'child' &&
+      pairing['parentId'] != null &&
+      pairing['childId'] != null) {
+    await ChildEnforcementService().start();
+  }
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

@@ -7,6 +7,7 @@ import '../../core/widgets/liquid_background.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/services/child_enforcement_service.dart';
 
 class ChildPairingScreen extends StatefulWidget {
   final String? initialCode;
@@ -90,6 +91,7 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
 
       // ── Step 4: Save pairing locally ─────────────────────────────────────
       await StorageService().saveChildPairing(parentId, childId);
+      await ChildEnforcementService().start();
 
       if (mounted) {
         // Pass full data + id so ChildDashboardScreen can resolve childId.

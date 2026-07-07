@@ -264,6 +264,9 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     final alertRepo = context.read<AlertRepository>();
     final statsRepo = context.read<StatsRepository>();
 
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width >= 800;
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
@@ -278,9 +281,9 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 900),
+                    constraints: BoxConstraints(maxWidth: isWide ? 1200 : 900),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      padding: EdgeInsets.symmetric(horizontal: isWide ? 32 : 24, vertical: 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -292,7 +295,7 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                     color: Theme.of(context).colorScheme.onSurface, size: 20),
                                 onPressed: () => context.pop(),
                               ),
-                              Spacer(),
+                              const Spacer(),
                               _buildActionButtons(child),
                             ],
                           ),
@@ -302,38 +305,91 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                           _buildProfileHeader(displayName, age, childId, childRepo),
                           const SizedBox(height: 36),
 
-                          // ── Monitoring cards ──────────────────────────────
-                          _buildSectionTitle('Monitoring'),
-                          const SizedBox(height: 4),
-                          LayoutBuilder(builder: (context, constraints) {
-                            final cols = constraints.maxWidth > 560 ? 3 : 2;
-                            final ratio = constraints.maxWidth > 560 ? 1.3 : 1.15;
-                            return GridView.count(
-                              crossAxisCount: cols,
-                              crossAxisSpacing: 14,
-                              mainAxisSpacing: 14,
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              childAspectRatio: ratio,
+                          if (isWide) ...[
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildRulesSummaryCard(childId, child, rulesRepo),
-                                _buildScreenTimeRemainingCard(childId, child, rulesRepo),
-                                _buildAppListingCard(childId),
-                                _buildAlertHistoryCard(childId, alertRepo),
-                                _buildWebHistoryCard(childId, statsRepo),
+                                // Left Column: Monitoring grid
+                                Expanded(
+                                  flex: 3,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildSectionTitle('Monitoring'),
+                                      const SizedBox(height: 12),
+                                      LayoutBuilder(builder: (context, constraints) {
+                                        final cols = constraints.maxWidth > 560 ? 3 : 2;
+                                        final ratio = constraints.maxWidth > 560 ? 1.1 : 0.85;
+                                        return GridView.count(
+                                          crossAxisCount: cols,
+                                          crossAxisSpacing: 14,
+                                          mainAxisSpacing: 14,
+                                          shrinkWrap: true,
+                                          physics: const NeverScrollableScrollPhysics(),
+                                          childAspectRatio: ratio,
+                                          children: [
+                                            _buildRulesSummaryCard(childId, child, rulesRepo),
+                                            _buildScreenTimeRemainingCard(childId, child, rulesRepo),
+                                            _buildAppListingCard(childId),
+                                            _buildAlertHistoryCard(childId, alertRepo),
+                                            _buildWebHistoryCard(childId, statsRepo),
+                                          ],
+                                        );
+                                      }),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 32),
+                                // Right Column: Overview + config buttons
+                                Expanded(
+                                  flex: 2,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildSectionTitle('Activity Overview'),
+                                      const SizedBox(height: 12),
+                                      _buildOverviewCard(childId, childRepo, alertRepo),
+                                      const SizedBox(height: 28),
+                                      _buildConfigButtons(child),
+                                    ],
+                                  ),
+                                ),
                               ],
-                            );
-                          }),
-                          const SizedBox(height: 32),
+                            ),
+                          ] else ...[
+                            // ── Monitoring cards ──────────────────────────────
+                            _buildSectionTitle('Monitoring'),
+                            const SizedBox(height: 4),
+                            LayoutBuilder(builder: (context, constraints) {
+                              final cols = constraints.maxWidth > 560 ? 3 : 2;
+                              final ratio = constraints.maxWidth > 560 ? 1.1 : 0.85;
+                              return GridView.count(
+                                crossAxisCount: cols,
+                                crossAxisSpacing: 14,
+                                mainAxisSpacing: 14,
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                childAspectRatio: ratio,
+                                children: [
+                                  _buildRulesSummaryCard(childId, child, rulesRepo),
+                                  _buildScreenTimeRemainingCard(childId, child, rulesRepo),
+                                  _buildAppListingCard(childId),
+                                  _buildAlertHistoryCard(childId, alertRepo),
+                                  _buildWebHistoryCard(childId, statsRepo),
+                                ],
+                              );
+                            }),
+                            const SizedBox(height: 32),
 
-                          // ── Activity overview ─────────────────────────────
-                          _buildSectionTitle('Activity Overview'),
-                          const SizedBox(height: 4),
-                          _buildOverviewCard(childId, childRepo, alertRepo),
-                          const SizedBox(height: 28),
+                            // ── Activity overview ─────────────────────────────
+                            _buildSectionTitle('Activity Overview'),
+                            const SizedBox(height: 4),
+                            _buildOverviewCard(childId, childRepo, alertRepo),
+                            const SizedBox(height: 28),
 
-                          // ── Action buttons ────────────────────────────────
-                          _buildConfigButtons(child),
+                            // ── Action buttons ────────────────────────────────
+                            _buildConfigButtons(child),
+                          ],
                           const SizedBox(height: 48),
                         ],
                       ),
@@ -398,222 +454,246 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppColors.primary.withValues(alpha: isLight ? 0.07 : 0.14),
-            AppColors.accentTeal.withValues(alpha: isLight ? 0.04 : 0.09),
+            const Color(0xFF6366F1).withValues(alpha: isLight ? 0.15 : 0.25),
+            const Color(0xFF8B5CF6).withValues(alpha: isLight ? 0.10 : 0.20),
+            const Color(0xFFEC4899).withValues(alpha: isLight ? 0.05 : 0.10),
           ],
+          stops: const [0.0, 0.5, 1.0],
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(32),
         border: Border.all(
-          color: isLight ? const Color(0xFFDDE3F5) : AppColors.primary.withValues(alpha: 0.20),
-          width: 1.2,
+          color: Colors.white.withValues(alpha: isLight ? 0.6 : 0.15),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: isLight ? 0.06 : 0.10),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
+            color: const Color(0xFF6366F1).withValues(alpha: isLight ? 0.1 : 0.2),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Stack(
         children: [
-          // Decorative circles
+          // Decorative glowing orbs
           Positioned(
-            right: -20,
-            top: -20,
+            right: -30,
+            top: -30,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFFEC4899).withValues(alpha: isLight ? 0.2 : 0.3),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 50,
+            bottom: -40,
             child: Container(
               width: 100,
               height: 100,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primary.withValues(alpha: isLight ? 0.05 : 0.08),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 40,
-            bottom: -30,
-            child: Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.accentTeal.withValues(alpha: isLight ? 0.06 : 0.10),
-              ),
-            ),
-          ),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 580;
-              final content = [
-                // Avatar with ring
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [AppColors.primary, AppColors.accentTeal],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.30),
-                        blurRadius: 16,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: CircleAvatar(
-                    radius: 40,
-                    backgroundColor: isLight ? Colors.white : const Color(0xFF0F172A),
-                    child: Text(
-                      displayName[0].toUpperCase(),
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 34,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFF8B5CF6).withValues(alpha: isLight ? 0.2 : 0.3),
+                    Colors.transparent,
+                  ],
                 ),
-                const SizedBox(width: 20, height: 16),
-                // Info block
-                Expanded(
-                  flex: isWide ? 5 : 0,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        displayName,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.5,
-                        ),
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Avatar with ring
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6366F1), Color(0xFFEC4899)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$age years old',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontSize: 15,
-                        ),
-                      ),
-                      if (_lastSync != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Updated at ${_lastSync!.hour}:${_lastSync!.minute.toString().padLeft(2, '0')}',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                            fontSize: 11,
-                          ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFEC4899).withValues(alpha: 0.4),
+                          blurRadius: 20,
+                          spreadRadius: 2,
                         ),
                       ],
-                      const SizedBox(height: 12),
-                      // Status Badge
-                      StreamBuilder<String>(
-                        stream: childRepo.watchDeviceStatus(childId),
-                        builder: (context, snapshot) {
-                          final status = snapshot.data ?? 'OFFLINE';
-                          final isOnline = status == 'ONLINE';
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: (isOnline ? const Color(0xFF22C55E) : Colors.grey)
-                                  .withValues(alpha: isLight ? 0.12 : 0.18),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: (isOnline ? const Color(0xFF22C55E) : Colors.grey)
-                                    .withValues(alpha: 0.30),
+                    ),
+                    child: CircleAvatar(
+                      radius: 42,
+                      backgroundColor: isLight ? Colors.white : const Color(0xFF0F172A),
+                      child: Text(
+                        displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                          color: Color(0xFF6366F1),
+                          fontSize: 38,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  // Info block
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayName,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '$age years old',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 7,
-                                  height: 7,
+                            // Status Badge
+                            StreamBuilder<String>(
+                              stream: childRepo.watchDeviceStatus(childId),
+                              builder: (context, snapshot) {
+                                final status = snapshot.data ?? 'OFFLINE';
+                                final isOnline = status == 'ONLINE';
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: isOnline ? const Color(0xFF4ADE80) : Colors.grey,
-                                    shape: BoxShape.circle,
+                                    color: (isOnline ? const Color(0xFF22C55E) : Colors.grey)
+                                        .withValues(alpha: isLight ? 0.15 : 0.25),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: (isOnline ? const Color(0xFF22C55E) : Colors.grey)
+                                          .withValues(alpha: 0.40),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  isOnline ? 'Online' : 'Offline',
-                                  style: TextStyle(
-                                    color: isOnline ? const Color(0xFF16A34A) : Colors.grey,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 6,
+                                        height: 6,
+                                        decoration: BoxDecoration(
+                                          color: isOnline ? const Color(0xFF4ADE80) : Colors.grey,
+                                          shape: BoxShape.circle,
+                                          boxShadow: isOnline ? [
+                                            const BoxShadow(color: Color(0xFF4ADE80), blurRadius: 4)
+                                          ] : null,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        isOnline ? 'ON' : 'OFF',
+                                        style: TextStyle(
+                                          color: isOnline ? (isLight ? const Color(0xFF16A34A) : const Color(0xFF4ADE80)) : Colors.grey,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                              ],
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
-                    ],
+                          ],
+                        ),
+                        if (_lastSync != null) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.sync, size: 12, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Synced at ${_lastSync!.hour}:${_lastSync!.minute.toString().padLeft(2, '0')}',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
-                if (!isWide) const SizedBox(height: 20),
-                // Quick Stats block
-                Expanded(
-                  flex: isWide ? 4 : 0,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildQuickStat(
-                        icon: Icons.timer_outlined,
-                        label: 'Screen time',
-                        value: usedMinutes > 0 ? '${usedMinutes.toInt()} min' : '—',
-                        color: AppColors.primary,
-                        isLight: isLight,
-                      ),
-                      const SizedBox(height: 8),
-                      _buildQuickStat(
-                        icon: Icons.apps_rounded,
-                        label: 'Apps active',
-                        value: _usageStats == null ? '—' : '$appsCount',
-                        color: const Color(0xFF9C6FFF),
-                        isLight: isLight,
-                      ),
-                      const SizedBox(height: 8),
-                      StreamBuilder<List<Map<String, dynamic>>>(
-                        stream: context.read<AlertRepository>().watchAlerts(childId),
-                        builder: (context, snapshot) {
-                          final unread = (snapshot.data ?? [])
-                              .where((a) => a['read'] != true)
-                              .length;
-                          return _buildQuickStat(
-                            icon: Icons.notifications_outlined,
-                            label: 'Alerts',
-                            value: unread == 0 ? 'None' : '$unread new',
-                            color: unread > 0 ? Colors.redAccent : AppColors.accentTeal,
-                            isLight: isLight,
-                          );
-                        },
-                      ),
-                    ],
+                ],
+              ),
+              const SizedBox(height: 28),
+              // Quick Stats row
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildQuickStat(
+                      icon: Icons.timer_outlined,
+                      label: 'Screen time',
+                      value: usedMinutes > 0 ? '${usedMinutes.toInt()} min' : '—',
+                      color: const Color(0xFF6366F1),
+                      isLight: isLight,
+                    ),
                   ),
-                ),
-              ];
-
-              if (isWide) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: content.cast<Widget>(),
-                );
-              } else {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: content.cast<Widget>(),
-                );
-              }
-            },
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildQuickStat(
+                      icon: Icons.apps_rounded,
+                      label: 'Apps active',
+                      value: _usageStats == null ? '—' : '$appsCount',
+                      color: const Color(0xFF8B5CF6),
+                      isLight: isLight,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  StreamBuilder<List<Map<String, dynamic>>>(
+                    stream: context.read<AlertRepository>().watchAlerts(childId),
+                    builder: (context, snapshot) {
+                      final unread = (snapshot.data ?? [])
+                          .where((a) => a['read'] != true)
+                          .length;
+                      return Expanded(
+                        child: _buildQuickStat(
+                          icon: Icons.notifications_active_outlined,
+                          label: 'Alerts',
+                          value: unread == 0 ? 'None' : '$unread',
+                          color: unread > 0 ? const Color(0xFFEC4899) : const Color(0xFF14B8A6),
+                          isLight: isLight,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
@@ -628,43 +708,55 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     required bool isLight,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
       decoration: BoxDecoration(
         color: isLight
-            ? Colors.white.withValues(alpha: 0.70)
-            : Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(12),
+            ? Colors.white.withValues(alpha: 0.75)
+            : Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: color.withValues(alpha: isLight ? 0.15 : 0.12),
+          color: Colors.white.withValues(alpha: isLight ? 0.6 : 0.1),
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
             ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -763,16 +855,17 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
       builder: (context, rulesSnap) {
         final rules = rulesSnap.data ?? {};
         final bool blockAdult = rules['blockAdultContent'] == true;
+        final bool isConfigured = rules['rulesConfigured'] == true;
         
         return StreamBuilder<List<Map<String, dynamic>>>(
           stream: FirestoreService().watchGeofences(childId),
           builder: (context, geoSnap) {
             final zones = geoSnap.data ?? [];
             
-            String subtitle = 'Not configured';
+            String? subtitle;
             if (zones.isNotEmpty) {
               subtitle = '${zones.length} safe zone${zones.length > 1 ? 's' : ''} active';
-            } else if (rules.isNotEmpty) {
+            } else if (rules.isNotEmpty && isConfigured) {
               subtitle = 'Content filters active';
             }
 
@@ -784,7 +877,7 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                 'child': child,
                 'rules': rules,
               }),
-              hasWarning: rules.isNotEmpty && !blockAdult,
+              hasWarning: rules.isNotEmpty && isConfigured && !blockAdult,
               subtitle: subtitle,
             );
           },
@@ -940,7 +1033,13 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                 childId,
                 startAfter: lastDoc,
               );
-              final newItems = snap.docs.map((d) => {'id': d.id, ...d.data()}).toList();
+              final newItems = snap.docs
+                  .map((d) => {'id': d.id, ...d.data()})
+                  .where((item) {
+                    final url = item['url'] as String? ?? '';
+                    return !url.startsWith('browser://');
+                  })
+                  .toList();
               setModalState(() {
                 allHistory.addAll(newItems);
                 lastDoc = snap.docs.isNotEmpty ? snap.docs.last : lastDoc;
@@ -1475,10 +1574,10 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                       fontSize: 32,
                       fontWeight: FontWeight.bold)),
               Slider(
-                value: selectedLimit.toDouble(),
+                value: selectedLimit.toDouble().clamp(0.0, 1440.0),
                 min: 0,
-                max: 480,
-                divisions: 32,
+                max: 1440,
+                divisions: 96,
                 activeColor: AppColors.primary,
                 inactiveColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
                 onChanged: (val) =>

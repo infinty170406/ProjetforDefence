@@ -5,15 +5,19 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
-
 import android.content.SharedPreferences
 import android.view.accessibility.AccessibilityNodeInfo
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
 
 class GuardianAccessibilityService : AccessibilityService(), SharedPreferences.OnSharedPreferenceChangeListener {
 
     private val TAG = "GuardianAccessService"
+    private var lastRecordedUrl: String = ""
+    private var lastRecordedTime: Long = 0
     private var blockedApps: List<String> = listOf()
     private var blockedUrls: List<String> = listOf()
+    private var blockedKeywords: List<String> = listOf()
     private lateinit var prefs: SharedPreferences
 
     override fun onServiceConnected() {
@@ -34,7 +38,11 @@ class GuardianAccessibilityService : AccessibilityService(), SharedPreferences.O
         
         val urlsString = prefs.getString("blocked_urls", "") ?: ""
         blockedUrls = urlsString.split(",").filter { it.isNotEmpty() }
-        Log.d(TAG, "Cache updated: \$blockedApps, \$blockedUrls")
+
+        val keywordsString = prefs.getString("blocked_keywords", "") ?: ""
+        blockedKeywords = keywordsString.split(",").filter { it.isNotEmpty() }
+
+        Log.d(TAG, "Cache updated: apps=$blockedApps, urls=$blockedUrls, keywords=$blockedKeywords")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -57,9 +65,30 @@ class GuardianAccessibilityService : AccessibilityService(), SharedPreferences.O
 
         // 2. App Blocking
         if (blockedApps.contains(packageName)) {
-            Log.d(TAG, "Blocking app: \$packageName")
+            Log.d(TAG, "Blocking app: $packageName")
             showBlockScreen()
             return
+        }
+
+        // 2b. Mots-clés personnalisés (frappe ou contenu affiché)
+        if (blockedKeywords.isNotEmpty()) {
+            if (event.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
+                val text = event.text?.joinToString(" ")?.lowercase() ?: ""
+                if (text.isNotEmpty() && blockedKeywords.any { text.contains(it.lowercase()) }) {
+                    Log.d(TAG, "Blocking keyword in $packageName")
+                    showBlockScreen()
+                    return
+                }
+            } else if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+                val textNodes = mutableListOf<String>()
+                extractTextFromNode(event.source, textNodes)
+                val screenText = textNodes.joinToString(" ").lowercase()
+                if (blockedKeywords.any { screenText.contains(it.lowercase()) }) {
+                    Log.d(TAG, "Blocking keyword on screen in $packageName")
+                    showBlockScreen()
+                    return
+                }
+            }
         }
 
         // 3. Web Filtering
@@ -72,14 +101,56 @@ class GuardianAccessibilityService : AccessibilityService(), SharedPreferences.O
                 packageName == "org.mozilla.firefox") {
                 
                 val url = extractUrlFromNode(event.source)
-                if (url != null) {
+                if (url != null && url.isNotEmpty() && !url.contains(" ")) {
                     val isBlocked = blockedUrls.any { blocked -> url.contains(blocked, ignoreCase = true) }
                     if (isBlocked) {
-                        Log.d(TAG, "Blocking URL: \$url")
+                        Log.d(TAG, "Blocking URL: $url")
                         showBlockScreen()
+                    } else {
+                        logUrlToFirestore(url)
                     }
                 }
             }
+        }
+    }
+
+    private fun logUrlToFirestore(url: String) {
+        val currentTime = System.currentTimeMillis()
+        if (url == lastRecordedUrl && (currentTime - lastRecordedTime) < 10000) {
+            return // Skip duplicate
+        }
+        
+        lastRecordedUrl = url
+        lastRecordedTime = currentTime
+
+        try {
+            val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val parentId = flutterPrefs.getString("flutter.parent_id", null)
+            val childId = flutterPrefs.getString("flutter.child_id", null)
+
+            if (parentId.isNullOrEmpty() || childId.isNullOrEmpty()) {
+                Log.e(TAG, "Missing parent/child IDs in SharedPreferences.")
+                return
+            }
+
+            val db = FirebaseFirestore.getInstance()
+            val historyRef = db.collection("parents").document(parentId)
+                .collection("children").document(childId)
+                .collection("inventory").document("websites")
+                .collection("history")
+
+            val data = hashMapOf(
+                "url" to url,
+                "title" to "Website",
+                "timestamp" to FieldValue.serverTimestamp()
+            )
+
+            historyRef.add(data)
+                .addOnSuccessListener { Log.d(TAG, "Successfully logged URL to Firestore: $url") }
+                .addOnFailureListener { e -> Log.e(TAG, "Failed to log URL", e) }
+                
+        } catch (e: Exception) {
+            Log.e(TAG, "Error logging URL to Firestore", e)
         }
     }
 

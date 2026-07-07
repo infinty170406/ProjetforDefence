@@ -1,5 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'child_enforcement_service.dart';
+
 class StorageService {
   static const String _keyUserName = 'user_name';
   static const String _keyToken = 'access_token';
@@ -79,6 +81,11 @@ class StorageService {
     return prefs.getBool(_keyOtpConfigured) ?? false;
   }
 
+  /// Sauvegarde le jumelage enfant.
+  ///
+  /// Note : le plugin `shared_preferences` stocke les clés avec le préfixe
+  /// `flutter.` dans le fichier `FlutterSharedPreferences` (ex. `child_id` →
+  /// `flutter.child_id`). Le code Kotlin natif doit lire ce préfixe.
   Future<void> saveChildPairing(String parentId, String childId) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyParentId, parentId);
@@ -98,6 +105,7 @@ class StorageService {
   Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
     final privacyAccepted = prefs.getBool(_keyPrivacyAccepted) ?? false;
+    await ChildEnforcementService().stop();
     await prefs.clear();
     await prefs.setBool(_keyPrivacyAccepted, privacyAccepted);
   }

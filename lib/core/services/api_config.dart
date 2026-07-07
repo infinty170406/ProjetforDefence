@@ -59,7 +59,7 @@ class ApiConfig {
 
   // ==================== AI ====================
   // Get your free API key from https://aistudio.google.com/
-  static const String geminiApiKey = 'AIzaSyBSdp86H3WXtL5Og_y_PodfcuwLHPoOOMA';
+  static const String geminiApiKey = '';
 
   // ==================== EXECUTE ====================
   static const String execute = '/api/v1/execute';

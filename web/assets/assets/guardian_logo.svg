@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Diamond (rotated square) -->
+  <rect
+    x="35" y="35"
+    width="130" height="130"
+    rx="18" ry="18"
+    transform="rotate(45 100 100)"
+    fill="#2D0A5A"
+    stroke="#9C27B0"
+    stroke-width="5"
+    filter="url(#glow)"
+  />
+
+  <!-- Shield shape -->
+  <path
+    d="M100 55
+       L130 70
+       L130 100
+       Q130 130 100 148
+       Q70 130 70 100
+       L70 70
+       Z"
+    fill="white"
+    opacity="0.95"
+  />
+
+  <!-- Shield inner division (cross lines) -->
+  <line x1="100" y1="56" x2="100" y2="148" stroke="#7B1FA2" stroke-width="3.5"/>
+  <line x1="70" y1="90" x2="130" y2="90" stroke="#7B1FA2" stroke-width="3.5"/>
+</svg>

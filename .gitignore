@@ -11,8 +11,6 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
-node_modules/
-**/build/
 
 # IntelliJ related
 *.iml
@@ -45,6 +43,3 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-
-# Environment variables
-.env

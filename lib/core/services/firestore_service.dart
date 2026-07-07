@@ -343,7 +343,11 @@ class FirestoreService {
       _db.collection('parents').doc(uid).collection('children').doc(childId)
           .collection('inventory').doc('websites').collection('history')
           .orderBy('timestamp', descending: true).limit(50)
-          .snapshots().map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList());
+          .snapshots()
+          .map((s) => s.docs
+              .map((d) => {'id': d.id, ...d.data()})
+              .where((item) => !_isGenericBrowserSession(item))
+              .toList());
 
   Future<void> toggleWebsiteBlock(String childId, String domain, bool block) =>
       _rulesRepo.toggleWebsiteBlock(childId, domain, block);
@@ -383,6 +387,11 @@ class FirestoreService {
         .orderBy('timestamp', descending: true).limit(limit);
     if (startAfter != null) query = query.startAfterDocument(startAfter);
     return await query.get();
+  }
+
+  bool _isGenericBrowserSession(Map<String, dynamic> item) {
+    final url = item['url'] as String? ?? '';
+    return url.startsWith('browser://');
   }
 
   Future<List<Map<String, dynamic>>> getWeekStats(String childId) async {

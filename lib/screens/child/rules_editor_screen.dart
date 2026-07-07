@@ -232,10 +232,10 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                                     fontSize: 32,
                                     fontWeight: FontWeight.bold))),
                         Slider(
-                          value: _dailyLimitMinutes.toDouble(),
-                          min: 15,
-                          max: 480,
-                          divisions: 31,
+                          value: _dailyLimitMinutes.toDouble().clamp(0.0, 1440.0),
+                          min: 0,
+                          max: 1440,
+                          divisions: 96,
                           activeColor: AppColors.primary,
                           inactiveColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
                           onChanged: (v) =>

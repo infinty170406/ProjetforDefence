@@ -7,9 +7,17 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == parentId;
     }
 
-    // Helper: vérifie que c'est l'appareil enfant appairé à ce profil.
-    // Lit le champ childDeviceUid du document children/{childId}
-    // et le compare à l'UID de l'utilisateur authentifié (connexion anonyme).
+    // Helper "local": vérifie que l'appareil enfant est celui appairé,
+    // en utilisant DIRECTEMENT resource.data (pas de get() => pas de boucle).
+    // À utiliser UNIQUEMENT dans les règles du document children/{childId} lui-même.
+    function isChildDeviceLocal() {
+      return request.auth != null
+          && resource.data.childDeviceUid == request.auth.uid;
+    }
+
+    // Helper "externe": pour les sous-collections (rules, alerts, etc.)
+    // qui ont besoin d'aller chercher le childDeviceUid sur le doc parent enfant.
+    // Ce get() est sûr ici car la règle sur children/{childId} n'appelle plus get().
     function isChildDevice(parentId, childId) {
       return request.auth != null
           && get(/databases/$(database)/documents/parents/$(parentId)/children/$(childId)).data.childDeviceUid == request.auth.uid;
@@ -22,15 +30,14 @@ service cloud.firestore {
       // ── Enfants ─────────────────────────────────────────────────────────────
       match /children/{childId} {
         // Parent : accès complet
-
-        
         allow read, write: if isParent(parentId);
 
         // Appareil enfant : lecture de ses propres données
-        allow read: if isChildDevice(parentId, childId);
+        // (version "locale" : pas de get(), évite la dépendance circulaire)
+        allow read: if isChildDeviceLocal();
 
         // Appareil enfant : mise à jour limitée (heartbeat, statut, FCM token)
-        allow update: if isChildDevice(parentId, childId)
+        allow update: if isChildDeviceLocal()
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'deviceStatus', 'lastHeartbeat', 'fcmToken', 'lastTokenSync'
             ]);

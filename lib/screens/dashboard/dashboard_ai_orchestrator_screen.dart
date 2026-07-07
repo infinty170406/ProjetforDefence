@@ -5,7 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
 import '../../core/services/firestore_service.dart';
 import '../../core/services/child_monitor_service.dart';
-import '../../core/services/open_router_service.dart';
+import '../../core/services/ai/guardian_agent_service.dart';
 
 // ── Data model for one child's AI analysis ────────────────────────────────────
 class _ChildAnalysis {
@@ -61,7 +61,7 @@ class _State extends State<DashboardAiOrchestratorScreen>
     with TickerProviderStateMixin {
   final _fs = FirestoreService();
   final _monitor = ChildMonitorService();
-  final _ai = OpenRouterService();
+  final _agent = GuardianAgentService();
 
   List<_ChildAnalysis> _analyses = [];
   bool _initialLoading = true;
@@ -144,25 +144,16 @@ class _State extends State<DashboardAiOrchestratorScreen>
     if (!mounted) return;
     setState(() => a.isLoading = true);
 
-    final alertsText = a.alerts.isEmpty
-        ? 'Aucune alerte récente'
-        : a.alerts
-            .take(5)
-            .map((al) => '• ${al['type'] ?? 'INFO'}: ${al['detail'] ?? al['message'] ?? 'N/A'}')
-            .join('\n');
-
-    final prompt =
-        'Tu es un assistant parental expert en sécurité numérique pour enfants.\n'
-        'Analyse le profil de cet enfant et fournis 3 recommandations concrètes, numérotées.\n'
-        'Sois bref et précis (max 150 mots). Mets les titres en gras avec **.\n\n'
-        'Enfant: ${a.name}, ${a.age} ans\n'
-        'Temps d\'écran aujourd\'hui: ${a.usedMinutes} min / limite ${a.limitMinutes} min\n'
-        'Appareils: ${a.deviceStatus}\n'
-        'Alertes récentes:\n$alertsText';
-
     try {
-      _ai.clearHistory();
-      final resp = await _ai.sendMessage(prompt);
+      // Délégation à l'agent IA Guardian (§6 — analyse + recommandations).
+      final resp = await _agent.analyserActiviteTexte(
+        name: a.name,
+        age: a.age,
+        usedMinutes: a.usedMinutes,
+        limitMinutes: a.limitMinutes,
+        deviceStatus: a.deviceStatus,
+        alerts: a.alerts,
+      );
       if (!mounted) return;
       setState(() { a.aiResponse = resp; a.isLoading = false; });
     } catch (e) {
@@ -205,6 +196,9 @@ class _State extends State<DashboardAiOrchestratorScreen>
   // ── Build ────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width >= 800;
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
@@ -212,11 +206,16 @@ class _State extends State<DashboardAiOrchestratorScreen>
           if (Theme.of(context).brightness == Brightness.dark)
             const LiquidBackground(),
           SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(),
-                Expanded(child: _buildBody()),
-              ],
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isWide ? 1200 : double.infinity),
+                child: Column(
+                  children: [
+                    _buildHeader(),
+                    Expanded(child: _buildBody()),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -226,14 +225,14 @@ class _State extends State<DashboardAiOrchestratorScreen>
 
   Widget _buildHeader() {
     return Padding(
-      padding: EdgeInsets.fromLTRB(12, 8, 20, 0),
+      padding: const EdgeInsets.fromLTRB(12, 8, 20, 0),
       child: Row(
         children: [
           IconButton(
             icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
             onPressed: () => context.pop(),
           ),
-          SizedBox(width: 4),
+          const SizedBox(width: 4),
           AnimatedBuilder(
             animation: _glowAnim,
             builder: (_, __) => ShaderMask(
@@ -243,7 +242,7 @@ class _State extends State<DashboardAiOrchestratorScreen>
               child: Icon(Icons.auto_awesome, color: Theme.of(context).colorScheme.onSurface, size: 28),
             ),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,6 +252,14 @@ class _State extends State<DashboardAiOrchestratorScreen>
                 Text('Analyse intelligente en temps réel',
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
               ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Rapport hebdomadaire',
+            icon: Icon(Icons.assignment_outlined, color: AppColors.accentTeal),
+            onPressed: () => context.push(
+              '/ai-report',
+              extra: _analyses.isNotEmpty ? _analyses.first.child : null,
             ),
           ),
           IconButton(
@@ -269,12 +276,37 @@ class _State extends State<DashboardAiOrchestratorScreen>
     if (_initialLoading) return _buildLoader();
     if (_loadError != null) return _buildError();
     if (_analyses.isEmpty) return _buildEmpty();
+
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width >= 800;
+
+    Widget childCardsList;
+    if (isWide) {
+      final cols = width <= 1024 ? 2 : 3;
+      childCardsList = GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: cols,
+          crossAxisSpacing: 20,
+          mainAxisSpacing: 20,
+          mainAxisExtent: 440,
+        ),
+        itemCount: _analyses.length,
+        itemBuilder: (context, index) => _buildChildCard(_analyses[index]),
+      );
+    } else {
+      childCardsList = Column(
+        children: _analyses.map((a) => _buildChildCard(a)).toList(),
+      );
+    }
+
     return ListView(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: isWide ? 24 : 16, vertical: 12),
       children: [
         _buildSummaryRow(),
-        SizedBox(height: 20),
-        ..._analyses.map((a) => _buildChildCard(a)),
+        const SizedBox(height: 20),
+        childCardsList,
       ],
     );
   }

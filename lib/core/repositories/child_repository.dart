@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../constants/app_constants.dart';
+import '../utils/device_status_helper.dart';
 
 class ChildRepository {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -95,6 +96,7 @@ class ChildRepository {
       'blockEatingDisorders': isMinor,
       'monitorAccountActivity': true,
       'locationAlerts': true,
+      'rulesConfigured': false,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
@@ -135,8 +137,7 @@ class ChildRepository {
   Stream<String> watchDeviceStatus(String childId) {
     if (_uid == null || childId.isEmpty) return Stream.value(AppConstants.statusOffline);
     return _childrenCol.doc(childId).snapshots().map((snap) {
-      final data = snap.data() as Map<String, dynamic>?;
-      return (data?['deviceStatus'] as String?) ?? AppConstants.statusOffline;
+      return resolveDeviceStatus(snap.data() as Map<String, dynamic>?);
     });
   }
 }

@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/services/child_monitor_service.dart';
+import '../../core/services/child_enforcement_service.dart';
 import '../../core/services/storage_service.dart';
 
 class ChildDashboardScreen extends StatefulWidget {
@@ -34,6 +35,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
     _isChildMode = pairing['mode'] == 'child';
     // Store parentId for use by StreamBuilders and _loadStats.
     _parentId = pairing['parentId'];
+
+    if (_isChildMode) {
+      await ChildEnforcementService().start();
+    }
 
     if (widget.child != null) {
       // Parent app opened this screen: parentId comes from Firebase Auth.

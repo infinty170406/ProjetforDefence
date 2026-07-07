@@ -16,9 +16,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   String _premiumDuration = 'monthly';
 
   final List<Map<String, dynamic>> _premiumOptions = [
-    {'label': '1 Month', 'key': 'monthly', 'price': '\$4.99/mo', 'badge': null},
-    {'label': '6 Months', 'key': 'biannual', 'price': '\$3.99/mo', 'badge': 'Save 20%'},
-    {'label': '1 Year', 'key': 'annual', 'price': '\$2.99/mo', 'badge': 'Best Value'},
+    {'label': '1 Month', 'key': 'monthly', 'price': '3 250 FCFA/mo', 'badge': null},
+    {'label': '6 Months', 'key': 'biannual', 'price': '2 600 FCFA/mo', 'badge': 'Save 20%'},
+    {'label': '1 Year', 'key': 'annual', 'price': '1 950 FCFA/mo', 'badge': 'Best Value'},
   ];
 
   Future<void> _confirmPlan() async {

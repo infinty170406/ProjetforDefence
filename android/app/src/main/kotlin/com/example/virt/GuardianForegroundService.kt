@@ -26,11 +26,17 @@ class GuardianForegroundService : Service() {
             .setSmallIcon(android.R.drawable.ic_secure) 
             .build()
 
-        startForeground(1, notification)
-
-        // TODO: Start background location updates or Firestore listener logic here
-        
-        return START_STICKY // Restart if killed by OS
+        try {
+            startForeground(1, notification)
+        } catch (e: SecurityException) {
+            e.printStackTrace()
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        // L'application des règles (apps/sites/mots-clés) est gérée côté Dart
+        // par ChildEnforcementService → NativeBridgeService → GuardianPrefs.
+        // Ce service maintient uniquement le processus en vie.
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent): IBinder? {
