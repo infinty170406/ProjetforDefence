@@ -1,12 +1,17 @@
 package app.theguardian.child
 
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 
 class BlockActivity : Activity() {
+    private var dismissReceiver: BroadcastReceiver? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -55,6 +60,28 @@ class BlockActivity : Activity() {
                 // Do nothing to prevent backing out
             }
         }
+
+        dismissReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == "app.theguardian.child.DISMISS_BLOCK") {
+                    finish()
+                }
+            }
+        }
+        val filter = IntentFilter("app.theguardian.child.DISMISS_BLOCK")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(dismissReceiver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(dismissReceiver, filter)
+        }
+    }
+
+    override fun onDestroy() {
+        dismissReceiver?.let {
+            unregisterReceiver(it)
+        }
+        dismissReceiver = null
+        super.onDestroy()
     }
 
     override fun onBackPressed() {

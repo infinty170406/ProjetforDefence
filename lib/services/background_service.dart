@@ -57,9 +57,11 @@ class BackgroundService {
     service.on('triggerBlock').listen((data) {
       if (data != null && data.containsKey('reason')) {
         final reason = data['reason'] as String;
+        final package = data['package'] as String? ?? '';
+        final details = BlockDetails(package: package, reason: reason);
         // Stocker dans BlockEventService pour que l'UI puisse l'écouter
-        BlockEventService._pendingReason = reason;
-        BlockEventService._controller.add(reason);
+        BlockEventService._pendingBlock = details;
+        BlockEventService._controller.add(details);
 
         // NOUVEAU : Forcer l'app au premier plan pour afficher l'écran de blocage
         const MethodChannel('app.theguardian.child/system')
@@ -191,6 +193,9 @@ class BackgroundService {
       await p.reload();
 
       try {
+        debugPrint('BackgroundService: Stopping existing monitoring if running...');
+        await MonitoringService().stopMonitoring();
+        
         debugPrint('BackgroundService: Starting monitoring after activation...');
         await MonitoringService().startMonitoring(service);
         // Force le passage en ONLINE immédiatement
@@ -297,13 +302,20 @@ class BackgroundService {
   }
 }
 
+class BlockDetails {
+  final String package;
+  final String reason;
+
+  BlockDetails({required this.package, required this.reason});
+}
+
 /// BlockEventService
 ///
 /// Pont entre l'isolate background (BackgroundService) et l'isolate principal (UI).
 /// Le DashboardScreen écoute [stream] et navigue vers BlockingScreen à chaque événement.
 class BlockEventService {
-  static final _controller = StreamController<String>.broadcast();
-  static String? _pendingReason;
+  static final _controller = StreamController<BlockDetails>.broadcast();
+  static BlockDetails? _pendingBlock;
   static bool _isInitialized = false;
 
   /// Initialise l'écoute des événements natifs Android.
@@ -316,8 +328,10 @@ class BlockEventService {
         .listen((event) {
       if (event is Map) {
         final reason = event['reason'] as String? ?? 'Accès restreint';
-        _pendingReason = reason;
-        _controller.add(reason);
+        final package = event['package'] as String? ?? '';
+        final details = BlockDetails(package: package, reason: reason);
+        _pendingBlock = details;
+        _controller.add(details);
 
         // Si l'alerte vient du natif, on force aussi le passage au premier plan
         const MethodChannel('app.theguardian.child/system')
@@ -326,34 +340,36 @@ class BlockEventService {
     });
   }
 
-  /// Stream des raisons de blocage — écouter depuis le widget principal.
-  static Stream<String> get stream => _controller.stream;
+  /// Stream des détails de blocage — écouter depuis le widget principal.
+  static Stream<BlockDetails> get stream => _controller.stream;
 
   /// Consomme et retourne la dernière raison en attente (si présente).
   /// Vérifie aussi dans SharedPreferences au cas où l'EventChannel
   /// n'était pas encore prêt quand le blocage est arrivé.
-  static Future<String?> consumePendingAsync() async {
-    if (_pendingReason != null) {
-      final r = _pendingReason;
-      _pendingReason = null;
+  static Future<BlockDetails?> consumePendingAsync() async {
+    if (_pendingBlock != null) {
+      final r = _pendingBlock;
+      _pendingBlock = null;
       return r;
     }
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.reload();
-      final r = prefs.getString('flutter.guardian_pending_block');
-      if (r != null) {
+      final reason = prefs.getString('flutter.guardian_pending_block');
+      final package = prefs.getString('flutter.guardian_pending_package') ?? '';
+      if (reason != null) {
         await prefs.remove('flutter.guardian_pending_block');
-        return r;
+        await prefs.remove('flutter.guardian_pending_package');
+        return BlockDetails(package: package, reason: reason);
       }
     } catch (_) {}
     return null;
   }
 
   /// Version synchrone conservée pour compatibilité.
-  static String? consumePending() {
-    final r = _pendingReason;
-    _pendingReason = null;
+  static BlockDetails? consumePending() {
+    final r = _pendingBlock;
+    _pendingBlock = null;
     return r;
   }
 }

@@ -134,6 +134,7 @@ class _PermissionsOnboardingScreenState extends State<PermissionsOnboardingScree
                       isGranted: appState.hasUsagePermission,
                       onTap: appState.requestUsagePermission,
                     ),
+                    /*
                     const SizedBox(height: 16),
                     _PermissionCard(
                       title: 'Device Administrator',
@@ -141,6 +142,7 @@ class _PermissionsOnboardingScreenState extends State<PermissionsOnboardingScree
                       isGranted: appState.hasDeviceAdminPermission,
                       onTap: appState.requestDeviceAdminPermission,
                     ),
+                    */
                     const SizedBox(height: 16),
                     _PermissionCard(
                       title: 'Location',

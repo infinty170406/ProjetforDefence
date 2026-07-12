@@ -108,9 +108,9 @@ class MonitoringService {
 
     // ── A. Démarrer l'enforcement (règles Firestore + boucle 5s) ─────────
     await _enforcementService.start(
-      onBlock: (reason) {
+      onBlock: (reason, package) {
         // Transmettre le signal de blocage à l'isolate principal Flutter
-        service.invoke('triggerBlock', {'reason': reason});
+        service.invoke('triggerBlock', {'reason': reason, 'package': package});
       },
       service: service,
     );

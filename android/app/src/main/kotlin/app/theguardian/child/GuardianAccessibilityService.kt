@@ -41,6 +41,7 @@ class GuardianAccessibilityService : AccessibilityService() {
         @Volatile var blockedPackages: Set<String> = emptySet()
         @Volatile var customKeywords: Set<String> = emptySet()
         @Volatile var blockedWebsites: Set<String> = emptySet()
+        @Volatile var currentlyBlockedPackage: String? = null
 
         // Configuration du filtrage des catégories
         @Volatile var blockAdult: Boolean = false
@@ -185,6 +186,19 @@ class GuardianAccessibilityService : AccessibilityService() {
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             appUsageMonitor.onAppForeground(pkg)
             broadcastForegroundPackage(pkg)
+
+            // DISMISS NATIVE BLOCK IF FOREGROUND PACKAGE CHANGED
+            val blockedPkg = currentlyBlockedPackage
+            if (blockedPkg != null) {
+                if (pkg != blockedPkg && pkg != OWN_PACKAGE && pkg != "android") {
+                    Log.i(TAG, "Foreground package changed from blocked $blockedPkg to $pkg. Dismissing block screen.")
+                    currentlyBlockedPackage = null
+                    val dismissIntent = Intent("app.theguardian.child.DISMISS_BLOCK").apply {
+                        setPackage(OWN_PACKAGE)
+                    }
+                    sendBroadcast(dismissIntent)
+                }
+            }
         }
 
         // 4. Blocage immédiat d'application configurée
@@ -219,7 +233,47 @@ class GuardianAccessibilityService : AccessibilityService() {
             val rawUrl = scan.url
             val rawSearch = scan.searchQuery
 
-            // Détection de recherche depuis le texte saisi ou l'URL
+            // Détection de mot-clé bloqué en temps réel dans les champs de saisie (EditText)
+            var blockedKeywordQuery: String? = null
+            for (etText in scan.editTexts) {
+                if (etText.isNotEmpty() && !looksLikeUrl(etText)) {
+                    val evaluation = BlockedKeywordEngine.evaluate(etText, customKeywords, emptySet())
+                    if (evaluation.isBlocked) {
+                        blockedKeywordQuery = etText
+                        break
+                    }
+                }
+            }
+
+            if (blockedKeywordQuery != null) {
+                if (!eventDeduplicator.isDuplicateSearch(blockedKeywordQuery)) {
+                    blockKeyword(pkg, blockedKeywordQuery)
+                    val evaluation = BlockedKeywordEngine.evaluate(blockedKeywordQuery, customKeywords, emptySet())
+                    timelineManager.buildEvent(
+                        appPackage = pkg,
+                        searchQuery = blockedKeywordQuery,
+                        title = "Recherche Bloquée: $blockedKeywordQuery",
+                        url = rawUrl ?: "search?q=$blockedKeywordQuery",
+                        category = evaluation.category ?: "Mot Bloqué",
+                        riskScore = 100,
+                        status = "Bloqué"
+                    )
+                    eventReporter.sendReport(EventReporter.Report(
+                        url = rawUrl ?: "search?q=$blockedKeywordQuery",
+                        appPackage = pkg,
+                        searchQuery = blockedKeywordQuery,
+                        title = "Recherche Bloquée: $blockedKeywordQuery",
+                        category = evaluation.category ?: "Mot Bloqué",
+                        riskLevel = "Élevé",
+                        isSiteBlocked = false,
+                        isWordBlocked = true,
+                        status = "Bloqué"
+                    ))
+                }
+                return
+            }
+
+            // Détection de recherche standard depuis le texte saisi ou l'URL
             val searchQuery = rawSearch ?: if (rawUrl != null) SearchDetector.extractSearchQuery(rawUrl) else null
 
             // 1. Validation de mot-clé bloqué (avant chargement de l'URL)
@@ -349,7 +403,7 @@ class GuardianAccessibilityService : AccessibilityService() {
                             category = classification.category ?: "Contenu Bloqué",
                             riskLevel = "Élevé",
                             isSiteBlocked = false,
-                            isWordBlocked = true,
+                            isWordBlocked = false,
                             status = "Bloqué"
                         ))
                         return
@@ -375,8 +429,8 @@ class GuardianAccessibilityService : AccessibilityService() {
     }
 
     private fun blockKeyword(pkg: String, keyword: String) {
-        Log.i(TAG, "Blocked keyword detected at foreground: $keyword. Redirecting to home.")
-        performGlobalAction(GLOBAL_ACTION_HOME)
+        currentlyBlockedPackage = pkg
+        Log.i(TAG, "Blocked keyword detected at foreground: $keyword.")
 
         val reason = "La recherche du mot-clé '$keyword' est bloquée par vos parents."
 
@@ -405,8 +459,8 @@ class GuardianAccessibilityService : AccessibilityService() {
     }
 
     private fun blockUrl(pkg: String, blockedDomain: String) {
-        Log.i(TAG, "Blocked URL detected at foreground: $blockedDomain. Redirecting to home.")
-        performGlobalAction(GLOBAL_ACTION_HOME)
+        currentlyBlockedPackage = pkg
+        Log.i(TAG, "Blocked URL detected at foreground: $blockedDomain.")
 
         val reason = "Ce site web ou cette recherche ($blockedDomain) est bloqué(e) par vos parents."
 
@@ -475,8 +529,8 @@ class GuardianAccessibilityService : AccessibilityService() {
     }
 
     private fun blockApp(pkg: String) {
-        Log.i(TAG, "Blocked app detected at foreground: $pkg. Redirecting to home.")
-        performGlobalAction(GLOBAL_ACTION_HOME)
+        currentlyBlockedPackage = pkg
+        Log.i(TAG, "Blocked app detected at foreground: $pkg.")
         
         var reason = "Cette application est bloquée par vos parents."
         try {
@@ -514,6 +568,20 @@ class GuardianAccessibilityService : AccessibilityService() {
         
         // Log localement via SyncManager
         syncManager.queueEvent("foreground_event", mapOf("package" to pkg))
+    }
+
+    private fun looksLikeUrl(text: String): Boolean {
+        if (text.startsWith("http://") || text.startsWith("https://")) return true
+        if (text.contains(".") && !text.contains(" ") && text.length > 3) {
+            val lastDot = text.lastIndexOf('.')
+            if (lastDot > 0 && lastDot < text.length - 1) {
+                val tld = text.substring(lastDot + 1)
+                if (tld.length in 2..6 && tld.all { it.isLetter() }) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     override fun onInterrupt() {

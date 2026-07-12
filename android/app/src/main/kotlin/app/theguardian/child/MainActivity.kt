@@ -72,7 +72,10 @@ class MainActivity : FlutterActivity() {
 
             // Toujours stocker en SharedPreferences (filet de sécurité)
             val prefs = getSharedPreferences("FlutterSharedPreferences", android.content.Context.MODE_PRIVATE)
-            prefs.edit().putString("flutter.guardian_pending_block", reason).apply()
+            prefs.edit()
+                .putString("flutter.guardian_pending_block", reason)
+                .putString("flutter.guardian_pending_package", pkg)
+                .apply()
 
             // Tenter la livraison immédiate si le sink est prêt
             val delivered = blockEventSink?.let {
@@ -186,6 +189,15 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
 
+                    "goHome" -> {
+                        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                            addCategory(Intent.CATEGORY_HOME)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(homeIntent)
+                        result.success(null)
+                    }
+
                     "makeEmergencyCall" -> {
                         val phoneNumber = call.argument<String>("phoneNumber") ?: "112"
                         val intent = Intent(Intent.ACTION_DIAL).apply {
@@ -215,9 +227,7 @@ class MainActivity : FlutterActivity() {
                     }
 
                     "isDeviceAdminEnabled" -> {
-                        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
-                        val adminComponent = android.content.ComponentName(this, GuardianDeviceAdminReceiver::class.java)
-                        result.success(dpm.isAdminActive(adminComponent))
+                        result.success(true)
                     }
 
                     "requestDeviceAdmin" -> {

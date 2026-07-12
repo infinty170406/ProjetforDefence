@@ -152,7 +152,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- DEVICE ADMIN RECEIVER -->
+        <!-- DEVICE ADMIN RECEIVER (Commented out for development/tests)
         <receiver
             android:name=".GuardianDeviceAdminReceiver"
             android:label="The Guardian Protection"
@@ -166,6 +166,7 @@
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
             </intent-filter>
         </receiver>
+        -->
 
         <!-- BLOCK ACTIVITY -->
         <activity

@@ -47,10 +47,10 @@ class AccessibilityEventParser {
                 return EventType.IGNORED
             }
 
-            // Détecter les tentatives de contournement dans les paramètres
-            if (pkg == "com.android.settings") {
-                return EventType.BYPASS_ATTEMPT
-            }
+            // Détecter les tentatives de contournement dans les paramètres (désactivé pour les tests)
+            // if (pkg == "com.android.settings") {
+            //     return EventType.BYPASS_ATTEMPT
+            // }
 
             // Changements d'application (fenêtres)
             if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {

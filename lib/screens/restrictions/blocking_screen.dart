@@ -20,8 +20,9 @@ import '../../services/rules_service.dart';
 /// (ex: accorde du temps supplémentaire, retire le blocage).
 class BlockingScreen extends StatefulWidget {
   final String reason;
+  final String? blockedPackage;
 
-  const BlockingScreen({super.key, required this.reason});
+  const BlockingScreen({super.key, required this.reason, this.blockedPackage});
 
   @override
   State<BlockingScreen> createState() => _BlockingScreenState();
@@ -32,6 +33,7 @@ class _BlockingScreenState extends State<BlockingScreen>
   late AnimationController _pulseController;
   Timer? _refreshTimer;
   Timer? _unlockCheckTimer;
+  StreamSubscription? _foregroundSub;
 
   late ActiveRules _initialRules;
   String _parentPhoneNumber = '';
@@ -74,16 +76,20 @@ class _BlockingScreenState extends State<BlockingScreen>
     );
 
     if (!_isGlobalBlock) {
-      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (!mounted) return;
-        setState(() {
-          if (_secondsRemaining > 1) {
-            _secondsRemaining--;
-          } else {
-            _countdownTimer?.cancel();
-            _goToDashboard();
+      _foregroundSub = const EventChannel('app.theguardian.child/foreground_events')
+          .receiveBroadcastStream()
+          .listen((event) {
+        if (event is Map && mounted) {
+          final pkg = event['package'] as String?;
+          if (pkg != null && pkg.isNotEmpty) {
+            final ownPkg = 'app.theguardian.child';
+            final blockedPkg = widget.blockedPackage;
+            if (pkg != blockedPkg && pkg != ownPkg && pkg != 'android') {
+              debugPrint('BlockingScreen: Foreground package changed to $pkg (not blocked app or child app). Dismissing.');
+              _goToDashboard();
+            }
           }
-        });
+        }
       });
     }
   }
@@ -355,12 +361,29 @@ class _BlockingScreenState extends State<BlockingScreen>
     );
   }
 
+  Future<void> _goHome() async {
+    try {
+      await const MethodChannel('app.theguardian.child/system')
+          .invokeMethod('goHome');
+    } catch (e) {
+      debugPrint('Error going home: $e');
+    }
+  }
+
+  void _closeAndExit() {
+    if (!_isGlobalBlock) {
+      _goHome();
+    }
+    _goToDashboard();
+  }
+
   @override
   void dispose() {
     _pulseController.dispose();
     _refreshTimer?.cancel();
     _unlockCheckTimer?.cancel();
     _countdownTimer?.cancel();
+    _foregroundSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -369,10 +392,12 @@ class _BlockingScreenState extends State<BlockingScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Si l'enfant tente de quitter l'écran de blocage (Home/Recents),
     // on demande au système de ramener l'app au premier plan après un court délai.
-    if (state == AppLifecycleState.hidden || state == AppLifecycleState.paused) {
-      debugPrint('BlockingScreen: Child attempted to leave. Requesting foreground...');
-      const MethodChannel('app.theguardian.child/system')
-          .invokeMethod('bringToForeground');
+    if (_isGlobalBlock) {
+      if (state == AppLifecycleState.hidden || state == AppLifecycleState.paused) {
+        debugPrint('BlockingScreen: Child attempted to leave. Requesting foreground...');
+        const MethodChannel('app.theguardian.child/system')
+            .invokeMethod('bringToForeground');
+      }
     }
   }
 
@@ -543,53 +568,19 @@ class _BlockingScreenState extends State<BlockingScreen>
                               ),
                             ],
 
-                            // COMPTEUR DE FERMETURE AUTOMATIQUE (BLOCAGE SPÉCIFIQUE)
+                            // BOUTON DE FERMETURE (BLOCAGE SPÉCIFIQUE)
                             if (!_isGlobalBlock) ...[
-                              Text(
-                                'RETOUR AU TABLEAU DE BORD DANS',
-                                style: TextStyle(
-                                  color: Colors.grey[500],
-                                  fontSize: 11,
-                                  letterSpacing: 1.2,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 70,
-                                    height: 70,
-                                    child: CircularProgressIndicator(
-                                      value: _secondsRemaining / 3,
-                                      color: AppColors.accentTeal,
-                                      backgroundColor: Colors.white.withValues(alpha: 0.05),
-                                      strokeWidth: 4,
-                                    ),
-                                  ),
-                                  Text(
-                                    '$_secondsRemaining',
-                                    style: const TextStyle(
-                                      color: AppColors.textDark,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 28),
                               ElevatedButton.icon(
-                                onPressed: _goToDashboard,
+                                onPressed: _closeAndExit,
                                 icon: const Icon(Icons.close, size: 20),
                                 label: const Text(
-                                  'Fermer et retour',
+                                  'Fermer l\'application',
                                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white.withValues(alpha: 0.05),
                                   foregroundColor: Colors.white,
-                                  minimumSize: const Size(190, 50),
+                                  minimumSize: const Size(220, 50),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(25),
                                     side: BorderSide(color: AppColors.textDark.withValues(alpha: 0.1), width: 1.5),

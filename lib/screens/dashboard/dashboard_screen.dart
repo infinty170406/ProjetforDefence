@@ -31,7 +31,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _pingController;
-  StreamSubscription<String>? _blockSub;
+  StreamSubscription<BlockDetails>? _blockSub;
   bool _sosSending = false;
   bool _sosJustSent = false;
 
@@ -74,11 +74,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
-  void _navigateToBlock(String reason) {
+  void _navigateToBlock(BlockDetails details) {
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => BlockingScreen(reason: reason)),
+      MaterialPageRoute(builder: (_) => BlockingScreen(reason: details.reason, blockedPackage: details.package)),
       (route) => false,
     );
   }

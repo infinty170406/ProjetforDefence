@@ -178,12 +178,12 @@ class EnforcementService {
   ServiceInstance? _backgroundService;
 
   // Callback vers BackgroundService pour déclencher l'écran de blocage côté Flutter
-  void Function(String reason)? onBlockRequired;
+  void Function(String reason, String package)? onBlockRequired;
 
   // ── Démarrage / arrêt ────────────────────────────────────────────────────
 
   Future<void> start({
-    required void Function(String reason) onBlock,
+    required void Function(String reason, String package) onBlock,
     ServiceInstance? service,
   }) async {
     debugPrint('EnforcementService: start() called.');
@@ -228,10 +228,12 @@ class EnforcementService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.reload();
         final pending = prefs.getString('guardian_pending_block');
+        final pendingPkg = prefs.getString('guardian_pending_package') ?? '';
         if (pending != null && pending.isNotEmpty) {
           await prefs.remove('guardian_pending_block');
-          debugPrint('EnforcementService: Consuming pending block: $pending');
-          onBlockRequired?.call(pending);
+          await prefs.remove('guardian_pending_package');
+          debugPrint('EnforcementService: Consuming pending block: $pending for package: $pendingPkg');
+          onBlockRequired?.call(pending, pendingPkg);
         }
       } catch (e) {
         debugPrint('EnforcementService: Pending block read error: $e');
@@ -656,7 +658,7 @@ class EnforcementService {
         final blockSignature = '$frontPackage|$blockReason';
         if (blockSignature != _lastBlockedSignature) {
           _lastBlockedSignature = blockSignature;
-          onBlockRequired?.call(blockReason);
+          onBlockRequired?.call(blockReason, frontPackage ?? '');
         }
       } else if (frontPackage != null) {
         await prefs.remove('guardian_block_reason_$frontPackage');
@@ -814,10 +816,11 @@ class EnforcementService {
 
     if (status == 'Bloqué') {
       final domain = Uri.tryParse(url)?.host ?? url;
+      final isRealSearch = isWordBlocked && searchQuery != null && searchQuery.isNotEmpty;
       _alertService.sendAlert(
         type: AlertType.blockedApp,
-        cooldownKey: isWordBlocked ? 'search:$searchQuery' : 'web:$domain',
-        detail: isWordBlocked
+        cooldownKey: isRealSearch ? 'search:$searchQuery' : 'web:$domain',
+        detail: isRealSearch
             ? 'Alerte de recherche : Votre enfant a recherché "$searchQuery" (Mot ou catégorie bloqué(e)).'
             : 'Alerte de navigation : Votre enfant a tenté de visiter le site restreint $url.',
       );
@@ -941,9 +944,10 @@ class EnforcementService {
     );
 
     final reason = 'Recherche restreinte détectée ("$searchQuery").';
-    onBlockRequired?.call(reason);
+    final pkg = _currentForegroundPackage ?? '';
+    onBlockRequired?.call(reason, pkg);
     if (_backgroundService != null) {
-      _backgroundService!.invoke('triggerBlock', {'reason': reason});
+      _backgroundService!.invoke('triggerBlock', {'reason': reason, 'package': pkg});
     }
   }
 
@@ -1032,9 +1036,10 @@ class EnforcementService {
           'Alerte de navigation : Votre enfant a tenté de visiter le site web restreint suivant : $url',
     );
 
-    onBlockRequired?.call(reason);
+    final pkg = (url.contains('.') && !url.contains('/')) ? url : (_currentForegroundPackage ?? '');
+    onBlockRequired?.call(reason, pkg);
     if (_backgroundService != null) {
-      _backgroundService!.invoke('triggerBlock', {'reason': reason});
+      _backgroundService!.invoke('triggerBlock', {'reason': reason, 'package': pkg});
     }
   }
 
