@@ -33,8 +33,32 @@ class EventReporter(private val context: Context) {
         
         val dateStr = dateFormat.format(now)
         val timeStr = timeFormat.format(now)
+        val isBlocked = report.status == "Bloqué"
 
-        // 1. Send local broadcast for MainActivity (if alive and listening)
+        // 1. Persistance locale Room (indépendant de Flutter — JAMAIS perdu)
+        NativeHistoryRepository.record(
+            context,
+            NavigationHistoryEntry(
+                timestamp     = now.time,
+                packageName   = report.appPackage,
+                browser       = report.appPackage.substringAfterLast('.'),
+                url           = report.url,
+                title         = report.title ?: "",
+                searchQuery   = report.searchQuery,
+                category      = report.category ?: "Aucune",
+                riskLevel     = report.riskLevel,
+                isBlocked     = isBlocked,
+                blockReason   = if (isBlocked) report.category else null,
+                isSiteBlocked = report.isSiteBlocked,
+                isWordBlocked = report.isWordBlocked,
+                synced        = false
+            )
+        )
+        // NativeHistoryRepository.record() appelle déjà writeToFlutterQueue()
+        // → on ne double pas l'écriture SharedPreferences ici.
+        // On envoie seulement le broadcast local pour MainActivity (si ouverte).
+
+        // 2. Send local broadcast for MainActivity (if alive and listening)
         val broadcastIntent = Intent(ACTION_URL_DETECTED).apply {
             setPackage(context.packageName)
             putExtra("detected_url", report.url)
@@ -52,32 +76,7 @@ class EventReporter(private val context: Context) {
             putExtra("time", timeStr)
         }
         context.sendBroadcast(broadcastIntent)
-
-        // 2. Enqueue event to SharedPreferences (for Dart background isolate)
-        try {
-            val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            val obj = JSONObject().apply {
-                put("action", "web_event")
-                put("ts", System.currentTimeMillis())
-                put("url", report.url)
-                put("package", report.appPackage)
-                if (report.searchQuery != null) {
-                    put("searchQuery", report.searchQuery)
-                }
-                put("title", report.title ?: "")
-                put("category", report.category ?: "Aucune")
-                put("riskLevel", report.riskLevel)
-                put("isSiteBlocked", report.isSiteBlocked)
-                put("isWordBlocked", report.isWordBlocked)
-                put("status", report.status)
-                put("date", dateStr)
-                put("time", timeStr)
-            }
-            val key = "flutter.guardian_event_${System.currentTimeMillis()}_${(Math.random() * 1000).toInt()}"
-            prefs.edit().putString(key, obj.toString()).apply()
-            Log.d(TAG, "Report enqueued: $key -> ${report.url}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to enqueue report", e)
-        }
+        Log.d(TAG, "Report sent: ${report.url} [${report.status}]")
     }
 }
+

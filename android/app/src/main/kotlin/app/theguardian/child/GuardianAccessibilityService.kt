@@ -85,6 +85,15 @@ class GuardianAccessibilityService : AccessibilityService() {
     @Volatile private var isReloadingRules = false
     private var pendingSearchRunnable: Runnable? = null
 
+    // Heartbeat natif — écrit toutes les 5 minutes pour que GuardianWorker sache
+    // que le moteur d'accessibilité tourne SANS dépendre du runtime Flutter.
+    private val heartbeatRunnable = object : Runnable {
+        override fun run() {
+            writeNativeHeartbeat()
+            handler.postDelayed(this, 5 * 60 * 1000L)
+        }
+    }
+
     private val reloadRunnable = object : Runnable {
         override fun run() {
             reloadRules()
@@ -187,12 +196,32 @@ class GuardianAccessibilityService : AccessibilityService() {
         
         reloadRules()
 
+        // Écrire immédiatement le heartbeat natif au démarrage du service
+        writeNativeHeartbeat()
+        // Planifier les heartbeats périodiques (toutes les 5 minutes)
+        handler.postDelayed(heartbeatRunnable, 5 * 60 * 1000L)
+
         // Audit de sécurité initial
         securityMonitor.auditSecurity()
         
         Log.i(TAG, "AccessibilityService connected — SOLID orchestrator mode initialized.")
     }
-    
+
+    /**
+     * Écrit le timestamp courant dans SharedPreferences sous la clé lue par GuardianWorker
+     * et WatchdogReceiver. Utilise le même prefixe 'flutter.' car les deux lisent
+     * 'flutter.guardian_service_heartbeat' dans FlutterSharedPreferences.
+     */
+    private fun writeNativeHeartbeat() {
+        try {
+            val prefs = applicationContext.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            prefs.edit().putLong("flutter.guardian_service_heartbeat", System.currentTimeMillis()).apply()
+            Log.d(TAG, "Native heartbeat written.")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write native heartbeat: ${e.message}")
+        }
+    }
+
     private fun loadRulesFromPrefs() {
         try {
             val prefs = applicationContext.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
@@ -887,6 +916,7 @@ class GuardianAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         appUsageMonitor.onAppBackground()
         handler.removeCallbacks(reloadRunnable)
+        handler.removeCallbacks(heartbeatRunnable)
         val prefs = applicationContext.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         prefsListener?.let { prefs.unregisterOnSharedPreferenceChangeListener(it) }
         instance = null
