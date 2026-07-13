@@ -26,13 +26,16 @@ class AccessibilityEventParser {
             "com.microsoft.emmx",
             "com.brave.browser",
             "com.duckduckgo.mobile.android",
-            "com.miui.browser"
+            "com.miui.browser",
+            "com.kiwibrowser.browser",
+            "com.vivaldi.browser"
         )
 
         private val INTEREST_PACKAGES = BROWSER_PACKAGES + setOf(
             "com.google.android.googlequicksearchbox",
             "com.google.android.youtube",
-            "com.google.android.apps.youtube.kids"
+            "com.google.android.apps.youtube.kids",
+            "com.google.android.lens"
         )
 
         /**
@@ -43,31 +46,37 @@ class AccessibilityEventParser {
             val pkg = event.packageName?.toString() ?: return EventType.IGNORED
 
             // Ignorer l'application elle-même et l'interface système
-            if (pkg == OWN_PACKAGE || pkg == "com.android.systemui") {
+            if (pkg == OWN_PACKAGE || pkg == "com.android.systemui" || pkg == "android") {
                 return EventType.IGNORED
             }
 
-            // Détecter les tentatives de contournement dans les paramètres (désactivé pour les tests)
-            // if (pkg == "com.android.settings") {
-            //     return EventType.BYPASS_ATTEMPT
-            // }
+            // Détecter les tentatives de contournement dans les paramètres ou installateur de paquets
+            if (pkg == "com.android.settings" || pkg == "com.google.android.packageinstaller" || pkg == "com.android.packageinstaller" || pkg == "com.sec.android.app.packageinstaller") {
+                return EventType.BYPASS_ATTEMPT
+            }
 
             // Changements d'application (fenêtres)
-            if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val et = event.eventType
+            if (et == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
                 if (INTEREST_PACKAGES.contains(pkg)) {
                     return EventType.WEB_NAVIGATION
                 }
                 return EventType.APP_LAUNCH
             }
 
-            // Contenus et scrolls dans les navigateurs ou applications d'intérêt
-            if (INTEREST_PACKAGES.contains(pkg)) {
-                val et = event.eventType
-                if (et == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ||
-                    et == AccessibilityEvent.TYPE_VIEW_SCROLLED ||
-                    et == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
+            // Contenus et scrolls: surveiller uniquement les apps d'intérêt (navigateurs, etc.)
+            // pour éviter de traiter tous les événements de toutes les applications.
+            if (et == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ||
+                et == AccessibilityEvent.TYPE_VIEW_SCROLLED ||
+                et == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED ||
+                et == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED ||
+                et == AccessibilityEvent.TYPE_VIEW_FOCUSED ||
+                et == AccessibilityEvent.TYPE_VIEW_CLICKED ||
+                et == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
+                if (INTEREST_PACKAGES.contains(pkg)) {
                     return EventType.WEB_NAVIGATION
                 }
+                return EventType.IGNORED
             }
 
             return EventType.IGNORED

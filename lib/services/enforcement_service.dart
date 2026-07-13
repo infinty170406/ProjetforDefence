@@ -9,6 +9,7 @@ import 'package:usage_stats/usage_stats.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'rules_service.dart';
 import 'alert_service.dart';
+import 'firestore_sync_queue.dart';
 import '../utils/child_path_helper.dart';
 import '../utils/system_app_classifier.dart';
 
@@ -976,7 +977,7 @@ class EnforcementService {
       // Chemin EXACT attendu par le parent pour les stats web
       final webStatsPath = '$childPath/alerts/usage/websites/$today';
 
-      await _firestore.doc(webStatsPath).set({
+      await FirestoreSyncQueue().queueSet(webStatsPath, {
         'totalMinutes': 0, // Optionnel, le parent additionne
         'websites': {
           domain.replaceAll('.', '_'): {
@@ -986,10 +987,10 @@ class EnforcementService {
           },
         },
         'lastSync': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      }, merge: true);
 
-      // On garde aussi l'historique linéaire pour le parent
-      await _firestore.collection('$childPath/inventory/websites/history').add({
+      // On garde aussi l'historique linéaire pour le parent via FirestoreSyncQueue
+      await FirestoreSyncQueue().queueAdd('$childPath/inventory/websites/history', {
         'url': url,
         'domain': domain,
         'package': package,

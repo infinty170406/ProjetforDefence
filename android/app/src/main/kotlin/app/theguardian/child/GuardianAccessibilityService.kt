@@ -81,10 +81,79 @@ class GuardianAccessibilityService : AccessibilityService() {
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private var prefsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
 
+    private val eventQueue = java.util.Collections.synchronizedList(mutableListOf<AccessibilityEvent>())
+    @Volatile private var isReloadingRules = false
+    private var pendingSearchRunnable: Runnable? = null
+
     private val reloadRunnable = object : Runnable {
         override fun run() {
+            reloadRules()
+        }
+    }
+
+    private fun reloadRules() {
+        synchronized(this) {
+            if (isReloadingRules) return
+            isReloadingRules = true
+        }
+        Log.i(TAG, "Starting clean rules reload sequence...")
+        
+        // Stop all observers and unregister preference listener
+        handler.removeCallbacks(reloadRunnable)
+        pendingSearchRunnable?.let { handler.removeCallbacks(it) }
+        pendingSearchRunnable = null
+        
+        val prefs = applicationContext.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        prefsListener?.let { prefs.unregisterOnSharedPreferenceChangeListener(it) }
+        
+        // Clear all caches, rules, category configurations, etc.
+        blockedPackages = emptySet()
+        customKeywords = emptySet()
+        blockedWebsites = emptySet()
+        blockAdult = false
+        blockViolence = false
+        blockGambling = false
+        blockDrugs = false
+        blockSexualPredators = false
+        blockSelfHarm = false
+        blockCyberbullying = false
+        blockEatingDisorders = false
+        
+        eventDebouncer.clear()
+        eventDeduplicator.clear()
+        navigationContextManager.clear()
+        
+        try {
             loadRulesFromPrefs()
-            handler.postDelayed(this, 5000)
+            Log.i(TAG, "Rules loaded from preferences successfully.")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reloading rules: ${e.message}")
+        } finally {
+            // Restore observers
+            prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                if (key?.startsWith("flutter.guardian_") == true) {
+                    reloadRules()
+                }
+            }
+            prefs.registerOnSharedPreferenceChangeListener(prefsListener)
+            handler.postDelayed(reloadRunnable, 5000)
+            
+            isReloadingRules = false
+            Log.i(TAG, "Rules reload completed. Processing ${eventQueue.size} queued events.")
+            
+            // Process queued events
+            val queued = synchronized(eventQueue) {
+                val list = ArrayList(eventQueue)
+                eventQueue.clear()
+                list
+            }
+            for (evt in queued) {
+                try {
+                    onAccessibilityEvent(evt)
+                } finally {
+                    evt.recycle()
+                }
+            }
         }
     }
 
@@ -105,23 +174,18 @@ class GuardianAccessibilityService : AccessibilityService() {
             eventTypes    = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
                             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
                             AccessibilityEvent.TYPE_VIEW_SCROLLED or
-                            AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
+                            AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED or
+                            AccessibilityEvent.TYPE_WINDOWS_CHANGED or
+                            AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED or
+                            AccessibilityEvent.TYPE_VIEW_FOCUSED or
+                            AccessibilityEvent.TYPE_VIEW_CLICKED
             feedbackType  = AccessibilityServiceInfo.FEEDBACK_GENERIC
             flags         = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
                             AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
             notificationTimeout = 100
         }
         
-        loadRulesFromPrefs()
-        
-        val prefs = applicationContext.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key?.startsWith("flutter.guardian_") == true) {
-                loadRulesFromPrefs()
-            }
-        }
-        prefs.registerOnSharedPreferenceChangeListener(prefsListener)
-        handler.postDelayed(reloadRunnable, 5000)
+        reloadRules()
 
         // Audit de sécurité initial
         securityMonitor.auditSecurity()
@@ -138,19 +202,19 @@ class GuardianAccessibilityService : AccessibilityService() {
             val newApps = mutableSetOf<String>()
             for (i in 0 until appsArray.length()) newApps.add(appsArray.getString(i))
             blockedPackages = newApps
-
+ 
             val keywordsJson = prefs.getString("flutter.guardian_custom_keywords_json", "[]") ?: "[]"
             val keywordsArray = org.json.JSONArray(keywordsJson)
             val newKeywords = mutableSetOf<String>()
             for (i in 0 until keywordsArray.length()) newKeywords.add(keywordsArray.getString(i))
             customKeywords = newKeywords
-
+ 
             val websitesJson = prefs.getString("flutter.guardian_blocked_websites_json", "[]") ?: "[]"
             val websitesArray = org.json.JSONArray(websitesJson)
             val newWebsites = mutableSetOf<String>()
             for (i in 0 until websitesArray.length()) newWebsites.add(websitesArray.getString(i))
             blockedWebsites = newWebsites
-
+ 
             blockAdult = prefs.getBoolean("flutter.guardian_block_adult", false)
             blockViolence = prefs.getBoolean("flutter.guardian_block_violence", false)
             blockGambling = prefs.getBoolean("flutter.guardian_block_gambling", false)
@@ -165,20 +229,179 @@ class GuardianAccessibilityService : AccessibilityService() {
         }
     }
 
+    private fun isValidInput(text: String?): Boolean {
+        if (text == null) return false
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return false
+        if (trimmed.equals("null", ignoreCase = true)) return false
+        if (trimmed.equals("undefined", ignoreCase = true)) return false
+        return true
+    }
+
+    private fun scanForBypassKeywords(node: AccessibilityNodeInfo?): Boolean {
+        if (node == null) return false
+        val text = node.text?.toString()?.lowercase(java.util.Locale.getDefault()) ?: ""
+        val contentDesc = node.contentDescription?.toString()?.lowercase(java.util.Locale.getDefault()) ?: ""
+        
+        if (text.contains("guardian") || contentDesc.contains("guardian")) {
+            return true
+        }
+        
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            if (child != null) {
+                val found = scanForBypassKeywords(child)
+                child.recycle()
+                if (found) return true
+            }
+        }
+        return false
+    }
+
+    private fun scanForSettingsBypass(node: AccessibilityNodeInfo?): Boolean {
+        val texts = mutableListOf<String>()
+        gatherAllTexts(node, texts, 0)
+        
+        val hasGuardian = texts.any { it.contains("guardian", ignoreCase = true) }
+        if (hasGuardian) {
+            val hasBypassWord = texts.any {
+                it.contains("force stop", ignoreCase = true) ||
+                it.contains("forcer l'arrêt", ignoreCase = true) ||
+                it.contains("disable", ignoreCase = true) ||
+                it.contains("désactiver", ignoreCase = true) ||
+                it.contains("uninstall", ignoreCase = true) ||
+                it.contains("désinstaller", ignoreCase = true) ||
+                it.contains("accessibilité", ignoreCase = true) ||
+                it.contains("accessibility", ignoreCase = true) ||
+                it.contains("admin", ignoreCase = true)
+            }
+            if (hasBypassWord) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun gatherAllTexts(node: AccessibilityNodeInfo?, list: MutableList<String>, depth: Int) {
+        if (node == null || list.size > 100 || depth > 20) return
+        val text = node.text?.toString()?.trim() ?: ""
+        val contentDesc = node.contentDescription?.toString()?.trim() ?: ""
+        if (text.isNotEmpty()) list.add(text)
+        if (contentDesc.isNotEmpty()) list.add(contentDesc)
+        
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            if (child != null) {
+                gatherAllTexts(child, list, depth + 1)
+                child.recycle()
+            }
+        }
+    }
+
+    private fun isDeviceActivated(): Boolean {
+        val prefs = applicationContext.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val childPath = prefs.getString("flutter.child_path", null)
+        val childId = prefs.getString("flutter.child_id", null)
+        return !childPath.isNullOrBlank() && !childId.isNullOrBlank()
+    }
+
+    private fun checkBypassAttempt(rootNode: AccessibilityNodeInfo?, pkg: String): Boolean {
+        if (rootNode == null) return false
+        
+        if (!isDeviceActivated()) {
+            return false
+        }
+        
+        if (pkg == "com.google.android.packageinstaller" || pkg == "com.android.packageinstaller" || pkg == "com.sec.android.app.packageinstaller") {
+            if (scanForBypassKeywords(rootNode)) {
+                Log.w(TAG, "Blocked PackageInstaller action targeting Guardian.")
+                return true
+            }
+        }
+        
+        if (pkg == "com.android.settings") {
+            if (scanForSettingsBypass(rootNode)) {
+                Log.w(TAG, "Blocked Settings bypass action targeting Guardian.")
+                return true
+            }
+        }
+        
+        return false
+    }
+
+    private fun checkMultiWindowBlock() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            val interactiveWindows = windows
+            for (window in interactiveWindows) {
+                val root = window.root
+                if (root != null) {
+                    val pkg = root.packageName?.toString() ?: ""
+                    if (blockedPackages.contains(pkg)) {
+                        Log.i(TAG, "Multi-window block triggered for $pkg")
+                        root.recycle()
+                        blockApp(pkg)
+                        break
+                    }
+                    root.recycle()
+                }
+            }
+        }
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
+        
+        if (isReloadingRules) {
+            synchronized(eventQueue) {
+                try {
+                    val eventCopy = AccessibilityEvent.obtain(event)
+                    eventQueue.add(eventCopy)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to copy accessibility event", e)
+                }
+            }
+            return
+        }
+        
         val pkg = event.packageName?.toString() ?: return
+
+        // Capture the root node ONCE here to avoid a race condition caused by calling
+        // rootInActiveWindow multiple times. Between two calls the active window can
+        // change, so the second call may return null and silently drop the event.
+        val rootSnapshot = rootInActiveWindow
+
+        // Anti-bypass Settings & Installer check (uses the same snapshot)
+        if (rootSnapshot != null) {
+            val isBypass = try {
+                checkBypassAttempt(rootSnapshot, pkg)
+            } catch (e: Exception) {
+                Log.e(TAG, "Bypass check error", e)
+                false
+            }
+            if (isBypass) {
+                rootSnapshot.recycle()
+                securityMonitor.triggerSecurityAlert("Tentative de contournement dans le package $pkg.")
+                performGlobalAction(GLOBAL_ACTION_HOME)
+                return
+            }
+        }
+
+        // Multi-window check
+        checkMultiWindowBlock()
 
         // 1. Filtrer et catégoriser l'événement d'accessibilité via l'EventParser
         val eventType = AccessibilityEventParser.parseEvent(event)
         if (eventType == AccessibilityEventParser.EventType.IGNORED) {
+            rootSnapshot?.recycle()
             return
         }
 
-        // 2. Traitement anti-contournement (anti-bypass)
         if (eventType == AccessibilityEventParser.EventType.BYPASS_ATTEMPT) {
-            securityMonitor.triggerSecurityAlert("Tentative de contournement dans le package $pkg.")
-            performGlobalAction(GLOBAL_ACTION_HOME)
+            rootSnapshot?.recycle()
+            if (isDeviceActivated()) {
+                securityMonitor.triggerSecurityAlert("Tentative de contournement dans le package $pkg.")
+                performGlobalAction(GLOBAL_ACTION_HOME)
+            }
             return
         }
 
@@ -203,25 +426,33 @@ class GuardianAccessibilityService : AccessibilityService() {
 
         // 4. Blocage immédiat d'application configurée
         if (blockedPackages.contains(pkg)) {
+            rootSnapshot?.recycle()
             blockApp(pkg)
             return
         }
 
         // 5. Analyse Web & Recherche (si WEB_NAVIGATION)
         if (eventType == AccessibilityEventParser.EventType.WEB_NAVIGATION) {
-            processWebNavigation(event, pkg)
+            // rootSnapshot may be null if the window closed between the event and now;
+            // processWebNavigation handles null safely.
+            processWebNavigation(event, pkg, rootSnapshot)
+        } else {
+            rootSnapshot?.recycle()
         }
     }
 
-    private fun processWebNavigation(event: AccessibilityEvent, pkg: String) {
-        val eventKey = "$pkg:${event.eventType}"
-        if (!eventDebouncer.shouldProcess(eventKey)) {
+    /**
+     * @param rootNode Pre-captured root node from onAccessibilityEvent. The caller owns the
+     *                 lifecycle; this function recycles it in the finally block.
+     *                 Passing null causes an early return so no NPE occurs.
+     */
+    private fun processWebNavigation(event: AccessibilityEvent, pkg: String, rootNode: AccessibilityNodeInfo?) {
+        if (rootNode == null) {
+            Log.w(TAG, "processWebNavigation: rootNode is null for $pkg — event dropped.")
             return
         }
-
-        val rootNode = rootInActiveWindow ?: return
         try {
-            val scan = AccessibilityTreeAnalyzer.analyze(rootNode)
+            val scan = AccessibilityTreeAnalyzer.analyze(rootNode, blockedWebsites, customKeywords, getBlockedCategories())
             val windowTitle = AccessibilityTreeAnalyzer.extractPageTitleFromEvent(event)
             val pageTitle = windowTitle ?: scan.pageTitle ?: ""
 
@@ -230,14 +461,33 @@ class GuardianAccessibilityService : AccessibilityService() {
                 processYouTubeApp(rootNode, pkg)
             }
 
+            // Check if tree analyzer exited early due to a blocked item
+            if (scan.isBlockedEarly && scan.blockedItem != null) {
+                val item = scan.blockedItem
+                if (looksLikeUrl(item)) {
+                    blockUrl(pkg, item)
+                    reportBlockedUrl(pkg, item, pageTitle)
+                } else {
+                    blockKeyword(pkg, item)
+                    reportBlockedKeyword(pkg, item, scan.url)
+                }
+                return
+            }
+
             val rawUrl = scan.url
             val rawSearch = scan.searchQuery
 
-            // Détection de mot-clé bloqué en temps réel dans les champs de saisie (EditText)
+            // Validate all inputs for null/empty/undefined
+            val cleanUrl = if (isValidInput(rawUrl)) rawUrl else null
+            val cleanSearch = if (isValidInput(rawSearch)) rawSearch else null
+
+            // 1. Détection de mot-clé bloqué en temps réel dans les champs de saisie (EditText)
+            Log.d(TAG, "[KW] Scanning ${scan.editTexts.size} EditText(s) in $pkg — categories=${getBlockedCategories()}, customKW=${customKeywords.size}")
             var blockedKeywordQuery: String? = null
             for (etText in scan.editTexts) {
-                if (etText.isNotEmpty() && !looksLikeUrl(etText)) {
-                    val evaluation = BlockedKeywordEngine.evaluate(etText, customKeywords, emptySet())
+                if (isValidInput(etText) && !looksLikeUrl(etText)) {
+                    val evaluation = BlockedKeywordEngine.evaluate(etText, customKeywords, emptySet(), getBlockedCategories())
+                    Log.d(TAG, "[KW] EditText='$etText' → isBlocked=${evaluation.isBlocked}, kw='${evaluation.matchedKeyword}', cat='${evaluation.category}'")
                     if (evaluation.isBlocked) {
                         blockedKeywordQuery = etText
                         break
@@ -248,184 +498,208 @@ class GuardianAccessibilityService : AccessibilityService() {
             if (blockedKeywordQuery != null) {
                 if (!eventDeduplicator.isDuplicateSearch(blockedKeywordQuery)) {
                     blockKeyword(pkg, blockedKeywordQuery)
-                    val evaluation = BlockedKeywordEngine.evaluate(blockedKeywordQuery, customKeywords, emptySet())
-                    timelineManager.buildEvent(
-                        appPackage = pkg,
-                        searchQuery = blockedKeywordQuery,
-                        title = "Recherche Bloquée: $blockedKeywordQuery",
-                        url = rawUrl ?: "search?q=$blockedKeywordQuery",
-                        category = evaluation.category ?: "Mot Bloqué",
-                        riskScore = 100,
-                        status = "Bloqué"
-                    )
-                    eventReporter.sendReport(EventReporter.Report(
-                        url = rawUrl ?: "search?q=$blockedKeywordQuery",
-                        appPackage = pkg,
-                        searchQuery = blockedKeywordQuery,
-                        title = "Recherche Bloquée: $blockedKeywordQuery",
-                        category = evaluation.category ?: "Mot Bloqué",
-                        riskLevel = "Élevé",
-                        isSiteBlocked = false,
-                        isWordBlocked = true,
-                        status = "Bloqué"
-                    ))
+                    reportBlockedKeyword(pkg, blockedKeywordQuery, cleanUrl)
                 }
                 return
             }
 
-            // Détection de recherche standard depuis le texte saisi ou l'URL
-            val searchQuery = rawSearch ?: if (rawUrl != null) SearchDetector.extractSearchQuery(rawUrl) else null
+            // 2. Détection de recherche standard depuis le texte saisi ou l'URL
+            val searchQuery = cleanSearch ?: if (cleanUrl != null) SearchDetector.extractSearchQuery(cleanUrl) else null
+            val cleanSearchQuery = if (isValidInput(searchQuery)) searchQuery else null
 
-            // 1. Validation de mot-clé bloqué (avant chargement de l'URL)
-            if (searchQuery != null && searchQuery.isNotEmpty()) {
-                val evaluation = BlockedKeywordEngine.evaluate(searchQuery, customKeywords, emptySet())
+            if (cleanSearchQuery != null) {
+                val evaluation = BlockedKeywordEngine.evaluate(cleanSearchQuery, customKeywords, emptySet(), getBlockedCategories())
+                Log.d(TAG, "[KW] SearchQuery='$cleanSearchQuery' → isBlocked=${evaluation.isBlocked}, kw='${evaluation.matchedKeyword}', cat='${evaluation.category}'")
                 if (evaluation.isBlocked) {
-                    if (!eventDeduplicator.isDuplicateSearch(searchQuery)) {
-                        blockKeyword(pkg, searchQuery)
-                        timelineManager.buildEvent(
-                            appPackage = pkg,
-                            searchQuery = searchQuery,
-                            title = "Recherche Bloquée: $searchQuery",
-                            url = rawUrl ?: "search?q=$searchQuery",
-                            category = evaluation.category ?: "Mot Bloqué",
-                            riskScore = 100,
-                            status = "Bloqué"
-                        )
-                        eventReporter.sendReport(EventReporter.Report(
-                            url = rawUrl ?: "search?q=$searchQuery",
-                            appPackage = pkg,
-                            searchQuery = searchQuery,
-                            title = "Recherche Bloquée: $searchQuery",
-                            category = evaluation.category ?: "Mot Bloqué",
-                            riskLevel = "Élevé",
-                            isSiteBlocked = false,
-                            isWordBlocked = true,
-                            status = "Bloqué"
-                        ))
+                    if (!eventDeduplicator.isDuplicateSearch(cleanSearchQuery)) {
+                        blockKeyword(pkg, cleanSearchQuery)
+                        reportBlockedKeyword(pkg, cleanSearchQuery, cleanUrl)
                     }
                     return
                 }
             }
 
-            // 2. Validation d'URL bloquée
-            if (rawUrl != null) {
-                // Déduplication URL
-                if (eventDeduplicator.isDuplicateUrl(rawUrl)) return
-
-                // Vérification du blocage de site robuste
-                if (WebsiteBlockEngine.isBlocked(rawUrl, blockedWebsites)) {
-                    blockUrl(pkg, rawUrl)
-                    timelineManager.buildEvent(pkg, null, pageTitle, rawUrl, "Site Bloqué", 100, "Bloqué")
-                    eventReporter.sendReport(EventReporter.Report(
-                        url = rawUrl,
-                        appPackage = pkg,
-                        searchQuery = null,
-                        title = pageTitle.ifBlank { UrlAnalyzer.parse(rawUrl)?.host ?: rawUrl },
-                        category = "Site Bloqué",
-                        riskLevel = "Élevé",
-                        isSiteBlocked = true,
-                        isWordBlocked = false,
-                        status = "Bloqué"
-                    ))
+            // 3. Validation d'URL bloquée
+            if (cleanUrl != null) {
+                if (WebsiteBlockEngine.isBlocked(cleanUrl, blockedWebsites)) {
+                    blockUrl(pkg, cleanUrl)
+                    reportBlockedUrl(pkg, cleanUrl, pageTitle)
                     return
                 }
+            }
 
-                // 3. Traitement de la recherche autorisée (avec classification de sécurité additionnelle)
-                if (searchQuery != null && searchQuery.isNotEmpty()) {
-                    if (eventDeduplicator.isDuplicateSearch(searchQuery)) return
-                    
-                    navigationContextManager.recordSearch(searchQuery)
+            // 4. Debounced standard/allowed search & navigation processing to avoid logging every character
+            val isEnterPressed = event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED ||
+                (event.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED &&
+                 event.text?.any { it.contains("\n") || it.contains("\r") } == true)
+
+            if (cleanSearchQuery != null) {
+                // Cancel any pending search evaluations
+                pendingSearchRunnable?.let { handler.removeCallbacks(it) }
+                
+                val runSearch = Runnable {
+                    if (!isValidInput(cleanSearchQuery) || eventDeduplicator.isDuplicateSearch(cleanSearchQuery)) return@Runnable
+                    navigationContextManager.recordSearch(cleanSearchQuery)
                     
                     val classification = ContentClassifier.classify(
-                        searchQuery,
+                        cleanSearchQuery,
                         pageTitle,
-                        scan.headers,
-                        scan.importantContent,
+                        scan.headers.filter { isValidInput(it) },
+                        scan.importantContent.filter { isValidInput(it) },
                         customKeywords
                     )
 
                     val shouldBlock = classification.category != null && isCategoryBlocked(classification.category) ||
-                                    classification.matchedKeyword != null && customKeywords.contains(classification.matchedKeyword)
+                                      classification.matchedKeyword != null && customKeywords.contains(classification.matchedKeyword)
 
                     if (shouldBlock) {
-                        blockUrl(pkg, "search?q=$searchQuery")
-                        timelineManager.buildEvent(pkg, searchQuery, "Recherche Bloquée", rawUrl, classification.category, classification.riskScore, "Bloqué")
-                        eventReporter.sendReport(EventReporter.Report(
-                            url = rawUrl,
-                            appPackage = pkg,
-                            searchQuery = searchQuery,
-                            title = "Recherche: $searchQuery",
-                            category = classification.category ?: "Mot Bloqué",
-                            riskLevel = "Élevé",
-                            isSiteBlocked = false,
-                            isWordBlocked = true,
-                            status = "Bloqué"
-                        ))
-                        return
+                        blockUrl(pkg, "search?q=$cleanSearchQuery")
+                        reportBlockedSearchCategory(pkg, cleanSearchQuery, cleanUrl, classification)
+                    } else {
+                        reportAllowedSearch(pkg, cleanSearchQuery, cleanUrl, classification)
                     }
+                }
 
-                    timelineManager.buildEvent(pkg, searchQuery, "Recherche: $searchQuery", rawUrl, classification.category, classification.riskScore, "Autorisé")
-                    eventReporter.sendReport(EventReporter.Report(
-                        url = rawUrl,
-                        appPackage = pkg,
-                        searchQuery = searchQuery,
-                        title = "Recherche: $searchQuery",
-                        category = classification.category,
-                        riskLevel = if (classification.riskScore > 70) "Élevé" else if (classification.riskScore > 30) "Moyen" else "Faible",
-                        isSiteBlocked = false,
-                        isWordBlocked = false,
-                        status = "Autorisé"
-                    ))
+                if (isEnterPressed) {
+                    runSearch.run()
                 } else {
-                    // 4. Traitement de navigation classique (avec classification)
-                    navigationContextManager.recordNavigation(rawUrl, pageTitle)
-                    val associatedSearch = navigationContextManager.getAssociatedSearch(pkg)
+                    pendingSearchRunnable = runSearch
+                    handler.postDelayed(runSearch, 1000)
+                }
+            } else if (cleanUrl != null) {
+                // Classify and report navigation
+                if (eventDeduplicator.isDuplicateUrl(cleanUrl)) return
+                
+                navigationContextManager.recordNavigation(cleanUrl, pageTitle)
+                val associatedSearch = navigationContextManager.getAssociatedSearch(pkg)
+                val cleanAssoc = if (isValidInput(associatedSearch)) associatedSearch else null
 
-                    val classification = ContentClassifier.classify(
-                        associatedSearch,
-                        pageTitle,
-                        scan.headers,
-                        scan.importantContent,
-                        customKeywords
-                    )
+                val classification = ContentClassifier.classify(
+                    cleanAssoc,
+                    pageTitle,
+                    scan.headers.filter { isValidInput(it) },
+                    scan.importantContent.filter { isValidInput(it) },
+                    customKeywords
+                )
 
-                    val shouldBlock = classification.category != null && isCategoryBlocked(classification.category) ||
-                                    classification.matchedKeyword != null && customKeywords.contains(classification.matchedKeyword)
+                val shouldBlock = classification.category != null && isCategoryBlocked(classification.category) ||
+                                  classification.matchedKeyword != null && customKeywords.contains(classification.matchedKeyword)
 
-                    if (shouldBlock) {
-                        blockUrl(pkg, rawUrl)
-                        timelineManager.buildEvent(pkg, associatedSearch, pageTitle, rawUrl, classification.category, classification.riskScore, "Bloqué")
-                        eventReporter.sendReport(EventReporter.Report(
-                            url = rawUrl,
-                            appPackage = pkg,
-                            searchQuery = associatedSearch,
-                            title = pageTitle.ifBlank { UrlAnalyzer.parse(rawUrl)?.host ?: rawUrl },
-                            category = classification.category ?: "Contenu Bloqué",
-                            riskLevel = "Élevé",
-                            isSiteBlocked = false,
-                            isWordBlocked = false,
-                            status = "Bloqué"
-                        ))
-                        return
-                    }
-
-                    timelineManager.buildEvent(pkg, associatedSearch, pageTitle, rawUrl, classification.category, classification.riskScore, "Autorisé")
-                    eventReporter.sendReport(EventReporter.Report(
-                        url = rawUrl,
-                        appPackage = pkg,
-                        searchQuery = associatedSearch,
-                        title = pageTitle.ifBlank { UrlAnalyzer.parse(rawUrl)?.host ?: rawUrl },
-                        category = classification.category,
-                        riskLevel = if (classification.riskScore > 70) "Élevé" else if (classification.riskScore > 30) "Moyen" else "Faible",
-                        isSiteBlocked = false,
-                        isWordBlocked = false,
-                        status = "Autorisé"
-                    ))
+                if (shouldBlock) {
+                    blockUrl(pkg, cleanUrl)
+                    reportBlockedUrlCategory(pkg, cleanAssoc, pageTitle, cleanUrl, classification)
+                } else {
+                    reportAllowedUrl(pkg, cleanAssoc, pageTitle, cleanUrl, classification)
                 }
             }
+
         } finally {
             rootNode.recycle()
         }
+    }
+
+    private fun reportBlockedKeyword(pkg: String, keyword: String, url: String?) {
+        val finalUrl = url ?: "search?q=$keyword"
+        timelineManager.buildEvent(
+            appPackage = pkg,
+            searchQuery = keyword,
+            title = "Recherche Bloquée: $keyword",
+            url = finalUrl,
+            category = "Mot Bloqué",
+            riskScore = 100,
+            status = "Bloqué"
+        )
+        eventReporter.sendReport(EventReporter.Report(
+            url = finalUrl,
+            appPackage = pkg,
+            searchQuery = keyword,
+            title = "Recherche Bloquée: $keyword",
+            category = "Mot Bloqué",
+            riskLevel = "Élevé",
+            isSiteBlocked = false,
+            isWordBlocked = true,
+            status = "Bloqué"
+        ))
+    }
+
+    private fun reportBlockedUrl(pkg: String, url: String, pageTitle: String) {
+        val title = if (pageTitle.isBlank()) UrlAnalyzer.parse(url)?.host ?: url else pageTitle
+        timelineManager.buildEvent(pkg, null, title, url, "Site Bloqué", 100, "Bloqué")
+        eventReporter.sendReport(EventReporter.Report(
+            url = url,
+            appPackage = pkg,
+            searchQuery = null,
+            title = title,
+            category = "Site Bloqué",
+            riskLevel = "Élevé",
+            isSiteBlocked = true,
+            isWordBlocked = false,
+            status = "Bloqué"
+        ))
+    }
+
+    private fun reportBlockedSearchCategory(pkg: String, query: String, url: String?, classification: ContentClassifier.ClassificationResult) {
+        val finalUrl = url ?: "search?q=$query"
+        timelineManager.buildEvent(pkg, query, "Recherche Bloquée", finalUrl, classification.category, classification.riskScore, "Bloqué")
+        eventReporter.sendReport(EventReporter.Report(
+            url = finalUrl,
+            appPackage = pkg,
+            searchQuery = query,
+            title = "Recherche: $query",
+            category = classification.category ?: "Mot Bloqué",
+            riskLevel = "Élevé",
+            isSiteBlocked = false,
+            isWordBlocked = true,
+            status = "Bloqué"
+        ))
+    }
+
+    private fun reportAllowedSearch(pkg: String, query: String, url: String?, classification: ContentClassifier.ClassificationResult) {
+        val finalUrl = url ?: "search?q=$query"
+        timelineManager.buildEvent(pkg, query, "Recherche: $query", finalUrl, classification.category, classification.riskScore, "Autorisé")
+        eventReporter.sendReport(EventReporter.Report(
+            url = finalUrl,
+            appPackage = pkg,
+            searchQuery = query,
+            title = "Recherche: $query",
+            category = classification.category,
+            riskLevel = if (classification.riskScore > 70) "Élevé" else if (classification.riskScore > 30) "Moyen" else "Faible",
+            isSiteBlocked = false,
+            isWordBlocked = false,
+            status = "Autorisé"
+        ))
+    }
+
+    private fun reportBlockedUrlCategory(pkg: String, assocSearch: String?, pageTitle: String, url: String, classification: ContentClassifier.ClassificationResult) {
+        val title = if (pageTitle.isBlank()) UrlAnalyzer.parse(url)?.host ?: url else pageTitle
+        timelineManager.buildEvent(pkg, assocSearch, title, url, classification.category, classification.riskScore, "Bloqué")
+        eventReporter.sendReport(EventReporter.Report(
+            url = url,
+            appPackage = pkg,
+            searchQuery = assocSearch,
+            title = title,
+            category = classification.category ?: "Contenu Bloqué",
+            riskLevel = "Élevé",
+            isSiteBlocked = false,
+            isWordBlocked = false,
+            status = "Bloqué"
+        ))
+    }
+
+    private fun reportAllowedUrl(pkg: String, assocSearch: String?, pageTitle: String, url: String, classification: ContentClassifier.ClassificationResult) {
+        val title = if (pageTitle.isBlank()) UrlAnalyzer.parse(url)?.host ?: url else pageTitle
+        timelineManager.buildEvent(pkg, assocSearch, title, url, classification.category, classification.riskScore, "Autorisé")
+        eventReporter.sendReport(EventReporter.Report(
+            url = url,
+            appPackage = pkg,
+            searchQuery = assocSearch,
+            title = title,
+            category = classification.category,
+            riskLevel = if (classification.riskScore > 70) "Élevé" else if (classification.riskScore > 30) "Moyen" else "Faible",
+            isSiteBlocked = false,
+            isWordBlocked = false,
+            status = "Autorisé"
+        ))
     }
 
     private fun blockKeyword(pkg: String, keyword: String) {
@@ -456,6 +730,7 @@ class GuardianAccessibilityService : AccessibilityService() {
             putExtra("BLOCK_PACKAGE", pkg)
         }
         startActivity(blockIntent)
+        performGlobalAction(GLOBAL_ACTION_BACK)
     }
 
     private fun blockUrl(pkg: String, blockedDomain: String) {
@@ -479,6 +754,7 @@ class GuardianAccessibilityService : AccessibilityService() {
             putExtra("BLOCK_PACKAGE", pkg)
         }
         startActivity(blockIntent)
+        performGlobalAction(GLOBAL_ACTION_BACK)
     }
 
     private fun processYouTubeApp(rootNode: AccessibilityNodeInfo, pkg: String) {
@@ -512,6 +788,26 @@ class GuardianAccessibilityService : AccessibilityService() {
                 ))
             }
         }
+    }
+
+    private fun getBlockedCategories(): Set<String> {
+        val set = mutableSetOf<String>()
+        if (blockAdult) set.add("Pornographie")
+        if (blockViolence) {
+            set.add("Violence")
+            set.add("Extrémisme")
+        }
+        if (blockGambling) set.add("Jeux d'argent")
+        if (blockDrugs) {
+            set.add("Drogues")
+            set.add("Armes")
+        }
+        if (blockSelfHarm) set.add("Suicide")
+        if (blockCyberbullying) {
+            set.add("Harcèlement")
+            set.add("Cybercriminalité")
+        }
+        return set
     }
 
     private fun isCategoryBlocked(category: String): Boolean {

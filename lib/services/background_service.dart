@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'monitoring_service.dart';
 import 'package_service.dart';
+import 'firestore_sync_queue.dart';
 
 /// BackgroundService
 ///
@@ -230,6 +231,7 @@ class BackgroundService {
     });
 
     try {
+      await FirestoreSyncQueue().initialize();
       await MonitoringService().startMonitoring(service);
       debugPrint('BackgroundService: MonitoringService started.');
 

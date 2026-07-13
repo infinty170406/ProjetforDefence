@@ -32,7 +32,12 @@ class ContentClassifier {
             }
 
             // Évaluation via BlockedKeywordEngine
-            val check = BlockedKeywordEngine.evaluate(fullText, customKeywords, emptySet())
+            val check = BlockedKeywordEngine.evaluate(
+                text = fullText,
+                customBlacklist = customKeywords,
+                customWhitelist = emptySet(),
+                ignoreCategoryRestriction = true
+            )
             if (check.isBlocked) {
                 // Score de risque en fonction de la catégorie
                 val score = when (check.category) {

@@ -7,6 +7,7 @@ import 'services/notification_service.dart';
 import 'services/background_service.dart';
 import 'services/link_handler_service.dart';
 import 'services/auth_service.dart';
+import 'services/firestore_sync_queue.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
 import 'firebase_options.dart';
@@ -30,6 +31,14 @@ void main() async {
     }
   } catch (e) {
     debugPrint('Main: Google Play Services check error (non-fatal): $e');
+  }
+
+  // 0. Firestore sync queue
+  try {
+    await FirestoreSyncQueue().initialize();
+    debugPrint('Main: Firestore sync queue initialized.');
+  } catch (e) {
+    debugPrint('Main: Firestore sync queue init failed: $e');
   }
 
   // 1. Canaux de notification (AVANT le background service)

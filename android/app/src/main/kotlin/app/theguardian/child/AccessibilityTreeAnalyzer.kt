@@ -25,13 +25,20 @@ class AccessibilityTreeAnalyzer {
             val searchViews: List<String> = emptyList(),
             val textViews: List<String> = emptyList(),
             val webViews: List<String> = emptyList(),
-            val titles: List<String> = emptyList()
+            val titles: List<String> = emptyList(),
+            val isBlockedEarly: Boolean = false,
+            val blockedItem: String? = null
         )
 
         /**
          * Parcourt l'arbre à partir de la racine pour extraire le contenu et catégoriser les nœuds.
          */
-        fun analyze(root: AccessibilityNodeInfo?): ScanResult {
+        fun analyze(
+            root: AccessibilityNodeInfo?,
+            blockedWebsites: Set<String> = emptySet(),
+            customKeywords: Set<String> = emptySet(),
+            blockedCategories: Set<String> = emptySet()
+        ): ScanResult {
             if (root == null) return ScanResult()
             
             var detectedUrl: String? = null
@@ -48,18 +55,54 @@ class AccessibilityTreeAnalyzer {
             val titles = mutableListOf<String>()
             
             var nodeCount = 0
-
+            var isBlockedEarly = false
+            var blockedItem: String? = null
+ 
             fun traverse(node: AccessibilityNodeInfo?, depth: Int) {
-                if (node == null || nodeCount > MAX_NODE_LIMIT || depth > 30) return
+                if (node == null || isBlockedEarly || nodeCount > MAX_NODE_LIMIT || depth > 30) return
                 nodeCount++
-
+ 
                 try {
                     val className = node.className?.toString() ?: ""
                     val text = node.text?.toString()?.trim() ?: ""
                     val contentDesc = node.contentDescription?.toString()?.trim() ?: ""
                     val viewId = node.viewIdResourceName?.toString() ?: ""
                     val hint = node.hintText?.toString() ?: ""
+                    val tooltip = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        node.tooltipText?.toString() ?: ""
+                    } else ""
+                    val stateDesc = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                        node.stateDescription?.toString() ?: ""
+                    } else ""
+                    val paneTitle = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                        node.paneTitle?.toString() ?: ""
+                    } else ""
                     
+                    // Check all attributes for blocked keywords
+                    val allTextProps = listOf(text, contentDesc, hint, tooltip, stateDesc, paneTitle)
+                    for (prop in allTextProps) {
+                        if (prop.isBlank() || prop.equals("null", ignoreCase = true) || prop.equals("undefined", ignoreCase = true)) continue
+                        
+                        // Check custom keywords
+                        val check = BlockedKeywordEngine.evaluate(prop, customKeywords, emptySet(), blockedCategories)
+                        if (check.isBlocked) {
+                            isBlockedEarly = true
+                            blockedItem = check.matchedKeyword
+                            return
+                        }
+
+                        // Check blocked websites
+                        if (looksLikeUrl(prop)) {
+                            for (blocked in blockedWebsites) {
+                                if (prop.contains(blocked, ignoreCase = true)) {
+                                    isBlockedEarly = true
+                                    blockedItem = prop
+                                    return
+                                }
+                            }
+                        }
+                    }
+
                     // 1. Détection de l'URL par heuristique
                     if (node.isEditable && text.isNotEmpty() && looksLikeUrl(text)) {
                         detectedUrl = text
@@ -160,7 +203,9 @@ class AccessibilityTreeAnalyzer {
                 searchViews = searchViews,
                 textViews = textViews,
                 webViews = webViews,
-                titles = titles
+                titles = titles,
+                isBlockedEarly = isBlockedEarly,
+                blockedItem = blockedItem
             )
         }
 

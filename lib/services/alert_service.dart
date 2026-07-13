@@ -1,3 +1,4 @@
+import 'firestore_sync_queue.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -131,12 +132,12 @@ class AlertService {
         'ai_processed': false,
       };
 
-      // 1. Écriture sur le chemin unique lu par le parent
+      // 1. Écriture sur le chemin unique lu par le parent via FirestoreSyncQueue
       final deepPath = '$childPath/alerts/notifications/items';
       
-      await _firestore.collection(deepPath).add({...alertData, 'message': detail});
+      await FirestoreSyncQueue().queueAdd(deepPath, {...alertData, 'message': detail});
 
-      debugPrint('AlertService: ✅ [${type.value}] — $detail (single-path sync)');
+      debugPrint('AlertService: ✅ Enqueued [${type.value}] — $detail (single-path sync)');
     } catch (e) {
       debugPrint('AlertService: Error: $e');
     }

@@ -26,10 +26,32 @@ class BlockedKeywordEngine {
             val matchedKeyword: String
         )
 
+        fun isKeywordMatched(textLower: String, keyword: String): Boolean {
+            val keywordLower = keyword.lowercase(Locale.getDefault()).trim()
+            if (keywordLower.isEmpty()) return false
+            
+            // For safety and to prevent false positives, we enforce word boundary matching.
+            // Some keywords can be matched as prefixes (e.g. "porn" in "pornography").
+            val isPrefixAllowed = when (keywordLower) {
+                "porn", "sex", "sexe", "nude", "suicide", "hack", "drug", "drogue", "weed" -> true
+                else -> keywordLower.length >= 4 && keywordLower != "anal" && keywordLower != "sang" && keywordLower != "mort"
+            }
+            
+            val pattern = if (isPrefixAllowed) {
+                "(?U)\\b${Regex.escape(keywordLower)}"
+            } else {
+                "(?U)\\b${Regex.escape(keywordLower)}\\b"
+            }
+            
+            return Regex(pattern).containsMatchIn(textLower)
+        }
+
         fun evaluate(
             text: String,
             customBlacklist: Set<String>,
-            customWhitelist: Set<String>
+            customWhitelist: Set<String>,
+            blockedCategories: Set<String> = emptySet(),
+            ignoreCategoryRestriction: Boolean = false
         ): KeywordCheckResult {
             if (text.isBlank()) return KeywordCheckResult(false, null, "")
             val textLower = text.lowercase(Locale.getDefault())
@@ -37,7 +59,7 @@ class BlockedKeywordEngine {
             // 1. Vérifier la liste blanche en priorité
             for (word in customWhitelist) {
                 val wordLower = word.lowercase(Locale.getDefault()).trim()
-                if (wordLower.isNotEmpty() && textLower.contains(wordLower)) {
+                if (wordLower.isNotEmpty() && isKeywordMatched(textLower, wordLower)) {
                     return KeywordCheckResult(false, null, "")
                 }
             }
@@ -45,16 +67,34 @@ class BlockedKeywordEngine {
             // 2. Vérifier la liste noire personnalisée des parents
             for (word in customBlacklist) {
                 val wordLower = word.lowercase(Locale.getDefault()).trim()
-                if (wordLower.isNotEmpty() && textLower.contains(wordLower)) {
-                    return KeywordCheckResult(true, "Parental Block", wordLower)
+                if (wordLower.isEmpty()) continue
+                
+                if (wordLower.contains("[") || wordLower.contains("*") || wordLower.contains("?") || 
+                    wordLower.contains("+") || wordLower.contains("^") || wordLower.contains("$") ||
+                    wordLower.contains("(") || wordLower.contains(")")) {
+                    try {
+                        val regex = Regex(wordLower, RegexOption.IGNORE_CASE)
+                        if (regex.containsMatchIn(textLower)) {
+                            return KeywordCheckResult(true, "Parental Block", wordLower)
+                        }
+                    } catch (e: Exception) {
+                        if (isKeywordMatched(textLower, wordLower)) {
+                            return KeywordCheckResult(true, "Parental Block", wordLower)
+                        }
+                    }
+                } else {
+                    if (isKeywordMatched(textLower, wordLower)) {
+                        return KeywordCheckResult(true, "Parental Block", wordLower)
+                    }
                 }
             }
 
             // 3. Vérifier les catégories prédéfinies
             for ((category, keywords) in CATEGORY_KEYWORDS) {
                 for (keyword in keywords) {
-                    if (textLower.contains(keyword)) {
-                        return KeywordCheckResult(true, category, keyword)
+                    if (isKeywordMatched(textLower, keyword)) {
+                        val isBlocked = ignoreCategoryRestriction || blockedCategories.contains(category)
+                        return KeywordCheckResult(isBlocked, category, keyword)
                     }
                 }
             }

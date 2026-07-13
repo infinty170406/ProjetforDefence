@@ -42,9 +42,33 @@ class SurveillanceEngineTest {
         val resultWhitelist = BlockedKeywordEngine.evaluate("this is a badword and goodword", blacklist, whitelist)
         assertFalse(resultWhitelist.isBlocked)
 
-        val resultCategory = BlockedKeywordEngine.evaluate("how to gamble online", blacklist, whitelist)
+        val resultCategory = BlockedKeywordEngine.evaluate(
+            text = "how to gamble online",
+            customBlacklist = blacklist,
+            customWhitelist = whitelist,
+            ignoreCategoryRestriction = true
+        )
         assertTrue(resultCategory.isBlocked)
         assertEquals("Jeux d'argent", resultCategory.category)
+    }
+
+    @Test
+    fun testBlockedKeywordEngineMultiCategory() {
+        // Suppose "Pornographie" is blocked, but "Jeux d'argent" (gambling) is not.
+        val blockedCategories = setOf("Pornographie")
+        
+        // The text contains both: "gamble" (Jeux d'argent) and "porn" (Pornographie).
+        // Since "Pornographie" is blocked, the engine should block it.
+        val result = BlockedKeywordEngine.evaluate(
+            text = "online gamble porn videos",
+            customBlacklist = emptySet(),
+            customWhitelist = emptySet(),
+            blockedCategories = blockedCategories,
+            ignoreCategoryRestriction = false
+        )
+        assertTrue(result.isBlocked)
+        assertEquals("Pornographie", result.category)
+        assertEquals("porn", result.matchedKeyword)
     }
 
     @Test
@@ -76,6 +100,22 @@ class SurveillanceEngineTest {
         
         val search = manager.getAssociatedSearch("com.android.chrome")
         assertEquals("casino", search)
+    }
+
+    @Test
+    fun testBlockedKeywordEngineRegex() {
+        val blacklist = setOf("b[a4]dw.*d", "^startofword")
+        val whitelist = emptySet<String>()
+
+        val resultRegex1 = BlockedKeywordEngine.evaluate("this is a b4dword indeed", blacklist, whitelist)
+        assertTrue(resultRegex1.isBlocked)
+        assertEquals("Parental Block", resultRegex1.category)
+
+        val resultRegex2 = BlockedKeywordEngine.evaluate("startofword is here", blacklist, whitelist)
+        assertTrue(resultRegex2.isBlocked)
+
+        val resultRegex3 = BlockedKeywordEngine.evaluate("no match b5dword", blacklist, whitelist)
+        assertFalse(resultRegex3.isBlocked)
     }
 
     @Test
