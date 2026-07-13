@@ -125,4 +125,37 @@ class SurveillanceEngineTest {
         assertTrue(deduplicator.isDuplicateUrl("https://site.com"))
         assertFalse(deduplicator.isDuplicateUrl("https://othersite.com"))
     }
+
+    @Test
+    fun testNotificationRiskEngine() {
+        val safeResult = GeminiAnalysisResult(
+            risk = "SAFE",
+            score = 10,
+            category = "NONE",
+            blocked = false,
+            confidence = 0.99,
+            reason = "Complètement inoffensif"
+        )
+        assertEquals(NotificationDecision.ALLOW, NotificationRiskEngine.evaluate(safeResult))
+
+        val warningResult = GeminiAnalysisResult(
+            risk = "MEDIUM",
+            score = 45,
+            category = "ESCROQUERIE",
+            blocked = false,
+            confidence = 0.85,
+            reason = "Contient un lien promotionnel suspect"
+        )
+        assertEquals(NotificationDecision.WARNING, NotificationRiskEngine.evaluate(warningResult))
+
+        val blockResult = GeminiAnalysisResult(
+            risk = "CRITICAL",
+            score = 95,
+            category = "GROOMING",
+            blocked = true,
+            confidence = 0.98,
+            reason = "Tentative explicite de rendez-vous suspect"
+        )
+        assertEquals(NotificationDecision.BLOCK_AND_ALERT, NotificationRiskEngine.evaluate(blockResult))
+    }
 }

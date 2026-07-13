@@ -60,9 +60,14 @@ interface NavigationHistoryDao {
 
 // ─── Database ─────────────────────────────────────────────────────────────────
 
-@Database(entities = [NavigationHistoryEntry::class], version = 1, exportSchema = false)
+@Database(
+    entities = [NavigationHistoryEntry::class, NotificationHistoryEntry::class],
+    version = 2,
+    exportSchema = false
+)
 abstract class GuardianDatabase : RoomDatabase() {
     abstract fun historyDao(): NavigationHistoryDao
+    abstract fun notificationHistoryDao(): NotificationHistoryDao
 
     companion object {
         @Volatile
