@@ -337,7 +337,9 @@ class GuardianAccessibilityService : AccessibilityService() {
     private fun checkBypassAttempt(rootNode: AccessibilityNodeInfo?, pkg: String): Boolean {
         if (rootNode == null) return false
         
-        if (!isDeviceActivated()) {
+        val prefs = applicationContext.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val isOnboardingComplete = prefs.getBoolean("flutter.onboarding_complete", false)
+        if (!isOnboardingComplete || !isDeviceActivated()) {
             return false
         }
         
