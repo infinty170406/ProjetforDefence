@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart' as geo;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'alert_service.dart';
 import 'rules_service.dart';
+import 'firestore_sync_queue.dart';
 import '../utils/child_path_helper.dart';
 
 /// LocationService
@@ -228,22 +229,34 @@ class LocationService {
         "timestamp": FieldValue.serverTimestamp(),
       };
 
-      // Update position actuelle sur le document principal
-      await _firestore.doc(childPath).update({
-        "lastLatitude":       position.latitude,
-        "lastLongitude":      position.longitude,
-        "lastLocationUpdate": FieldValue.serverTimestamp(),
-      });
+      final ops = [
+        {
+          'type': 'set',
+          'path': childPath,
+          'merge': true,
+          'data': {
+            "lastLatitude":       position.latitude,
+            "lastLongitude":      position.longitude,
+            "lastLocationUpdate": FieldValue.serverTimestamp(),
+          }
+        },
+        {
+          'type': 'set',
+          'path': "$childPath/location/current",
+          'merge': false,
+          'data': locationData
+        },
+        {
+          'type': 'add',
+          'path': "$childPath/location_history",
+          'data': locationData
+        }
+      ];
 
-      // Point actuel dans collection dédiée
-      await _firestore.doc("$childPath/location/current").set(locationData);
-
-      // Historique
-      await _firestore.collection("$childPath/location_history").add(locationData);
-
-      debugPrint("LocationService: Saved lat=${position.latitude}, lng=${position.longitude}");
+      await FirestoreSyncQueue().queueBatch(ops);
+      debugPrint("LocationService: Enqueued location lat=${position.latitude}, lng=${position.longitude} via FirestoreSyncQueue");
     } catch (e) {
-      debugPrint("LocationService: Firestore error $e");
+      debugPrint("LocationService: Error queuing location $e");
     }
   }
 

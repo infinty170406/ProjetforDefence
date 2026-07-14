@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/app_state.dart';
 import '../dashboard/dashboard_screen.dart';
@@ -40,6 +41,7 @@ class _BlockingScreenState extends State<BlockingScreen>
   
   Timer? _countdownTimer;
   int _secondsRemaining = 3;
+  bool _isExitingWithHome = false;
 
   bool get _isGlobalBlock {
     final r = widget.reason.toLowerCase();
@@ -56,6 +58,15 @@ class _BlockingScreenState extends State<BlockingScreen>
     // Enregistre les règles au moment du blocage pour détecter un changement
     _initialRules = context.read<AppState>().activeRules;
     debugPrint('BlockingScreen: Shown with reason: ${widget.reason}');
+
+    try {
+      FlutterBackgroundService().invoke('setBlockState', {
+        'state': 'BLOCKED',
+        'package': widget.blockedPackage,
+      });
+    } catch (e) {
+      debugPrint('BlockingScreen: Error sending BLOCKED state to background service: $e');
+    }
 
     _pulseController = AnimationController(
       vsync: this,
@@ -371,6 +382,15 @@ class _BlockingScreenState extends State<BlockingScreen>
   }
 
   void _closeAndExit() {
+    _isExitingWithHome = true;
+    try {
+      FlutterBackgroundService().invoke('setBlockState', {
+        'state': 'WAITING_EXIT',
+        'package': widget.blockedPackage,
+      });
+    } catch (e) {
+      debugPrint('BlockingScreen: Error sending WAITING_EXIT state: $e');
+    }
     if (!_isGlobalBlock) {
       _goHome();
     }
@@ -385,6 +405,15 @@ class _BlockingScreenState extends State<BlockingScreen>
     _countdownTimer?.cancel();
     _foregroundSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
+    if (!_isExitingWithHome) {
+      try {
+        FlutterBackgroundService().invoke('setBlockState', {
+          'state': 'NORMAL',
+        });
+      } catch (e) {
+        debugPrint('BlockingScreen: Error resetting block state to NORMAL: $e');
+      }
+    }
     super.dispose();
   }
 

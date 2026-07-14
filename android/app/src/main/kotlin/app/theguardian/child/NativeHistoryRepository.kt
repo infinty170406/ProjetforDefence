@@ -58,16 +58,42 @@ interface NavigationHistoryDao {
     fun countUnsynced(): Int
 }
 
+// ─── Sync Event Entity & DAO ──────────────────────────────────────────────────
+
+@Entity(tableName = "sync_events")
+data class SyncEventEntry(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val action: String,
+    val payload: String, // Stocké sous forme de JSON String
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+@Dao
+interface SyncEventDao {
+    @Insert
+    fun insert(event: SyncEventEntry): Long
+
+    @Query("SELECT * FROM sync_events ORDER BY id ASC")
+    fun getAll(): List<SyncEventEntry>
+
+    @Query("DELETE FROM sync_events WHERE id IN (:ids)")
+    fun deleteByIds(ids: List<Long>)
+    
+    @Query("DELETE FROM sync_events")
+    fun clearAll()
+}
+
 // ─── Database ─────────────────────────────────────────────────────────────────
 
 @Database(
-    entities = [NavigationHistoryEntry::class, NotificationHistoryEntry::class],
-    version = 2,
+    entities = [NavigationHistoryEntry::class, NotificationHistoryEntry::class, SyncEventEntry::class],
+    version = 3,
     exportSchema = false
 )
 abstract class GuardianDatabase : RoomDatabase() {
     abstract fun historyDao(): NavigationHistoryDao
     abstract fun notificationHistoryDao(): NotificationHistoryDao
+    abstract fun syncEventDao(): SyncEventDao
 
     companion object {
         @Volatile
@@ -156,20 +182,29 @@ object NativeHistoryRepository {
         }
     }
 
+    fun recordSyncEvent(context: Context, action: String, payloadJson: String) {
+        scope.launch {
+            try {
+                val db = GuardianDatabase.getInstance(context)
+                db.syncEventDao().insert(SyncEventEntry(action = action, payload = payloadJson))
+                Log.d(TAG, "Sync event queued in Room: $action")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to record sync event in Room: ${e.message}")
+            }
+        }
+    }
+
     /**
-     * Écrit l'entrée dans FlutterSharedPreferences sous forme de clé guardian_event_*
+     * Écrit l'entrée dans Room sous forme d'événement synchronisé
      * pour que le service Flutter la drainer vers Firebase.
-     * Cette écriture est en plus de Room (double filet de sécurité).
      */
     private fun writeToFlutterQueue(context: Context, entry: NavigationHistoryEntry) {
         try {
-            val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
             val date = Date(entry.timestamp)
 
             val obj = org.json.JSONObject().apply {
-                put("action", "web_event")
                 put("ts", entry.timestamp)
                 put("url", entry.url)
                 put("package", entry.packageName)
@@ -183,10 +218,9 @@ object NativeHistoryRepository {
                 put("date", dateFormat.format(date))
                 put("time", timeFormat.format(date))
             }
-            val key = "flutter.guardian_event_${entry.timestamp}_${(Math.random() * 10000).toInt()}"
-            prefs.edit().putString(key, obj.toString()).apply()
+            recordSyncEvent(context, "web_event", obj.toString())
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to write to Flutter queue: ${e.message}")
+            Log.e(TAG, "Failed to write web event to Room queue: ${e.message}")
         }
     }
 }

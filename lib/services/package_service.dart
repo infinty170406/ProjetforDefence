@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'firestore_sync_queue.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -47,25 +48,26 @@ class PackageService {
 
       debugPrint('PackageService: ${appList.length} apps to sync.');
 
-      // 1. Liste simplifiée (compatibilité Dashboard Parent)
-      await _firestore.doc('$childPath/inventory/apps').set({
-        'lastSync':          FieldValue.serverTimestamp(),
-        'installedPackages': appList.map((e) => e['packageName']).toList(),
-      }, SetOptions(merge: true));
+      // 1. Compiler les opérations dans FirestoreSyncQueue
+      final List<Map<String, dynamic>> ops = [];
+      
+      ops.add({
+        'type': 'set',
+        'path': '$childPath/inventory/apps',
+        'merge': true,
+        'data': {
+          'lastSync':          FieldValue.serverTimestamp(),
+          'installedPackages': appList.map((e) => e['packageName']).toList(),
+        }
+      });
 
-      // 2. Détails (avec icônes) par tranches de 500 (limite batch Firestore)
-      for (var i = 0; i < appList.length; i += 500) {
-        final end   = (i + 500 < appList.length) ? i + 500 : appList.length;
-        final chunk = appList.sublist(i, end);
-
-        final batch = _firestore.batch();
-        for (final app in chunk) {
-          final pkg    = app['packageName'] as String;
-          final docRef = _firestore
-              .collection('$childPath/inventory/apps/details')
-              .doc(pkg);
-
-          batch.set(docRef, {
+      for (final app in appList) {
+        final pkg = app['packageName'] as String;
+        ops.add({
+          'type': 'set',
+          'path': '$childPath/inventory/apps/details/$pkg',
+          'merge': true,
+          'data': {
             'packageName': pkg,
             'appName':     app['appName'],
             'label':       app['appName'],   // fallback attendu par Parent App
@@ -73,13 +75,12 @@ class PackageService {
             'iconBase64':  app['iconBase64'],
             'icon':        app['iconBase64'], // second fallback
             'lastUpdate':  FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
-        }
-        await batch.commit();
-        debugPrint('PackageService: Batch $i→$end committed.');
+          }
+        });
       }
 
-      debugPrint('PackageService: ✅ Sync complete (${appList.length} apps).');
+      await FirestoreSyncQueue().queueBatch(ops);
+      debugPrint('PackageService: ✅ Enqueued ${ops.length} app sync operations.');
     } on PlatformException catch (e) {
       debugPrint('PackageService: Native channel error: ${e.message}');
     } catch (e) {

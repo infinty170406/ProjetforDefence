@@ -753,6 +753,8 @@ class GuardianAccessibilityService : AccessibilityService() {
         }
         sendBroadcast(blockAppIntent)
 
+        syncManager.queueEvent("keyword_event", mapOf("keyword" to keyword, "package" to pkg))
+
         val blockIntent = Intent(applicationContext, BlockActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)

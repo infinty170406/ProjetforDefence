@@ -20,10 +20,10 @@ class FirestoreSyncQueue {
 
   Future<void> initialize() async {
     await _loadFromPrefs();
-    _scheduleSync(delayMs: 1000); // Premier essai de synchronisation après démarrage
+    _scheduleSync(delayMs: 1000, force: true); // Premier essai de synchronisation après démarrage
   }
 
-  Future<void> queueAdd(String collectionPath, Map<String, dynamic> data) async {
+  Future<void> queueAdd(String collectionPath, Map<String, dynamic> data, {bool immediate = false}) async {
     _queue.add({
       'type': 'add',
       'path': collectionPath,
@@ -31,10 +31,10 @@ class FirestoreSyncQueue {
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
     await _saveToPrefs();
-    _scheduleSync();
+    _scheduleSync(delayMs: immediate ? 250 : 20000, force: immediate);
   }
 
-  Future<void> queueSet(String docPath, Map<String, dynamic> data, {bool merge = true}) async {
+  Future<void> queueSet(String docPath, Map<String, dynamic> data, {bool merge = true, bool immediate = false}) async {
     _queue.add({
       'type': 'set',
       'path': docPath,
@@ -43,11 +43,44 @@ class FirestoreSyncQueue {
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
     await _saveToPrefs();
-    _scheduleSync();
+    _scheduleSync(delayMs: immediate ? 250 : 20000, force: immediate);
   }
 
-  void _scheduleSync({int delayMs = 250}) {
-    _batchTimer?.cancel();
+  Future<void> queueBatch(List<Map<String, dynamic>> ops, {bool immediate = false}) async {
+    for (final op in ops) {
+      final String type = op['type'];
+      final String path = op['path'];
+      final Map<String, dynamic> data = op['data'];
+      
+      if (type == 'add') {
+        _queue.add({
+          'type': 'add',
+          'path': path,
+          'data': _serialize(data),
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        });
+      } else if (type == 'set') {
+        final bool merge = op['merge'] ?? true;
+        _queue.add({
+          'type': 'set',
+          'path': path,
+          'data': _serialize(data),
+          'merge': merge,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        });
+      }
+    }
+    await _saveToPrefs();
+    _scheduleSync(delayMs: immediate ? 250 : 20000, force: immediate);
+  }
+
+  void _scheduleSync({int delayMs = 20000, bool force = false}) {
+    if (force) {
+      _batchTimer?.cancel();
+    } else if (_batchTimer != null && _batchTimer!.isActive) {
+      // Un timer est déjà en cours, on ne le perturbe pas pour laisser le commit window de 20s se remplir.
+      return;
+    }
     _batchTimer = Timer(Duration(milliseconds: delayMs), () {
       _processQueue();
     });
@@ -63,26 +96,32 @@ class FirestoreSyncQueue {
 
     try {
       final firestore = FirebaseFirestore.instance;
-      final batch = firestore.batch();
+      
+      // Traiter par paquets de 500 pour respecter la limite de taille des lots Firestore
+      for (var i = 0; i < batchOps.length; i += 500) {
+        final end = (i + 500 < batchOps.length) ? i + 500 : batchOps.length;
+        final chunk = batchOps.sublist(i, end);
+        final batch = firestore.batch();
 
-      for (final op in batchOps) {
-        final String type = op['type'];
-        final String path = op['path'];
-        final Map<String, dynamic> rawData = Map<String, dynamic>.from(op['data']);
-        final Map<String, dynamic> data = Map<String, dynamic>.from(_deserialize(rawData));
+        for (final op in chunk) {
+          final String type = op['type'];
+          final String path = op['path'];
+          final Map<String, dynamic> rawData = Map<String, dynamic>.from(op['data']);
+          final Map<String, dynamic> data = Map<String, dynamic>.from(_deserialize(rawData));
 
-        if (type == 'add') {
-          final colRef = firestore.collection(path);
-          final docRef = colRef.doc();
-          batch.set(docRef, data);
-        } else if (type == 'set') {
-          final docRef = firestore.doc(path);
-          final bool merge = op['merge'] ?? true;
-          batch.set(docRef, data, SetOptions(merge: merge));
+          if (type == 'add') {
+            final colRef = firestore.collection(path);
+            final docRef = colRef.doc();
+            batch.set(docRef, data);
+          } else if (type == 'set') {
+            final docRef = firestore.doc(path);
+            final bool merge = op['merge'] ?? true;
+            batch.set(docRef, data, SetOptions(merge: merge));
+          }
         }
+        await batch.commit();
       }
-
-      await batch.commit();
+      
       debugPrint('FirestoreSyncQueue: ${batchOps.length} opérations synchronisées avec succès.');
 
       // Supprimer les éléments traités avec succès
@@ -94,14 +133,14 @@ class FirestoreSyncQueue {
 
       // Si de nouveaux éléments ont été ajoutés pendant la synchronisation, planifier à nouveau
       if (_queue.isNotEmpty) {
-        _scheduleSync();
+        _scheduleSync(delayMs: 20000);
       }
     } catch (e) {
       debugPrint('FirestoreSyncQueue: Échec de la synchronisation: $e. Prochain essai dans $_retryDelaySeconds secondes...');
       _isSyncing = false;
       
       // Exponential backoff
-      _scheduleSync(delayMs: _retryDelaySeconds * 1000);
+      _scheduleSync(delayMs: _retryDelaySeconds * 1000, force: true);
       _retryDelaySeconds = (_retryDelaySeconds * 2).clamp(5, _maxRetryDelaySeconds);
     }
   }

@@ -1,5 +1,6 @@
 import 'package:battery_plus/battery_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'firestore_sync_queue.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -89,19 +90,29 @@ class SosService {
         'battery':     batteryLevel,
       };
 
-      // 1. Écriture sur le chemin unique lu par le parent
       final deepPath = '$childPath/alerts/notifications/items';
-      
-      await _firestore.collection(deepPath).add({...alertData, 'message': detail});
 
-      // 3. Mise à jour du document enfant avec la dernière alerte SOS
-      await _firestore.doc(childPath).update({
-        'lastSosTimestamp': FieldValue.serverTimestamp(),
-        if (latitude != null) 'lastLatitude': latitude,
-        if (longitude != null) 'lastLongitude': longitude,
-      });
+      final ops = [
+        {
+          'type': 'add',
+          'path': deepPath,
+          'data': {...alertData, 'message': detail}
+        },
+        {
+          'type': 'set',
+          'path': childPath,
+          'merge': true,
+          'data': {
+            'lastSosTimestamp': FieldValue.serverTimestamp(),
+            if (latitude != null) 'lastLatitude': latitude,
+            if (longitude != null) 'lastLongitude': longitude,
+          }
+        }
+      ];
 
-      debugPrint('SosService: ✅ SOS sent — battery: $batteryLevel%, '
+      await FirestoreSyncQueue().queueBatch(ops, immediate: true);
+
+      debugPrint('SosService: ✅ SOS enqueued immediately — battery: $batteryLevel%, '
           'lat: ${latitude?.toStringAsFixed(5)}, lng: ${longitude?.toStringAsFixed(5)}');
       return true;
     } catch (e) {

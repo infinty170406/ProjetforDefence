@@ -12,6 +12,10 @@ import 'alert_service.dart';
 import 'firestore_sync_queue.dart';
 import '../utils/child_path_helper.dart';
 import '../utils/system_app_classifier.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart' as p;
+
+enum BlockState { normal, blocking, blocked, waitingExit }
 
 /// EnforcementService
 ///
@@ -29,7 +33,25 @@ import '../utils/system_app_classifier.dart';
 class EnforcementService {
   static final EnforcementService _instance = EnforcementService._internal();
   factory EnforcementService() => _instance;
-  EnforcementService._internal();
+  EnforcementService._internal() {
+    _initializeRules();
+  }
+
+  late final List<EnforcementRule> _evaluationRules;
+
+  void _initializeRules() {
+    _evaluationRules = [
+      AllowedHoursRule(),
+      DailyLimitRule(),
+      AppTimeLimitRule(
+        getAppUsedMinutes: _getAppUsedMinutes,
+        getAppName: _getAppName,
+      ),
+      BlockedAppRule(
+        getAppName: _getAppName,
+      ),
+    ];
+  }
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AlertService _alertService = AlertService();
@@ -150,10 +172,10 @@ class EnforcementService {
   Timer? _checkingTimeoutTimer;
   bool _isRunning = false;
   bool _isChecking = false;
-  String? _lastPackage;
   String? _lastUrl;
   String? _lastReportedUrl;
   DateTime? _lastScreenTimeReport;
+  DateTime? _lastScreenTimeQuery;
   DateTime? _lastUiUpdate;
   int _lastReportedMinutes = 0;
   bool _initialFastTickDone = false; // Permet un tick rapide au démarrage
@@ -164,15 +186,7 @@ class EnforcementService {
   // changement de règles) tant que frontPackage reste sur l'app bloquée, ce qui
   // empile sans fin de nouveaux BlockingScreen via pushAndRemoveUntil.
   String? _lastBlockedSignature;
-
-  // ── Throttling d'alertes ─────────────────────────────────────────────────
-  DateTime? _lastOutsideHoursAlert;
-  DateTime? _lastTimeLimitAlert;
-  // final Map<String, DateTime> _lastAppLimitAlerts = {}; // Unused
   
-  // Anti-drain : Compteurs pour les vérifications lourdes
-  int _ticksSinceLastFullSync = 0;
-  static const int fullSyncIntervalTicks = 1; // Toutes les 60 secondes
   String? _currentForegroundPackage;
 
   // Instance du service de background (pour communication inter-isolate)
@@ -180,6 +194,36 @@ class EnforcementService {
 
   // Callback vers BackgroundService pour déclencher l'écran de blocage côté Flutter
   void Function(String reason, String package)? onBlockRequired;
+
+  BlockState _blockState = BlockState.normal;
+  String? _blockedPackageForState;
+  Timer? _waitingExitTimer;
+
+  BlockState get blockState => _blockState;
+
+  void setBlockState(BlockState state, {String? package}) {
+    debugPrint('EnforcementService: blockState transition $_blockState -> $state');
+    _blockState = state;
+    if (state == BlockState.waitingExit) {
+      _blockedPackageForState = package;
+      _waitingExitTimer?.cancel();
+      _waitingExitTimer = Timer(const Duration(seconds: 3), () {
+        if (_blockState == BlockState.waitingExit) {
+          _blockState = BlockState.normal;
+          _blockedPackageForState = null;
+          debugPrint('EnforcementService: WAITING_EXIT timer finished. State returned to NORMAL.');
+        }
+      });
+    } else if (state == BlockState.normal) {
+      _blockedPackageForState = null;
+      _waitingExitTimer?.cancel();
+    }
+  }
+
+  Future<void> triggerImmediateDrain() async {
+    debugPrint('EnforcementService: triggerImmediateDrain() called');
+    await _drainEventQueue();
+  }
 
   // ── Démarrage / arrêt ────────────────────────────────────────────────────
 
@@ -248,9 +292,9 @@ class EnforcementService {
     // puis passage au tick régulier de 60 secondes.
     Timer(const Duration(seconds: 5), () async {
       if (_isRunning) {
-        await _tick();
+        await _tick(forceQueryUsageStats: true);
         _initialFastTickDone = true;
-        _checkTimer = Timer.periodic(const Duration(seconds: 60), (_) => _tick());
+        _checkTimer = Timer.periodic(const Duration(seconds: 60), (_) => _tick(forceQueryUsageStats: true));
         debugPrint('EnforcementService: Switched to 60s periodic timer.');
       }
     });
@@ -489,7 +533,7 @@ class EnforcementService {
 
   // ── Tick de vérification (toutes les 15s) ────────────────────────────────
 
-  Future<void> _tick() async {
+  Future<void> _tick({bool forceQueryUsageStats = false}) async {
     if (_isChecking) return;
     _isChecking = true;
     // FIX #4 : timeout de sécurité — si _tick() dure > 30s, libérer le verrou
@@ -501,7 +545,7 @@ class EnforcementService {
       }
     });
     try {
-      debugPrint('EnforcementService: _tick() executing...');
+      debugPrint('EnforcementService: _tick() executing... (forceQueryUsageStats: $forceQueryUsageStats)');
       if (!Platform.isAndroid) return;
 
       // FIX BUG #1 + #3 : drainer la queue d'événements écrite par GuardianAccessibilityService
@@ -512,21 +556,35 @@ class EnforcementService {
       final now = DateTime.now();
 
       // Déterminer l'app au premier plan
-      final frontPackage = await _getForegroundPackage();
+      final frontPackage = await _getForegroundPackage(forceQueryUsageStats: forceQueryUsageStats);
+      
+      if (_blockState == BlockState.waitingExit && frontPackage == _blockedPackageForState) {
+        debugPrint('EnforcementService: Skipping block check in _tick because state is WAITING_EXIT for $frontPackage');
+        _checkingTimeoutTimer?.cancel();
+        _checkingTimeoutTimer = null;
+        _isChecking = false;
+        return;
+      }
+      
       final bool isActivelyTrying = frontPackage != null && !_isSystemApp(frontPackage);
 
-      // Compteurs pour les vérifications lourdes (toutes les 60s)
-      _ticksSinceLastFullSync++;
-      bool isFullSyncTick = _ticksSinceLastFullSync >= fullSyncIntervalTicks;
+      // Throttling de la vérification de temps journalier (UsageStats) à au plus une fois par 60 secondes
+      final bool isTimeCheckTick = forceQueryUsageStats ||
+          _lastScreenTimeQuery == null ||
+          now.difference(_lastScreenTimeQuery!).inSeconds >= 60;
       
-      int usedMinutes = await _getTodayUsedMinutes();
-      _lastReportedMinutes = usedMinutes;
+      int usedMinutes;
+      if (isTimeCheckTick) {
+        usedMinutes = await _getTodayUsedMinutes();
+        _lastReportedMinutes = usedMinutes;
+        _lastScreenTimeQuery = now;
+      } else {
+        usedMinutes = _lastReportedMinutes;
+      }
       
-      debugPrint('EnforcementService: Tick - Front: $frontPackage, isActivelyTrying: $isActivelyTrying, Used: $usedMinutes min');
+      debugPrint('EnforcementService: Tick - Front: $frontPackage, isActivelyTrying: $isActivelyTrying, Used: $usedMinutes min (timeCheck: $isTimeCheckTick)');
       
-      if (isFullSyncTick || _lastScreenTimeReport == null) {
-        _ticksSinceLastFullSync = 0;
-        
+      if (isTimeCheckTick) {
         // Mettre à jour l'UI (Dashboard)
         _backgroundService?.invoke('screenTimeUpdate', {'minutes': usedMinutes});
         
@@ -544,10 +602,6 @@ class EnforcementService {
       // de spammer des alertes pendant la phase de configuration du device).
       final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
 
-      // Déterminer les restrictions dynamiques
-      final bool isOutsideHours = _isOutsideAllowedHours(rules);
-      final bool isDailyLimitReached = rules.dailyLimitMinutes > 0 && usedMinutes >= rules.dailyLimitMinutes;
-
       // Base des packages bloqués configurée par le parent
       final baseBlocked = rules.effectiveBlockedPackages(
         socialMediaPackages: _socialMedia,
@@ -557,94 +611,38 @@ class EnforcementService {
       final activeBlocked = Set<String>.from(baseBlocked);
       String? blockReason;
 
-      // 1. Plage horaire (Prioritaire)
-      if (isOutsideHours) {
-        debugPrint('EnforcementService: BLOCK -> Outside allowed hours');
-        final start = rules.allowedTimeStart ?? '';
-        final end = rules.allowedTimeEnd ?? '';
-        blockReason = 'Utilisation hors heures autorisées ($start – $end).';
+      RuleEvaluationResult? winningResult;
+      for (final rule in _evaluationRules) {
+        final result = await rule.evaluate(
+          frontPackage: frontPackage,
+          rules: rules,
+          usedMinutes: usedMinutes,
+          now: now,
+          onboardingComplete: onboardingComplete,
+          isActivelyTrying: isActivelyTrying,
+          baseBlockedPackages: baseBlocked,
+        );
+        if (result.isBlocked) {
+          winningResult = result;
+          break;
+        }
+      }
 
-        // FIX #1 : alerte Firestore uniquement si onboarding terminé (évite le spam)
-        // Le BLOCAGE lui-même est toujours actif.
-        if (onboardingComplete && isActivelyTrying) {
-          if (_lastOutsideHoursAlert == null ||
-              now.difference(_lastOutsideHoursAlert!).inMinutes >= 10) {
-            _lastOutsideHoursAlert = now;
-            await _alertService.sendAlert(
-              type: AlertType.outsideHours,
-              detail:
-                  'Alerte d\'activité : Votre enfant a tenté d\'utiliser son téléphone en dehors des heures autorisées (de $start à $end).',
-            );
-          }
+      if (winningResult != null) {
+        blockReason = winningResult.blockReason;
+        
+        // Gérer l'envoi d'alertes s'il y a un détail d'alerte à notifier
+        if (winningResult.alertDetail != null && winningResult.alertType != null) {
+          await _alertService.sendAlert(
+            type: winningResult.alertType!,
+            cooldownKey: winningResult.cooldownKey,
+            detail: winningResult.alertDetail!,
+          );
         }
 
         if (frontPackage != null && frontPackage != 'app.theguardian.child' && !_isSystemApp(frontPackage)) {
           activeBlocked.add(frontPackage);
         }
-      }
-      // 2. Limite journalière globale
-      else if (isDailyLimitReached) {
-        debugPrint('EnforcementService: BLOCK -> Daily limit reached');
-        blockReason = 'Temps d\'écran journalier écoulé.';
-
-        // FIX #1 : alerte Firestore uniquement si onboarding terminé
-        if (onboardingComplete && isActivelyTrying) {
-          if (_lastTimeLimitAlert == null ||
-              now.difference(_lastTimeLimitAlert!).inMinutes >= 10) {
-            _lastTimeLimitAlert = now;
-            await _alertService.sendAlert(
-              type: AlertType.timeLimit,
-              detail:
-                  'Alerte de limite : Votre enfant a tenté d\'utiliser son téléphone alors que sa limite de temps d\'écran journalière (${rules.dailyLimitMinutes} minutes) est déjà épuisée.',
-            );
-          }
-        }
-
-        if (frontPackage != null && frontPackage != 'app.theguardian.child' && !_isSystemApp(frontPackage)) {
-          activeBlocked.add(frontPackage);
-        }
-      }
-      // 3. Limite d'application individuelle
-      else if (frontPackage != null) {
-        final appLimit = rules.appTimeLimits[frontPackage];
-        if (appLimit != null && appLimit > 0) {
-          final appUsedMinutes = await _getAppUsedMinutes(frontPackage);
-          if (appUsedMinutes >= appLimit) {
-            blockReason = 'Limite de temps pour cette application atteinte.';
-            activeBlocked.add(frontPackage);
-
-            // FIX #1 : alerte Firestore uniquement si onboarding terminé
-            if (onboardingComplete) {
-            await _alertService.sendAlert(
-              type: AlertType.appTimeLimit,
-              cooldownKey: frontPackage,
-              detail:
-                  'Alerte de temps : Votre enfant a essayé d\'ouvrir l\'application ${_getAppName(frontPackage)}, mais sa limite d\'utilisation pour cette application ($appLimit minutes) est atteinte.',
-            );
-            }
-          }
-        }
-      }
-
-      // 4. Bloqué individuellement ou par catégorie
-      if (blockReason == null && frontPackage != null && baseBlocked.contains(frontPackage)) {
-        debugPrint('EnforcementService: BLOCK -> App is in blocked list: $frontPackage');
-        blockReason = 'Cette application est bloquée par vos parents.';
-
-        // FIX #1 : le blocage est TOUJOURS actif, l'alerte Firestore est conditionnelle
-        if (frontPackage != _lastPackage) {
-          _lastPackage = frontPackage;
-          if (onboardingComplete) {
-            await _alertService.sendAlert(
-              type: AlertType.blockedApp,
-              cooldownKey: frontPackage,
-              detail:
-                  'Alerte de sécurité : Votre enfant a tenté d\'ouvrir l\'application ${_getAppName(frontPackage)}, qui fait partie des applications que vous avez bloquées.',
-            );
-          }
-        }
-      } else if (frontPackage != null && !baseBlocked.contains(frontPackage)) {
-        _lastPackage = null;
       }
 
       // Écrire les motifs de blocage dans SharedPreferences pour que le natif et l'UI les lisent
@@ -659,15 +657,24 @@ class EnforcementService {
         final blockSignature = '$frontPackage|$blockReason';
         if (blockSignature != _lastBlockedSignature) {
           _lastBlockedSignature = blockSignature;
-          onBlockRequired?.call(blockReason, frontPackage ?? '');
+          if (_blockState == BlockState.normal) {
+            setBlockState(BlockState.blocking, package: frontPackage);
+            onBlockRequired?.call(blockReason, frontPackage ?? '');
+          }
         }
       } else if (frontPackage != null) {
         await prefs.remove('guardian_block_reason_$frontPackage');
         _lastBlockedSignature = null;
+        if (_blockState == BlockState.blocked || _blockState == BlockState.blocking) {
+          setBlockState(BlockState.normal);
+        }
       } else {
         // Aucune app au premier plan détectée (ex: retour à l'accueil) :
         // on réinitialise pour permettre un nouveau blocage à la prochaine détection.
         _lastBlockedSignature = null;
+        if (_blockState == BlockState.blocked || _blockState == BlockState.blocking) {
+          setBlockState(BlockState.normal);
+        }
       }
 
       // Mettre à jour la liste des packages bloqués
@@ -694,6 +701,11 @@ class EnforcementService {
   void handleNativeForegroundEvent(Map<dynamic, dynamic> data) {
     final pkg = data['package'] as String?;
     if (pkg == null || pkg.isEmpty) return;
+
+    if (_blockState == BlockState.waitingExit && pkg == _blockedPackageForState) {
+      debugPrint('EnforcementService: Ignoring native foreground event for $pkg because state is WAITING_EXIT');
+      return;
+    }
 
     if (pkg == 'app.theguardian.child' || _isSystemApp(pkg)) {
       // FIX boucle de blocage : un retour à l'accueil (launcher système) ou
@@ -722,54 +734,110 @@ class EnforcementService {
     }
   }
 
-  /// FIX BUG #1 + #3 + Race Conditions: Draine la queue d'événements
-  /// écrite par GuardianAccessibilityService sous forme de clés distinctes.
+  static Database? _eventDb;
+
+  Future<Database> _getEventDatabase() async {
+    if (_eventDb != null && _eventDb!.isOpen) return _eventDb!;
+    final dbFolder = await getDatabasesPath();
+    final dbPath = p.join(dbFolder, 'guardian_history.db');
+    _eventDb = await openDatabase(dbPath);
+    return _eventDb!;
+  }
+
+  /// Draine la queue d'événements persistante depuis SQLite/Room (et SharedPreferences en secours).
   Future<void> _drainEventQueue() async {
     try {
+      // 1. Compatibilité descendante : draine d'abord SharedPreferences s'il reste des clés
       final prefs = await SharedPreferences.getInstance();
       await prefs.reload();
-      
-      // Filtrer les clés qui correspondent aux événements individuels
       final keys = prefs.getKeys().where((k) => k.startsWith('guardian_event_') && k != 'guardian_event_queue').toList();
-      
-      // Compatibilité descendante (nettoyer l'ancienne clé de queue si elle existe encore)
-      if (prefs.containsKey('guardian_event_queue')) {
-        await prefs.remove('guardian_event_queue');
+      if (keys.isNotEmpty) {
+        debugPrint('EnforcementService: Draining ${keys.length} legacy SharedPreferences events.');
+        keys.sort();
+        for (final key in keys) {
+          final jsonStr = prefs.getString(key);
+          if (jsonStr != null && jsonStr.isNotEmpty) {
+             try {
+               final event = Map<dynamic, dynamic>.from(jsonDecode(jsonStr));
+               final action = event['action'] as String?;
+               switch (action) {
+                 case 'web_event':
+                   handleNativeWebEvent(event);
+                   break;
+                 case 'keyword_event':
+                   handleNativeKeywordEvent(event);
+                   break;
+                 case 'foreground_event':
+                   handleNativeForegroundEvent(event);
+                   break;
+               }
+             } catch(e) {
+               debugPrint('EnforcementService: Error parsing legacy event $key: $e');
+             }
+          }
+          await prefs.remove(key);
+        }
       }
 
-      if (keys.isEmpty) return;
+      // 2. Drainage SQLite/Room principal
+      final db = await _getEventDatabase();
+      
+      // Vérifier si la table sync_events existe (évite les exceptions lors de la création initiale)
+      final tables = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='sync_events'");
+      if (tables.isEmpty) {
+        return;
+      }
 
-      debugPrint('EnforcementService: Draining ${keys.length} queued events.');
+      final List<Map<String, dynamic>> rows = await db.query(
+        'sync_events',
+        orderBy: 'id ASC',
+      );
 
-      // Trier par ordre alphabétique (qui contient le timestamp grâce à notre format de clé)
-      keys.sort();
+      if (rows.isEmpty) return;
 
-      for (final key in keys) {
-        final jsonStr = prefs.getString(key);
-        if (jsonStr != null && jsonStr.isNotEmpty) {
-           try {
-             final event = Map<dynamic, dynamic>.from(jsonDecode(jsonStr));
-             final action = event['action'] as String?;
-             switch (action) {
-               case 'web_event':
-                 handleNativeWebEvent(event);
-                 break;
-               case 'keyword_event':
-                 handleNativeKeywordEvent(event);
-                 break;
-               case 'foreground_event':
-                 handleNativeForegroundEvent(event);
-                 break;
-             }
-           } catch(e) {
-             debugPrint('EnforcementService: Error parsing event $key: $e');
-           }
+      debugPrint('EnforcementService: Draining ${rows.length} Room queued events.');
+
+      final List<int> idsToDelete = [];
+
+      for (final row in rows) {
+        final id = row['id'] as int;
+        final action = row['action'] as String;
+        final payloadStr = row['payload'] as String;
+        
+        try {
+          final payload = jsonDecode(payloadStr) as Map<String, dynamic>;
+          final event = {
+            'action': action,
+            ...payload,
+          };
+          
+          switch (action) {
+            case 'web_event':
+              handleNativeWebEvent(event);
+              break;
+            case 'keyword_event':
+              handleNativeKeywordEvent(event);
+              break;
+            case 'foreground_event':
+              handleNativeForegroundEvent(event);
+              break;
+          }
+          idsToDelete.add(id);
+        } catch (e) {
+          debugPrint('EnforcementService: Error parsing Room event id $id: $e');
+          idsToDelete.add(id); // On supprime pour éviter de bloquer la file
         }
-        // Supprimer la clé après traitement (safe vis-à-vis des race conditions)
-        await prefs.remove(key);
+      }
+
+      if (idsToDelete.isNotEmpty) {
+        await db.delete(
+          'sync_events',
+          where: 'id IN (${idsToDelete.join(',')})',
+        );
+        debugPrint('EnforcementService: Deleted ${idsToDelete.length} Room events.');
       }
     } catch (e) {
-      debugPrint('EnforcementService: _drainEventQueue error: $e');
+      debugPrint('EnforcementService: _drainEventQueue (Room) error: $e');
     }
   }
 
@@ -1038,9 +1106,12 @@ class EnforcementService {
     );
 
     final pkg = (url.contains('.') && !url.contains('/')) ? url : (_currentForegroundPackage ?? '');
-    onBlockRequired?.call(reason, pkg);
-    if (_backgroundService != null) {
-      _backgroundService!.invoke('triggerBlock', {'reason': reason, 'package': pkg});
+    if (_blockState == BlockState.normal) {
+      setBlockState(BlockState.blocking, package: pkg);
+      onBlockRequired?.call(reason, pkg);
+      if (_backgroundService != null) {
+        _backgroundService!.invoke('triggerBlock', {'reason': reason, 'package': pkg});
+      }
     }
   }
 
@@ -1076,15 +1147,16 @@ class EnforcementService {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  Future<String?> _getForegroundPackage() async {
+  Future<String?> _getForegroundPackage({bool forceQueryUsageStats = false}) async {
     // 1. Priorité à la valeur mise à jour par l'AccessibilityService
-    if (_currentForegroundPackage != null &&
-        _currentForegroundPackage != 'app.theguardian.child' &&
-        !_isSystemApp(_currentForegroundPackage!)) {
+    if (!forceQueryUsageStats && _currentForegroundPackage != null) {
+      if (_currentForegroundPackage == 'app.theguardian.child' || _isSystemApp(_currentForegroundPackage!)) {
+        return null;
+      }
       return _currentForegroundPackage;
     }
 
-    // 2. Fallback : UsageStats sur les 30 dernières secondes
+    // 2. Fallback / Watchdog : UsageStats sur les 30 dernières secondes
     // On cherche la dernière app non-système passée au premier plan
     // AVANT Guardian (qui est elle-même au premier plan pendant les vérifications)
     try {
@@ -1181,22 +1253,108 @@ class EnforcementService {
 
       // Path principal utilisé par le Dashboard Parent
       final parentPath = '$childPath/alerts/usage/apps/$today';
-      await _firestore
-          .doc(parentPath)
-          .set(data, SetOptions(merge: true));
+      await FirestoreSyncQueue().queueSet(parentPath, data, merge: true);
 
-      debugPrint('EnforcementService: 📤 Real-time stats synced ($minutes min)');
+      debugPrint('EnforcementService: 📤 Real-time stats enqueued ($minutes min)');
     } catch (e) {
       debugPrint('EnforcementService: _reportScreenTime error: $e');
     }
   }
 
-  bool _isOutsideAllowedHours(ActiveRules rules) {
+  bool _isSystemApp(String pkg) => SystemAppClassifier.forEnforcement(
+        pkg,
+        blockedByParent: _rulesService.current.blockedApps,
+        additionalUserPackages: {...socialMedia, ...gaming},
+      );
+
+  String _todayString() {
+    final n = DateTime.now();
+    return '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
+  }
+
+  ActiveRules get currentRules => _rulesService.current;
+}
+
+// ─── Rule Engine Abstract Interfaces & Rule Implementations ──────────────────
+
+abstract class EnforcementRule {
+  String get name;
+  Future<RuleEvaluationResult> evaluate({
+    required String? frontPackage,
+    required ActiveRules rules,
+    required int usedMinutes,
+    required DateTime now,
+    required bool onboardingComplete,
+    required bool isActivelyTrying,
+    required Set<String> baseBlockedPackages,
+  });
+}
+
+class RuleEvaluationResult {
+  final bool isBlocked;
+  final String? blockReason;
+  final AlertType? alertType;
+  final String? cooldownKey;
+  final String? alertDetail;
+
+  RuleEvaluationResult.allow()
+      : isBlocked = false,
+        blockReason = null,
+        alertType = null,
+        cooldownKey = null,
+        alertDetail = null;
+
+  RuleEvaluationResult.block({
+    required this.blockReason,
+    this.alertType,
+    this.cooldownKey,
+    this.alertDetail,
+  }) : isBlocked = true;
+}
+
+class AllowedHoursRule implements EnforcementRule {
+  @override
+  String get name => 'AllowedHours';
+
+  DateTime? _lastAlert;
+
+  @override
+  Future<RuleEvaluationResult> evaluate({
+    required String? frontPackage,
+    required ActiveRules rules,
+    required int usedMinutes,
+    required DateTime now,
+    required bool onboardingComplete,
+    required bool isActivelyTrying,
+    required Set<String> baseBlockedPackages,
+  }) async {
+    final bool isOutside = _isOutsideAllowedHours(rules, now);
+    if (!isOutside) return RuleEvaluationResult.allow();
+
+    final start = rules.allowedTimeStart ?? '';
+    final end = rules.allowedTimeEnd ?? '';
+    final reason = 'Utilisation hors heures autorisées ($start – $end).';
+
+    String? alertDetail;
+    if (onboardingComplete && isActivelyTrying) {
+      if (_lastAlert == null || now.difference(_lastAlert!).inMinutes >= 10) {
+        _lastAlert = now;
+        alertDetail = 'Alerte d\'activité : Votre enfant a tenté d\'utiliser son téléphone en dehors des heures autorisées (de $start à $end).';
+      }
+    }
+
+    return RuleEvaluationResult.block(
+      blockReason: reason,
+      alertType: AlertType.outsideHours,
+      alertDetail: alertDetail,
+    );
+  }
+
+  bool _isOutsideAllowedHours(ActiveRules rules, DateTime now) {
     final start = rules.allowedTimeStart;
     final end = rules.allowedTimeEnd;
     if (start == null || end == null) return false;
 
-    final now = DateTime.now();
     final current = now.hour * 60 + now.minute;
     final s = _parseTime(start);
     final e = _parseTime(end);
@@ -1214,17 +1372,142 @@ class EnforcementService {
     if (h == null || m == null) return null;
     return h * 60 + m;
   }
+}
 
-  bool _isSystemApp(String pkg) => SystemAppClassifier.forEnforcement(
-        pkg,
-        blockedByParent: _rulesService.current.blockedApps,
-        additionalUserPackages: {...socialMedia, ...gaming},
-      );
+class DailyLimitRule implements EnforcementRule {
+  @override
+  String get name => 'DailyLimit';
 
-  String _todayString() {
-    final n = DateTime.now();
-    return '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
+  DateTime? _lastAlert;
+
+  @override
+  Future<RuleEvaluationResult> evaluate({
+    required String? frontPackage,
+    required ActiveRules rules,
+    required int usedMinutes,
+    required DateTime now,
+    required bool onboardingComplete,
+    required bool isActivelyTrying,
+    required Set<String> baseBlockedPackages,
+  }) async {
+    final bool isLimitReached = rules.dailyLimitMinutes > 0 && usedMinutes >= rules.dailyLimitMinutes;
+    if (!isLimitReached) return RuleEvaluationResult.allow();
+
+    final reason = 'Temps d\'écran journalier écoulé.';
+
+    String? alertDetail;
+    if (onboardingComplete && isActivelyTrying) {
+      if (_lastAlert == null || now.difference(_lastAlert!).inMinutes >= 10) {
+        _lastAlert = now;
+        alertDetail = 'Alerte de limite : Votre enfant a tenté d\'utiliser son téléphone alors que sa limite de temps d\'écran journalière (${rules.dailyLimitMinutes} minutes) est déjà épuisée.';
+      }
+    }
+
+    return RuleEvaluationResult.block(
+      blockReason: reason,
+      alertType: AlertType.timeLimit,
+      alertDetail: alertDetail,
+    );
   }
+}
 
-  ActiveRules get currentRules => _rulesService.current;
+class AppTimeLimitRule implements EnforcementRule {
+  @override
+  String get name => 'AppTimeLimit';
+
+  final Future<int> Function(String) getAppUsedMinutes;
+  final String Function(String) getAppName;
+
+  AppTimeLimitRule({required this.getAppUsedMinutes, required this.getAppName});
+
+  final Map<String, int> _cachedUsedMinutes = {};
+  final Map<String, DateTime> _lastQueryTime = {};
+
+  @override
+  Future<RuleEvaluationResult> evaluate({
+    required String? frontPackage,
+    required ActiveRules rules,
+    required int usedMinutes,
+    required DateTime now,
+    required bool onboardingComplete,
+    required bool isActivelyTrying,
+    required Set<String> baseBlockedPackages,
+  }) async {
+    if (frontPackage == null) return RuleEvaluationResult.allow();
+
+    final appLimit = rules.appTimeLimits[frontPackage];
+    if (appLimit == null || appLimit <= 0) return RuleEvaluationResult.allow();
+
+    int appUsedMinutes;
+    final lastQuery = _lastQueryTime[frontPackage];
+    if (lastQuery == null || now.difference(lastQuery).inSeconds >= 60) {
+      appUsedMinutes = await getAppUsedMinutes(frontPackage);
+      _cachedUsedMinutes[frontPackage] = appUsedMinutes;
+      _lastQueryTime[frontPackage] = now;
+    } else {
+      appUsedMinutes = _cachedUsedMinutes[frontPackage] ?? 0;
+    }
+
+    if (appUsedMinutes < appLimit) return RuleEvaluationResult.allow();
+
+    final reason = 'Limite de temps pour cette application atteinte.';
+    String? alertDetail;
+
+    if (onboardingComplete) {
+      alertDetail = 'Alerte de temps : Votre enfant a essayé d\'ouvrir l\'application ${getAppName(frontPackage)}, mais sa limite d\'utilisation pour cette application ($appLimit minutes) est atteinte.';
+    }
+
+    return RuleEvaluationResult.block(
+      blockReason: reason,
+      alertType: AlertType.appTimeLimit,
+      cooldownKey: frontPackage,
+      alertDetail: alertDetail,
+    );
+  }
+}
+
+class BlockedAppRule implements EnforcementRule {
+  @override
+  String get name => 'BlockedApp';
+
+  final String Function(String) getAppName;
+  String? _lastPackage;
+
+  BlockedAppRule({required this.getAppName});
+
+  @override
+  Future<RuleEvaluationResult> evaluate({
+    required String? frontPackage,
+    required ActiveRules rules,
+    required int usedMinutes,
+    required DateTime now,
+    required bool onboardingComplete,
+    required bool isActivelyTrying,
+    required Set<String> baseBlockedPackages,
+  }) async {
+    if (frontPackage == null) return RuleEvaluationResult.allow();
+
+    final isBlocked = baseBlockedPackages.contains(frontPackage);
+    if (!isBlocked) {
+      _lastPackage = null;
+      return RuleEvaluationResult.allow();
+    }
+
+    final reason = 'Cette application est bloquée par vos parents.';
+    String? alertDetail;
+
+    if (frontPackage != _lastPackage) {
+      _lastPackage = frontPackage;
+      if (onboardingComplete) {
+        alertDetail = 'Alerte de sécurité : Votre enfant a tenté d\'ouvrir l\'application ${getAppName(frontPackage)}, qui fait partie des applications que vous avez bloquées.';
+      }
+    }
+
+    return RuleEvaluationResult.block(
+      blockReason: reason,
+      alertType: AlertType.blockedApp,
+      cooldownKey: frontPackage,
+      alertDetail: alertDetail,
+    );
+  }
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'firestore_sync_queue.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:usage_stats/usage_stats.dart';
@@ -9,6 +10,7 @@ import 'package_service.dart';
 import 'device_status_service.dart';
 import 'enforcement_service.dart';
 import 'location_service.dart';
+import 'guardian_health_monitor.dart';
 import '../utils/child_path_helper.dart';
 import '../utils/system_app_classifier.dart';
 
@@ -118,6 +120,9 @@ class MonitoringService {
     // ── B. Démarrer le suivi GPS et Geofencing ───────────────────────────
     await LocationService().startTracking();
 
+    // ── C. Démarrer le moniteur d'intégrité globale ──────────────────────
+    await GuardianHealthMonitor().start();
+
     // ── B. Démarrer la collecte des stats (boucle 15min) ─────────────────
     await _syncUsageStats();
     
@@ -155,6 +160,7 @@ class MonitoringService {
     _syncTimer = null;
     await _enforcementService.stop();
     await LocationService().stopTracking();
+    await GuardianHealthMonitor().stop();
     _isMonitoring = false;
     await _deviceStatusService.goOffline();
     debugPrint('MonitoringService: Stopped.');
@@ -272,9 +278,9 @@ class MonitoringService {
 
       // Emplacement EXACT attendu par l'application parente
       final parentPath = '$childPath/alerts/usage/apps/$today';
-      await _firestore.doc(parentPath).set(usageDoc, SetOptions(merge: true));
+      await FirestoreSyncQueue().queueSet(parentPath, usageDoc, merge: true);
 
-      debugPrint('MonitoringService: 📤 Stats synced to parent path: $parentPath');
+      debugPrint('MonitoringService: 📤 Stats enqueued to parent path: $parentPath');
       debugPrint('MonitoringService: ✅ Stats synced — $totalMinutes min, ${filtered.length} apps.');
     } catch (e) {
       debugPrint('MonitoringService: _syncUsageStats error: $e');

@@ -14,6 +14,7 @@ enum AlertType {
   geofenceExit,  // Sortie de zone de sécurité
   appTimeLimit,  // Limite par application atteinte
   keywordDetected, // Mot-clé personnalisé détecté
+  integrityFailure, // Désactivation d'autorisations critiques (Chantier 4)
 }
 
 extension AlertTypeExtension on AlertType {
@@ -27,6 +28,7 @@ extension AlertTypeExtension on AlertType {
       case AlertType.geofenceExit:  return 'GEOFENCE_EXIT';
       case AlertType.appTimeLimit:  return 'APP_TIME_LIMIT';
       case AlertType.keywordDetected: return 'KEYWORD_DETECTED';
+      case AlertType.integrityFailure: return 'INTEGRITY_FAILURE';
     }
   }
 
@@ -36,6 +38,7 @@ extension AlertTypeExtension on AlertType {
       case AlertType.geofenceEnter:
       case AlertType.geofenceExit:
       case AlertType.keywordDetected:
+      case AlertType.integrityFailure:
         return 'security';
       case AlertType.blockedApp:
       case AlertType.timeLimit:
@@ -55,6 +58,7 @@ extension AlertTypeExtension on AlertType {
       case AlertType.geofenceExit:  return 'Sortie de zone';
       case AlertType.appTimeLimit:  return 'Limite d\'app atteinte';
       case AlertType.keywordDetected: return 'Mot-clé détecté';
+      case AlertType.integrityFailure: return 'Défaut d\'intégrité';
     }
   }
 }
@@ -135,9 +139,10 @@ class AlertService {
       // 1. Écriture sur le chemin unique lu par le parent via FirestoreSyncQueue
       final deepPath = '$childPath/alerts/notifications/items';
       
-      await FirestoreSyncQueue().queueAdd(deepPath, {...alertData, 'message': detail});
+      final bool immediate = (type == AlertType.sos);
+      await FirestoreSyncQueue().queueAdd(deepPath, {...alertData, 'message': detail}, immediate: immediate);
 
-      debugPrint('AlertService: ✅ Enqueued [${type.value}] — $detail (single-path sync)');
+      debugPrint('AlertService: ✅ Enqueued [${type.value}] (immediate=$immediate) — $detail (single-path sync)');
     } catch (e) {
       debugPrint('AlertService: Error: $e');
     }

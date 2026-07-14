@@ -227,7 +227,9 @@ class MainActivity : FlutterActivity() {
                     }
 
                     "isDeviceAdminEnabled" -> {
-                        result.success(true)
+                        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+                        val adminComponent = android.content.ComponentName(this, GuardianDeviceAdminReceiver::class.java)
+                        result.success(dpm.isAdminActive(adminComponent))
                     }
 
                     "requestDeviceAdmin" -> {

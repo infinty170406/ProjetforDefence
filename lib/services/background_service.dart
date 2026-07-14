@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'monitoring_service.dart';
 import 'package_service.dart';
 import 'firestore_sync_queue.dart';
+import 'enforcement_service.dart';
 
 /// BackgroundService
 ///
@@ -211,23 +212,33 @@ class BackgroundService {
       }
     });
 
-    // Écouter les événements redirigés depuis MainActivity.kt
-    service.on('web_event').listen((data) {
+    // Écouter les états de blocage de l'UI
+    service.on('setBlockState').listen((data) {
       if (data != null) {
-        MonitoringService().enforcement.handleNativeWebEvent(data);
+        final stateStr = data['state'] as String;
+        final pkg = data['package'] as String?;
+        BlockState state;
+        switch (stateStr) {
+          case 'BLOCKED': state = BlockState.blocked; break;
+          case 'WAITING_EXIT': state = BlockState.waitingExit; break;
+          case 'BLOCKING': state = BlockState.blocking; break;
+          default: state = BlockState.normal;
+        }
+        MonitoringService().enforcement.setBlockState(state, package: pkg);
       }
+    });
+
+    // Écouter les événements redirigés depuis MainActivity.kt et forcer le drainage immédiat de la file d'attente
+    service.on('web_event').listen((data) {
+      MonitoringService().enforcement.triggerImmediateDrain();
     });
 
     service.on('keyword_event').listen((data) {
-      if (data != null) {
-        MonitoringService().enforcement.handleNativeKeywordEvent(data);
-      }
+      MonitoringService().enforcement.triggerImmediateDrain();
     });
 
     service.on('foreground_event').listen((data) {
-      if (data != null) {
-        MonitoringService().enforcement.handleNativeForegroundEvent(data);
-      }
+      MonitoringService().enforcement.triggerImmediateDrain();
     });
 
     try {
