@@ -168,6 +168,8 @@ class FirestoreService {
     List<String> customCategories = const [],
     String mode = 'CUSTOM',
     String? blockReason,
+    String? geminiApiKey,
+    List<String> monitoredNotificationPackages = const [],
   }) async {
     final rules = ChildRules(
       blockedApps: blockedApps,
@@ -192,6 +194,8 @@ class FirestoreService {
       customCategories: customCategories,
       mode: mode,
       blockReason: blockReason,
+      geminiApiKey: geminiApiKey,
+      monitoredNotificationPackages: monitoredNotificationPackages,
     );
     await _rulesRepo.saveRules(childId, rules);
   }

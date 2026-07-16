@@ -22,6 +22,8 @@ class ChildRules {
   final List<String> customKeywords;
   final List<String> customCategories;
   final String mode;
+  final String? geminiApiKey;
+  final List<String> monitoredNotificationPackages;
   final String? parentId;
   final String? childDeviceUid;
   final String? blockReason;
@@ -55,6 +57,8 @@ class ChildRules {
     this.blockReason,
     this.updatedAt,
     this.rulesConfigured = false,
+    this.geminiApiKey,
+    this.monitoredNotificationPackages = const [],
   }) {
     // Validation
     if (dailyLimitMinutes < 0) {
@@ -92,6 +96,9 @@ class ChildRules {
           ? (json['updatedAt'] as Timestamp).toDate() 
           : null,
       rulesConfigured: json['rulesConfigured'] ?? false,
+      geminiApiKey: json['geminiApiKey'] ?? json['gemini_api_key'],
+      monitoredNotificationPackages: List<String>.from(
+          json['monitoredNotificationPackages'] ?? json['monitored_notification_packages'] ?? []),
     );
   }
 
@@ -123,6 +130,10 @@ class ChildRules {
       if (blockReason != null) 'block_reason': blockReason,
       'updatedAt': FieldValue.serverTimestamp(),
       'rulesConfigured': rulesConfigured,
+      if (geminiApiKey != null) 'geminiApiKey': geminiApiKey,
+      if (geminiApiKey != null) 'gemini_api_key': geminiApiKey,
+      'monitoredNotificationPackages': monitoredNotificationPackages,
+      'monitored_notification_packages': monitoredNotificationPackages,
     };
   }
 
@@ -152,6 +163,8 @@ class ChildRules {
     String? childDeviceUid,
     String? blockReason,
     bool? rulesConfigured,
+    String? geminiApiKey,
+    List<String>? monitoredNotificationPackages,
   }) {
     return ChildRules(
       blockedApps: blockedApps ?? this.blockedApps,
@@ -179,6 +192,8 @@ class ChildRules {
       childDeviceUid: childDeviceUid ?? this.childDeviceUid,
       blockReason: blockReason ?? this.blockReason,
       rulesConfigured: rulesConfigured ?? this.rulesConfigured,
+      geminiApiKey: geminiApiKey ?? this.geminiApiKey,
+      monitoredNotificationPackages: monitoredNotificationPackages ?? this.monitoredNotificationPackages,
     );
   }
 }

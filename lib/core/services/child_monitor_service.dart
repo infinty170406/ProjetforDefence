@@ -42,12 +42,22 @@ class ChildMonitorService {
 
   Stream<List<Map<String, dynamic>>> watchAlerts(String childId, {String? parentId}) => _db
       .collection('${_childPath(childId, parentId: parentId)}/alerts/notifications/items')
-      .orderBy('timestamp', descending: true)
-      .limit(50)
       .snapshots()
-      .map((q) => q.docs
-          .map((d) => {'id': d.id, ...d.data()})
-          .toList());
+      .map((q) {
+        final list = q.docs.map((d) => {'id': d.id, ...d.data()}).toList();
+        list.sort((a, b) {
+          final tA = a['timestamp'];
+          final tB = b['timestamp'];
+          if (tA == null && tB == null) return 0;
+          if (tA == null) return 1;
+          if (tB == null) return -1;
+          if (tA is Timestamp && tB is Timestamp) {
+            return tB.compareTo(tA);
+          }
+          return tB.toString().compareTo(tA.toString());
+        });
+        return list.take(50).toList();
+      });
 
   // ── Usage stats ───────────────────────────────────────────────────────────
   
@@ -139,13 +149,25 @@ class ChildMonitorService {
 
   Stream<List<Map<String, dynamic>>> watchWebHistory(String childId, {String? parentId}) => _db
       .collection('${_childPath(childId, parentId: parentId)}/inventory/websites/history')
-      .orderBy('timestamp', descending: true)
-      .limit(50)
       .snapshots()
-      .map((s) => s.docs
-          .map((d) => {'id': d.id, ...d.data()})
-          .where((item) => !_isGenericBrowserSession(item))
-          .toList());
+      .map((s) {
+        final list = s.docs
+            .map((d) => {'id': d.id, ...d.data()})
+            .where((item) => !_isGenericBrowserSession(item))
+            .toList();
+        list.sort((a, b) {
+          final tA = a['timestamp'];
+          final tB = b['timestamp'];
+          if (tA == null && tB == null) return 0;
+          if (tA == null) return 1;
+          if (tB == null) return -1;
+          if (tA is Timestamp && tB is Timestamp) {
+            return tB.compareTo(tA);
+          }
+          return tB.toString().compareTo(tA.toString());
+        });
+        return list.take(50).toList();
+      });
 
   Future<QuerySnapshot<Map<String, dynamic>>> getAlertsPaginated(
     String childId, {

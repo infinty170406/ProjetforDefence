@@ -5,6 +5,7 @@ import '../../core/widgets/liquid_background.dart';
 import '../../core/services/child_monitor_service.dart';
 import '../../core/services/firestore_service.dart';
 import '../../core/widgets/app_tile_with_details.dart';
+import '../../core/services/api_config.dart';
 
 class RulesEditorScreen extends StatefulWidget {
   final dynamic child;
@@ -42,6 +43,28 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
   final _blockReasonController = TextEditingController();
   String _appSearchQuery = '';
 
+  // AI Configuration Fields
+  bool _showGeminiKey = false;
+  final _geminiApiKeyController = TextEditingController();
+  List<String> _monitoredNotificationPackages = [];
+  final _notifAppSearchController = TextEditingController();
+  String _notifAppSearchQuery = '';
+
+  static const List<String> _defaultMonitoredPackages = [
+    'com.whatsapp',
+    'com.instagram.android',
+    'com.snapchat.android',
+    'com.facebook.orca',
+    'com.facebook.katana',
+    'com.zhiliaoapp.musically',
+    'com.tiktok',
+    'com.twitter.android',
+    'org.telegram.messenger',
+    'com.google.android.apps.messaging',
+    'com.android.mms',
+    'com.discord',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +98,15 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
           if (snap['block_reason'] != null) {
             _blockReasonController.text = snap['block_reason'] as String;
           }
+
+          // Load Gemini / Notification Monitoring settings
+          final key = snap['geminiApiKey'] ?? snap['gemini_api_key'] ?? '';
+          _geminiApiKeyController.text = key;
+          if (key.isNotEmpty) {
+            ApiConfig.geminiApiKey = key;
+          }
+          _monitoredNotificationPackages = List<String>.from(
+              snap['monitoredNotificationPackages'] ?? snap['monitored_notification_packages'] ?? _defaultMonitoredPackages);
 
           final start = snap['allowedTimeStart'] as String?;
           final end = snap['allowedTimeEnd'] as String?;
@@ -145,7 +177,13 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
         locationAlerts: _locationAlerts,
         customKeywords: _customKeywords,
         blockReason: _blockReasonController.text.trim().isEmpty ? null : _blockReasonController.text.trim(),
+        geminiApiKey: _geminiApiKeyController.text.trim().isEmpty ? null : _geminiApiKeyController.text.trim(),
+        monitoredNotificationPackages: _monitoredNotificationPackages,
       );
+      final key = _geminiApiKeyController.text.trim();
+      if (key.isNotEmpty) {
+        ApiConfig.geminiApiKey = key;
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Rules saved ✓'), backgroundColor: Colors.green));
@@ -184,6 +222,8 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
     _keywordController.dispose();
     _appSearchController.dispose();
     _blockReasonController.dispose();
+    _geminiApiKeyController.dispose();
+    _notifAppSearchController.dispose();
     super.dispose();
   }
 
@@ -529,6 +569,191 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                             )).toList(),
                           ),
                         ],
+                        SizedBox(height: 24),
+                        // ── AI Configuration Section ────────────────────
+                        Row(
+                          children: [
+                            Icon(Icons.psychology, color: AppColors.primary, size: 20),
+                            SizedBox(width: 8),
+                            Text('AI SURVEILLANCE & THREAT DETECTION',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Configure the Gemini AI engine for real-time notification interception and context-aware risk analysis on the child device.',
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), fontSize: 12, height: 1.4),
+                        ),
+                        SizedBox(height: 14),
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Gemini API Key',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Required on the child device to perform local AI analysis of notifications.',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                  fontSize: 11,
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              TextField(
+                                controller: _geminiApiKeyController,
+                                obscureText: !_showGeminiKey,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                  fontFamily: 'monospace',
+                                  fontSize: 13,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Enter Gemini API Key (AIzaSy...)',
+                                  hintStyle: TextStyle(color: AppColors.textGray400, fontSize: 13),
+                                  filled: true,
+                                  fillColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12)),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
+                                  ),
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _showGeminiKey ? Icons.visibility_off : Icons.visibility,
+                                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                                    ),
+                                    onPressed: () => setState(() => _showGeminiKey = !_showGeminiKey),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        Text(
+                          'Monitored Application Notifications',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Select which apps should have their incoming notifications intercepted and analyzed by Gemini.',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                            fontSize: 11,
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        TextField(
+                          controller: _notifAppSearchController,
+                          onChanged: (v) => setState(() => _notifAppSearchQuery = v.trim().toLowerCase()),
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+                          decoration: InputDecoration(
+                            hintText: 'Search notification apps...',
+                            hintStyle: TextStyle(color: Theme.of(context).brightness == Brightness.light ? const Color(0xFF94A3B8) : AppColors.textGray400),
+                            prefixIcon: Icon(Icons.search, color: AppColors.textGray400, size: 18),
+                            filled: true,
+                            fillColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                            contentPadding: EdgeInsets.symmetric(vertical: 0),
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        if (_installedApps.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16.0),
+                            child: Center(
+                              child: Text(
+                                'No installed apps detected on child device yet.',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                                  fontStyle: FontStyle.italic,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          Container(
+                            height: 200,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.02),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08)),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: ListView(
+                                physics: const BouncingScrollPhysics(),
+                                padding: EdgeInsets.all(8),
+                                children: _installedApps
+                                  .where((pkg) => pkg.toLowerCase().contains(_notifAppSearchQuery))
+                                  .map((pkg) {
+                                    final isMonitored = _monitoredNotificationPackages.contains(pkg);
+                                    final childId = widget.child?['id'] ?? widget.child?['childId'] ?? '';
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 4.0),
+                                      child: AppTileWithDetails(
+                                        childId: childId,
+                                        packageName: pkg,
+                                        trailing: Switch(
+                                          value: isMonitored,
+                                          onChanged: (v) {
+                                            setState(() {
+                                              if (v) {
+                                                _monitoredNotificationPackages = [
+                                                  ..._monitoredNotificationPackages,
+                                                  pkg
+                                                ];
+                                              } else {
+                                                _monitoredNotificationPackages =
+                                                    _monitoredNotificationPackages
+                                                        .where((p) => p != pkg)
+                                                        .toList();
+                                              }
+                                            });
+                                          },
+                                          activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
+                                          activeThumbColor: AppColors.primary,
+                                          inactiveThumbColor: Colors.grey,
+                                          inactiveTrackColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                              ),
+                            ),
+                          ),
                         SizedBox(height: 24),
                         Row(
                           children: [
