@@ -35,7 +35,7 @@ class ApiConfig {
     } else if (base.startsWith('http://')) {
       return base.replaceFirst('http://', 'ws://');
     }
-    return 'wss://guardian-backend-10zk.onrender.com';
+    return 'wss://guardian-secure-api.onrender.com';
   }
 
   // ==================== AUTH ====================
