@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'api_config.dart';
-import 'api_service.dart';
+import 'guardian_api.dart';
 
 /// Gère l'invitation d'un second parent via un code Firestore.
 class ParentInviteService {
@@ -17,9 +16,8 @@ class ParentInviteService {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return null;
 
-      final result = await ApiService().postWithAuth(
-        ApiConfig.createInvite,
-        const {},
+      final result = await GuardianApi.post(
+        '/api/v1/family/invites',
       );
       return result['code'] as String?;
     } catch (e) {
@@ -36,12 +34,12 @@ class ParentInviteService {
     if (user == null) return ParentInviteResult.notAuthenticated;
 
     try {
-      await ApiService().postWithAuth(
-        ApiConfig.acceptInvite,
-        {'code': code},
+      await GuardianApi.post(
+        '/api/v1/family/invites/accept',
+        body: {'code': code.trim().toUpperCase()},
       );
       return ParentInviteResult.success;
-    } on ApiException catch (e) {
+    } on GuardianApiException catch (e) {
       return switch (e.statusCode) {
         404 => ParentInviteResult.notFound,
         410 => ParentInviteResult.expired,

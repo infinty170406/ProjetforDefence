@@ -7,8 +7,7 @@ import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/child_enforcement_service.dart';
-import '../../core/services/api_service.dart';
-import '../../core/services/api_config.dart';
+import '../../core/services/guardian_api.dart';
 
 class ChildPairingScreen extends StatefulWidget {
   final String? initialCode;
@@ -64,9 +63,9 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
       }
 
       // ── Step 2: consume the one-time token server-side ───────────────────
-      final result = await ApiService().postWithAuth(
-        ApiConfig.pairDevice,
-        {'token': code},
+      final result = await GuardianApi.post(
+        '/api/v1/device/pair',
+        body: {'token': code},
       );
       final parentId = result['parentId'] as String?;
       final childId = result['childId'] as String?;
