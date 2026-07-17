@@ -48,7 +48,6 @@ dependencies:
 
   # Google Sign-In
   google_sign_in: ^6.2.1        # Google auth button (login / signup screens)
-  cloud_functions: ^5.1.3
   tflite_v2: ^1.0.0
   flutter_local_notifications: ^21.0.0
   camera: ^0.12.0+2
