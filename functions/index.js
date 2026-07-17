@@ -1,6 +1,7 @@
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const crypto = require('crypto');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { defineSecret, defineString } = require('firebase-functions/params');
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 const { FieldValue, getFirestore, Timestamp } = require('firebase-admin/firestore');
@@ -8,6 +9,9 @@ const { getMessaging } = require('firebase-admin/messaging');
 const nodemailer = require('nodemailer');
 
 initializeApp();
+
+const geminiApiKey = defineSecret('GEMINI_API_KEY');
+const geminiModel = defineString('GEMINI_MODEL');
 
 const PAIRING_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
 const PARENT_INVITE_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{6}$/;
@@ -145,6 +149,234 @@ exports.acceptParentInvite = onCall(async (request) => {
   return { success: true };
 });
 
+
+const CHILD_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+const ALERT_EVENT_ID_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
+const CHILD_ALERT_TYPES = new Set([
+  'SOS', 'BLOCKED_APP', 'TIME_LIMIT', 'OUTSIDE_HOURS',
+  'GEOFENCE_ENTER', 'GEOFENCE_EXIT', 'APP_TIME_LIMIT',
+  'KEYWORD_DETECTED', 'NOTIFICATION_RISK', 'GPS_DISABLED',
+]);
+const ALERT_TITLES = {
+  SOS: 'Alerte SOS',
+  BLOCKED_APP: 'Application bloquée',
+  TIME_LIMIT: 'Limite globale atteinte',
+  OUTSIDE_HOURS: 'Hors plage horaire',
+  GEOFENCE_ENTER: 'Entrée en zone',
+  GEOFENCE_EXIT: 'Sortie de zone',
+  APP_TIME_LIMIT: "Limite d'application atteinte",
+  KEYWORD_DETECTED: 'Mot-clé détecté',
+  NOTIFICATION_RISK: 'Notification à risque',
+  GPS_DISABLED: 'Localisation désactivée',
+};
+
+function boundedString(value, maxLength, fallback = '') {
+  if (typeof value !== 'string') return fallback;
+  return value.trim().slice(0, maxLength);
+}
+
+function finiteNumber(value, min, max) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
+    ? value
+    : null;
+}
+
+async function assertPairedChildDevice(request, parentId, childId) {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Authentication is required.');
+  }
+  if (!CHILD_ID_PATTERN.test(parentId) || !CHILD_ID_PATTERN.test(childId)) {
+    throw new HttpsError('invalid-argument', 'Invalid pairing identifiers.');
+  }
+
+  const childRef = getFirestore().doc(`parents/${parentId}/children/${childId}`);
+  const childSnap = await childRef.get();
+  const child = childSnap.data();
+  if (!childSnap.exists || child?.isLinked !== true || child?.childDeviceUid !== request.auth.uid) {
+    throw new HttpsError('permission-denied', 'This device is not paired with the requested child.');
+  }
+  return childRef;
+}
+
+/**
+ * Receives a child-generated alert without granting the child direct write
+ * access to the parent notification collection. The client event id makes
+ * retries idempotent.
+ */
+exports.reportChildAlert = onCall(async (request) => {
+  const parentId = boundedString(request.data?.parentId, 128);
+  const childId = boundedString(request.data?.childId, 128);
+  const eventId = boundedString(request.data?.eventId, 128);
+  const type = boundedString(request.data?.type, 40).toUpperCase();
+  const detail = boundedString(request.data?.detail, 500);
+
+  if (!ALERT_EVENT_ID_PATTERN.test(eventId) || !CHILD_ALERT_TYPES.has(type)) {
+    throw new HttpsError('invalid-argument', 'Invalid alert payload.');
+  }
+  await assertPairedChildDevice(request, parentId, childId);
+
+  const severity = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO']
+    .includes(String(request.data?.severity || '').toUpperCase())
+    ? String(request.data.severity).toUpperCase()
+    : (type === 'SOS' ? 'CRITICAL' : 'HIGH');
+  const genre = boundedString(request.data?.genre, 32, 'restriction');
+  const extra = request.data?.extra && typeof request.data.extra === 'object'
+    ? request.data.extra
+    : {};
+
+  const data = {
+    childId,
+    type,
+    title: ALERT_TITLES[type] || 'Alerte Guardian',
+    description: detail,
+    detail,
+    message: detail,
+    severity,
+    genre,
+    status: 'unread',
+    read: false,
+    ai_processed: false,
+    timestamp: FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
+  };
+
+  const latitude = finiteNumber(extra.latitude, -90, 90);
+  const longitude = finiteNumber(extra.longitude, -180, 180);
+  const battery = finiteNumber(extra.battery, -1, 100);
+  const score = finiteNumber(extra.score, 0, 100);
+  if (latitude !== null) data.latitude = latitude;
+  if (longitude !== null) data.longitude = longitude;
+  if (battery !== null) data.battery = Math.round(battery);
+  if (score !== null) data.score = Math.round(score);
+
+  for (const [key, maxLength] of Object.entries({
+    appName: 120,
+    appPackage: 180,
+    sender: 160,
+    category: 80,
+    reason: 300,
+  })) {
+    const value = boundedString(extra[key], maxLength);
+    if (value) data[key] = value;
+  }
+
+  const alertRef = getFirestore().doc(
+    `parents/${parentId}/children/${childId}/alerts/notifications/items/${eventId}`,
+  );
+  await getFirestore().runTransaction(async (transaction) => {
+    if ((await transaction.get(alertRef)).exists) return;
+    transaction.create(alertRef, data);
+  });
+
+  return { success: true, alertId: eventId };
+});
+
+/** Updates parent-visible device metadata after verifying the paired child. */
+exports.updateChildDeviceMetadata = onCall(async (request) => {
+  const parentId = boundedString(request.data?.parentId, 128);
+  const childId = boundedString(request.data?.childId, 128);
+  const childRef = await assertPairedChildDevice(request, parentId, childId);
+
+  const update = {};
+  const batteryLevel = finiteNumber(request.data?.batteryLevel, 0, 100);
+  if (batteryLevel !== null) update.batteryLevel = Math.round(batteryLevel);
+  if (typeof request.data?.isCharging === 'boolean') {
+    update.isCharging = request.data.isCharging;
+  }
+
+  const latitude = finiteNumber(request.data?.latitude, -90, 90);
+  const longitude = finiteNumber(request.data?.longitude, -180, 180);
+  if ((latitude === null) !== (longitude === null)) {
+    throw new HttpsError('invalid-argument', 'Latitude and longitude must be provided together.');
+  }
+  if (latitude !== null && longitude !== null) {
+    update.lastLatitude = latitude;
+    update.lastLongitude = longitude;
+    update.lastLocationUpdate = FieldValue.serverTimestamp();
+  }
+
+  if (Object.keys(update).length === 0) {
+    throw new HttpsError('invalid-argument', 'No supported metadata was provided.');
+  }
+  await childRef.update(update);
+  return { success: true };
+});
+
+/**
+ * Optional server-side notification classification. Provider credentials stay
+ * in the Functions environment and are never distributed to child devices.
+ */
+exports.analyzeChildNotification = onCall({ secrets: [geminiApiKey] }, async (request) => {
+  const parentId = boundedString(request.data?.parentId, 128);
+  const childId = boundedString(request.data?.childId, 128);
+  await assertPairedChildDevice(request, parentId, childId);
+
+  const apiKey = geminiApiKey.value();
+  const model = geminiModel.value();
+  if (!apiKey || !model || !/^[A-Za-z0-9._-]{1,80}$/.test(model)) {
+    return {
+      risk: 'SAFE', score: 0, category: 'NONE', blocked: false,
+      confidence: 0, reason: 'Server-side analysis is not configured.',
+    };
+  }
+
+  const application = boundedString(request.data?.application, 120);
+  const sender = boundedString(request.data?.sender, 160);
+  const conversation = boundedString(request.data?.conversation, 200);
+  const message = boundedString(request.data?.message, 1000);
+  if (!message) {
+    return {
+      risk: 'SAFE', score: 0, category: 'NONE', blocked: false,
+      confidence: 1, reason: 'No message content to analyze.',
+    };
+  }
+
+  const prompt = [
+    'Classify this child-device notification for digital-safety risk.',
+    'Return JSON only with risk, score, category, blocked, confidence, reason.',
+    `Application: ${application}`,
+    `Sender: ${sender}`,
+    `Conversation: ${conversation}`,
+    `Message: ${message}`,
+  ].join('\n');
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: 'application/json' },
+        }),
+      },
+    );
+    if (!response.ok) throw new Error(`provider-status-${response.status}`);
+    const payload = await response.json();
+    const raw = payload?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const parsed = JSON.parse(raw || '{}');
+    const risk = ['SAFE', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
+      .includes(String(parsed.risk || '').toUpperCase())
+      ? String(parsed.risk).toUpperCase()
+      : 'SAFE';
+    return {
+      risk,
+      score: Math.max(0, Math.min(100, Number(parsed.score) || 0)),
+      category: boundedString(String(parsed.category || 'NONE').toUpperCase(), 80, 'NONE'),
+      blocked: parsed.blocked === true,
+      confidence: Math.max(0, Math.min(1, Number(parsed.confidence) || 0)),
+      reason: boundedString(parsed.reason, 300, 'Analysis completed.'),
+    };
+  } catch (error) {
+    console.error('analyzeChildNotification failed:', error?.message || 'unknown');
+    return {
+      risk: 'SAFE', score: 0, category: 'NONE', blocked: false,
+      confidence: 0, reason: 'Server-side analysis is temporarily unavailable.',
+    };
+  }
+});
+
 exports.notifyParentOnAlert = onDocumentCreated('parents/{parentId}/children/{childId}/alerts/notifications/items/{alertId}', async (event) => {
   const alert = event.data.data();
   const { parentId, childId, alertId } = event.params;
@@ -189,7 +421,7 @@ exports.notifyParentOnAlert = onDocumentCreated('parents/{parentId}/children/{ch
 
     const responses = await Promise.all(tokens.map(token => 
       getMessaging().send({ ...message, token }).catch(err => {
-        console.error(`Error sending to token ${token}:`, err);
+        console.error('Error sending parent notification:', err?.message || 'unknown');
         return null;
       })
     ));
@@ -264,7 +496,7 @@ exports.sendOtpEmail = onCall(async (request) => {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`OTP email sent successfully to ${targetEmail}`);
+    console.log('OTP email sent successfully.');
     return { success: true };
   } catch (error) {
     console.error('Error sending OTP email:', error);
