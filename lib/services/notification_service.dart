@@ -121,9 +121,9 @@ class NotificationService {
     try {
       await _firestore.doc(childPath).update({
         'fcmToken': token,
-        'lastSeen': FieldValue.serverTimestamp(),
+        'lastTokenSync': FieldValue.serverTimestamp(),
       });
-      debugPrint('NotificationService: FCM token saved at $childPath');
+      debugPrint('NotificationService: FCM token synchronized.');
     } catch (e) {
       debugPrint('NotificationService: Error saving FCM token: $e');
     }

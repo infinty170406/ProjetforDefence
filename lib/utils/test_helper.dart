@@ -8,7 +8,7 @@ import '../services/monitoring_service.dart';
 class TestHelper {
   /// Simulates a web navigation event.
   static void simulateWebEvent(String url, {String package = 'com.android.chrome'}) {
-    debugPrint('TestHelper: Simulating web event for URL: $url');
+    debugPrint('TestHelper: Simulating a web event.');
     MonitoringService().enforcement.handleNativeWebEvent({
       'url': url,
       'package': package,
@@ -17,7 +17,7 @@ class TestHelper {
 
   /// Simulates a keyword detection event.
   static void simulateKeywordEvent(String keyword, {String package = 'com.whatsapp'}) {
-    debugPrint('TestHelper: Simulating keyword event: $keyword');
+    debugPrint('TestHelper: Simulating a keyword event.');
     MonitoringService().enforcement.handleNativeKeywordEvent({
       'keyword': keyword,
       'package': package,
@@ -35,10 +35,10 @@ class TestHelper {
     simulateWebEvent('https://www.facebook.com');
     
     // 3. Test Category Blocking (Adult)
-    simulateWebEvent('https://www.pornhub.com');
+    simulateWebEvent('https://blocked.example');
     
     // 4. Test Keyword Detection
-    simulateKeywordEvent('porn');
+    simulateKeywordEvent('blocked-term');
     
     debugPrint('--- DIAGNOSTIC SUITE COMPLETED ---');
     debugPrint('Check Firestore logs to verify that alerts and history were recorded.');

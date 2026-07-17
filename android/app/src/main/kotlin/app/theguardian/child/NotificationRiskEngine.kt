@@ -2,12 +2,13 @@ package app.theguardian.child
 
 import android.content.Context
 import android.util.Log
+import java.util.UUID
 
 enum class NotificationDecision {
     ALLOW,
     WARNING,
     DISMISS,
-    BLOCK_AND_ALERT
+    BLOCK_AND_ALERT,
 }
 
 object NotificationRiskEngine {
@@ -16,8 +17,7 @@ object NotificationRiskEngine {
 
     fun evaluate(result: GeminiAnalysisResult): NotificationDecision {
         return when (result.risk) {
-            "SAFE" -> NotificationDecision.ALLOW
-            "LOW" -> NotificationDecision.ALLOW
+            "SAFE", "LOW" -> NotificationDecision.ALLOW
             "MEDIUM" -> NotificationDecision.WARNING
             "HIGH" -> NotificationDecision.DISMISS
             "CRITICAL" -> NotificationDecision.BLOCK_AND_ALERT
@@ -25,20 +25,15 @@ object NotificationRiskEngine {
         }
     }
 
-    /**
-     * Traite la décision de risque et génère une alerte de sécurité si nécessaire.
-     */
+    /** Enregistre la décision et met en file une alerte si nécessaire. */
     fun processDecision(
         context: Context,
         extracted: ExtractedNotification,
         result: GeminiAnalysisResult,
-        decision: NotificationDecision
+        decision: NotificationDecision,
     ) {
-        val timestamp = System.currentTimeMillis()
-
-        // 1. Enregistrer dans la base de données Room (Étape 6)
         val entry = NotificationHistoryEntry(
-            timestamp = timestamp,
+            timestamp = System.currentTimeMillis(),
             application = extracted.applicationName,
             packageName = extracted.packageName,
             sender = extracted.sender,
@@ -49,12 +44,13 @@ object NotificationRiskEngine {
             riskLevel = result.risk,
             decision = decision.name,
             reason = result.reason,
-            synced = false
+            synced = false,
         )
         NotificationHistoryRepository.record(context, entry)
 
-        // 2. Si HIGH ou CRITICAL (Étape 5), créer une alerte Firestore
-        if (decision == NotificationDecision.DISMISS || decision == NotificationDecision.BLOCK_AND_ALERT) {
+        if (decision == NotificationDecision.DISMISS ||
+            decision == NotificationDecision.BLOCK_AND_ALERT
+        ) {
             createSecurityAlert(context, extracted, result, decision)
         }
     }
@@ -63,22 +59,21 @@ object NotificationRiskEngine {
         context: Context,
         extracted: ExtractedNotification,
         result: GeminiAnalysisResult,
-        decision: NotificationDecision
+        decision: NotificationDecision,
     ) {
         try {
             val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            val childId = prefs.getString("child_id", "unknown_child") ?: "unknown_child"
-
             val severity = if (decision == NotificationDecision.BLOCK_AND_ALERT) "CRITICAL" else "HIGH"
-            val detail = "Alerte Sécurité Notification [${result.category}] : " +
-                    "Un message suspect de ${extracted.sender} dans l'application ${extracted.applicationName} a été détecté et filtré.\n" +
-                    "Message : \"${extracted.messageText}\"\n" +
-                    "Raison de l'IA : ${result.reason}"
 
-            val alertObj = org.json.JSONObject().apply {
-                put("childId", childId)
-                put("type", "NOTIFICATION_ALERT")
-                put("title", "Message suspect détecté")
+            // Le contenu intégral n'est pas recopié dans l'alerte. Il reste dans
+            // l'historique autorisé, séparé du flux de notifications parentales.
+            val detail = "Une notification potentiellement risquée a été détectée " +
+                "dans ${extracted.applicationName}. Catégorie : ${result.category}. " +
+                "Décision : ${decision.name}."
+
+            val alertObject = org.json.JSONObject().apply {
+                put("type", "NOTIFICATION_RISK")
+                put("title", "Notification à risque détectée")
                 put("description", detail)
                 put("detail", detail)
                 put("severity", severity)
@@ -87,7 +82,7 @@ object NotificationRiskEngine {
                 put("read", false)
                 put("timestamp", System.currentTimeMillis())
                 put("createdAt", System.currentTimeMillis())
-                put("ai_processed", false)
+                put("ai_processed", true)
                 put("appName", extracted.applicationName)
                 put("appPackage", extracted.packageName)
                 put("sender", extracted.sender)
@@ -96,12 +91,11 @@ object NotificationRiskEngine {
                 put("reason", result.reason)
             }
 
-            // File d'attente SharedPreferences pour compatibilité ou sync en arrière-plan
-            val key = "flutter.guardian_alert_${System.currentTimeMillis()}_${(Math.random() * 1000).toInt()}"
-            prefs.edit().putString(key, alertObj.toString()).apply()
-            Log.i(TAG, "Security alert enqueued in SharedPreferences: $key")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to create security alert: ${e.message}")
+            val key = "flutter.guardian_alert_${UUID.randomUUID()}"
+            prefs.edit().putString(key, alertObject.toString()).apply()
+            Log.i(TAG, "Security alert queued for authenticated synchronization.")
+        } catch (error: Exception) {
+            Log.e(TAG, "Failed to queue a security alert.", error)
         }
     }
 }

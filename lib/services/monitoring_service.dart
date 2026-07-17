@@ -197,30 +197,8 @@ class MonitoringService {
           s + (int.tryParse(e.totalTimeInForeground ?? '0') ?? 0));
       final totalMinutes = totalMs ~/ 60000;
 
-      // ── ENRICHISSEMENT POUR L'AGENT IA (côté parent) ──────────────────────
-      // Agrégation des minutes par catégorie (signal "apps addictives", §8)
-      // calculée sur l'ensemble des apps filtrées, pas seulement le top 20.
-      final Map<String, int> categoryMinutes = {};
-      for (final s in filtered) {
-        final pkg = s.packageName ?? '';
-        if (pkg.isEmpty) continue;
-        final minutes = (int.tryParse(s.totalTimeInForeground ?? '0') ?? 0) ~/ 60000;
-        if (minutes <= 0) continue;
-        final cat = _catStr(_classify(pkg));
-        categoryMinutes[cat] = (categoryMinutes[cat] ?? 0) + minutes;
-      }
-
-      // Application la plus utilisée (signal "usage intensif", §8).
-      String? topAppPkg;
-      int topAppMinutes = 0;
-      if (filtered.isNotEmpty) {
-        topAppPkg = filtered.first.packageName;
-        topAppMinutes = (int.tryParse(filtered.first.totalTimeInForeground ?? '0') ?? 0) ~/ 60000;
-      }
-
-      // Usage nocturne (22h-6h) — signal "usage nocturne excessif", §8.
-      final nightUsageMinutes = await _computeNightUsageMinutes(now);
-
+      // Les métriques détaillées restent imbriquées dans `apps`, seul
+      // champ enrichi autorisé par les règles Firestore du parent.
       final Map<String, dynamic> appsData = {};
       for (final s in filtered.take(20)) {
         final pkg     = s.packageName ?? '';
@@ -257,16 +235,10 @@ class MonitoringService {
 
       final usageDoc = {
         'childId':            childId,
-        'parentId':           parentId,
         'date':               today,
         'usedMinutes':        totalMinutes, // Requis par le parent
         'totalMinutes':       totalMinutes,
         'apps':               appsData,
-        // Champs enrichis consommés par GuardianAgentService (§1, §8).
-        'categories':         categoryMinutes,
-        if (topAppPkg != null) 'topApp': {'package': topAppPkg, 'minutes': topAppMinutes},
-        // N'écrit le champ qu'en période nocturne pour ne pas écraser la valeur de la nuit.
-        if (nightUsageMinutes > 0) 'nightUsageMinutes': nightUsageMinutes,
         'lastSync':           FieldValue.serverTimestamp(),
       };
 
@@ -281,34 +253,7 @@ class MonitoringService {
     }
   }
 
-  /// Calcule les minutes d'utilisation pendant la plage nocturne (22h-6h).
-  ///
-  /// Utilisé par l'agent IA pour détecter un usage nocturne excessif (§8).
-  /// Retourne 0 en dehors de la plage nocturne. La valeur correspond à la
-  /// session nocturne en cours (depuis 22h, ou depuis 22h la veille avant 6h).
-  Future<int> _computeNightUsageMinutes(DateTime now) async {
-    if (!Platform.isAndroid) return 0;
-    DateTime nightStart;
-    if (now.hour >= 22) {
-      nightStart = DateTime(now.year, now.month, now.day, 22);
-    } else if (now.hour < 6) {
-      final y = now.subtract(const Duration(days: 1));
-      nightStart = DateTime(y.year, y.month, y.day, 22);
-    } else {
-      return 0; // Hors plage nocturne.
-    }
 
-    try {
-      final stats = await UsageStats.queryUsageStats(nightStart, now);
-      final ms = stats
-          .where((s) => !SystemAppClassifier.forUsageStats(s.packageName ?? ''))
-          .fold<int>(0, (acc, e) => acc + (int.tryParse(e.totalTimeInForeground ?? '0') ?? 0));
-      return ms ~/ 60000;
-    } catch (e) {
-      debugPrint('MonitoringService: _computeNightUsageMinutes error: $e');
-      return 0;
-    }
-  }
 
   Future<void> forceSyncNow() => _syncUsageStats();
 

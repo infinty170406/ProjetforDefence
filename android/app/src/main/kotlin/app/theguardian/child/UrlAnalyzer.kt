@@ -82,7 +82,7 @@ class UrlAnalyzer {
                 try {
                     android.util.Log.e(TAG, "Failed to parse URL: $rawUrl", e)
                 } catch (t: Throwable) {
-                    println("[$TAG] Failed to parse URL: $rawUrl: ${e.message}")
+                    println("[$TAG] Failed to parse a URL.")
                 }
                 null
             }

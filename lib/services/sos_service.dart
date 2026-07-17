@@ -1,53 +1,23 @@
 import 'package:battery_plus/battery_plus.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart' as geo;
-import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/child_path_helper.dart';
 
-/// SosService
-///
-/// Déclenché par le bouton SOS depuis le dashboard de l'enfant.
-/// Envoie dans Firestore :
-///   - latitude / longitude (position GPS actuelle)
-///   - niveau de batterie
-///   - heure de l'alerte
-///
-/// Structure Firestore :
-///   alerts/{alertId}
-///     → childId    : String
-///     → type       : "SOS"
-///     → latitude   : double
-///     → longitude  : double
-///     → battery    : int (%)
-///     → timestamp  : Timestamp
+import 'alert_service.dart';
+
+/// Sends an SOS through the authenticated backend alert endpoint.
 class SosService {
   static final SosService _instance = SosService._internal();
   factory SosService() => _instance;
   SosService._internal();
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Battery _battery = Battery();
-
   bool _isSending = false;
 
-  /// Envoie une alerte SOS.
-  /// Retourne `true` si l'envoi a réussi, `false` sinon.
   Future<bool> sendSos() async {
     if (_isSending) return false;
     _isSending = true;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final childId = prefs.getString('child_id');
-      final parentId = prefs.getString('parent_id');
-      final childPath = await readChildPath(prefs);
-      if (childId == null || childPath == null || parentId == null) {
-        debugPrint('SosService: child_id, parent_id or child_path not found.');
-        return false;
-      }
-
-      // Récupérer la position GPS
       double? latitude;
       double? longitude;
       try {
@@ -61,52 +31,27 @@ class SosService {
           latitude = position.latitude;
           longitude = position.longitude;
         }
-      } catch (e) {
-        debugPrint('SosService: GPS error (non-fatal): $e');
+      } catch (error) {
+        debugPrint('SosService: Location unavailable: $error');
       }
 
-      // Niveau de batterie
-      int batteryLevel = -1;
+      var batteryLevel = -1;
       try {
         batteryLevel = await _battery.batteryLevel;
-      } catch (e) {
-        debugPrint('SosService: Battery error (non-fatal): $e');
+      } catch (error) {
+        debugPrint('SosService: Battery level unavailable: $error');
       }
 
-      const detail = "Demande d'aide d'urgence (SOS)";
-      final alertData = {
-        'childId':     childId,
-        'type':        'SOS',
-        'title':       '🆘 Alerte SOS !',
-        'description': detail,
-        'severity':    'CRITICAL',
-        'status':      'unread',
-        'genre':       'security',
-        'read':        false,
-        'timestamp':   FieldValue.serverTimestamp(),
-        'latitude':    latitude,
-        'longitude':   longitude,
-        'battery':     batteryLevel,
-      };
-
-      // 1. Écriture sur le chemin unique lu par le parent
-      final deepPath = '$childPath/alerts/notifications/items';
-      
-      await _firestore.collection(deepPath).add({...alertData, 'message': detail});
-
-      // 3. Mise à jour du document enfant avec la dernière alerte SOS
-      await _firestore.doc(childPath).update({
-        'lastSosTimestamp': FieldValue.serverTimestamp(),
-        if (latitude != null) 'lastLatitude': latitude,
-        if (longitude != null) 'lastLongitude': longitude,
-      });
-
-      debugPrint('SosService: ✅ SOS sent — battery: $batteryLevel%, '
-          'lat: ${latitude?.toStringAsFixed(5)}, lng: ${longitude?.toStringAsFixed(5)}');
-      return true;
-    } catch (e) {
-      debugPrint('SosService: Error sending SOS: $e');
-      return false;
+      return AlertService().sendAlert(
+        type: AlertType.sos,
+        detail: "Demande d'aide d'urgence (SOS)",
+        cooldownKey: 'sos',
+        extra: {
+          if (latitude != null) 'latitude': latitude,
+          if (longitude != null) 'longitude': longitude,
+          'battery': batteryLevel,
+        },
+      );
     } finally {
       _isSending = false;
     }

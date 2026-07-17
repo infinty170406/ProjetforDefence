@@ -1,168 +1,229 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Service gérant la persistance locale, le regroupement (batching 250ms),
-/// et la synchronisation avec retry et exponential backoff vers Firestore.
+/// JSON-safe values supported by [FirestoreSyncQueue].
+abstract final class FirestoreQueueValue {
+  static const serverTimestamp = <String, dynamic>{
+    '__guardianQueueType': 'serverTimestamp',
+  };
+
+  static Map<String, dynamic> increment(num value) => {
+        '__guardianQueueType': 'increment',
+        'value': value,
+      };
+}
+
+/// Bounded, persistent and idempotent Firestore write queue.
 class FirestoreSyncQueue {
   static final FirestoreSyncQueue _instance = FirestoreSyncQueue._internal();
   factory FirestoreSyncQueue() => _instance;
   FirestoreSyncQueue._internal();
 
+  static const int _maxQueueLength = 1000;
+  static const int _maxBatchOperations = 450;
+  static const int _maxRetryDelaySeconds = 60;
+  static const String _prefsKey = 'guardian_pending_firestore_ops';
+
   final List<Map<String, dynamic>> _queue = [];
   bool _isSyncing = false;
   Timer? _batchTimer;
   int _retryDelaySeconds = 5;
-  static const int _maxRetryDelaySeconds = 60;
-  static const String _prefsKey = 'guardian_pending_firestore_ops';
 
   Future<void> initialize() async {
     await _loadFromPrefs();
-    _scheduleSync(delayMs: 1000); // Premier essai de synchronisation après démarrage
+    _scheduleSync(delayMs: 1000);
   }
 
-  Future<void> queueAdd(String collectionPath, Map<String, dynamic> data) async {
-    _queue.add({
+  Future<void> queueAdd(
+    String collectionPath,
+    Map<String, dynamic> data,
+  ) async {
+    final documentId =
+        FirebaseFirestore.instance.collection(collectionPath).doc().id;
+    await _enqueue({
       'type': 'add',
       'path': collectionPath,
+      'documentId': documentId,
       'data': _serialize(data),
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
-    await _saveToPrefs();
-    _scheduleSync();
   }
 
-  Future<void> queueSet(String docPath, Map<String, dynamic> data, {bool merge = true}) async {
-    _queue.add({
+  Future<void> queueSet(
+    String docPath,
+    Map<String, dynamic> data, {
+    bool merge = true,
+  }) async {
+    await _enqueue({
       'type': 'set',
       'path': docPath,
       'data': _serialize(data),
       'merge': merge,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
+  }
+
+  Future<void> _enqueue(Map<String, dynamic> operation) async {
+    _queue.add(operation);
+    if (_queue.length > _maxQueueLength) {
+      final overflow = _queue.length - _maxQueueLength;
+      _queue.removeRange(0, overflow);
+      debugPrint(
+        'FirestoreSyncQueue: Dropped $overflow oldest operations to keep the queue bounded.',
+      );
+    }
     await _saveToPrefs();
     _scheduleSync();
   }
 
   void _scheduleSync({int delayMs = 250}) {
     _batchTimer?.cancel();
-    _batchTimer = Timer(Duration(milliseconds: delayMs), () {
-      _processQueue();
-    });
+    _batchTimer = Timer(
+      Duration(milliseconds: delayMs),
+      () {
+        unawaited(_processQueue());
+      },
+    );
   }
 
   Future<void> _processQueue() async {
     if (_isSyncing || _queue.isEmpty) return;
     _isSyncing = true;
 
-    // Prendre une copie de la file d'attente à traiter pour cette tentative
-    final List<Map<String, dynamic>> batchOps = List.from(_queue);
-    debugPrint('FirestoreSyncQueue: Tentative de synchronisation de ${batchOps.length} opérations...');
+    final batchOps = _queue.take(_maxBatchOperations).toList(growable: false);
 
     try {
       final firestore = FirebaseFirestore.instance;
       final batch = firestore.batch();
 
-      for (final op in batchOps) {
-        final String type = op['type'];
-        final String path = op['path'];
-        final Map<String, dynamic> rawData = Map<String, dynamic>.from(op['data']);
-        final Map<String, dynamic> data = Map<String, dynamic>.from(_deserialize(rawData));
+      for (final operation in batchOps) {
+        final type = operation['type'] as String?;
+        final path = operation['path'] as String?;
+        final rawData = operation['data'];
+        if (type == null || path == null || rawData is! Map) {
+          throw const FormatException('Malformed queued Firestore operation.');
+        }
 
-        if (type == 'add') {
-          final colRef = firestore.collection(path);
-          final docRef = colRef.doc();
-          batch.set(docRef, data);
-        } else if (type == 'set') {
-          final docRef = firestore.doc(path);
-          final bool merge = op['merge'] ?? true;
-          batch.set(docRef, data, SetOptions(merge: merge));
+        final data = Map<String, dynamic>.from(
+          _deserialize(Map<String, dynamic>.from(rawData)) as Map,
+        );
+
+        switch (type) {
+          case 'add':
+            final documentId = operation['documentId'] as String?;
+            if (documentId == null || documentId.isEmpty) {
+              throw const FormatException('Queued add is missing documentId.');
+            }
+            batch.set(firestore.collection(path).doc(documentId), data);
+            break;
+          case 'set':
+            final merge = operation['merge'] as bool? ?? true;
+            batch.set(
+              firestore.doc(path),
+              data,
+              SetOptions(merge: merge),
+            );
+            break;
+          default:
+            throw FormatException('Unsupported queued operation: $type');
         }
       }
 
       await batch.commit();
-      debugPrint('FirestoreSyncQueue: ${batchOps.length} opérations synchronisées avec succès.');
-
-      // Supprimer les éléments traités avec succès
       _queue.removeRange(0, batchOps.length);
       await _saveToPrefs();
-      
-      _retryDelaySeconds = 5; // Reset du délai de retry
-      _isSyncing = false;
-
-      // Si de nouveaux éléments ont été ajoutés pendant la synchronisation, planifier à nouveau
-      if (_queue.isNotEmpty) {
-        _scheduleSync();
-      }
-    } catch (e) {
-      debugPrint('FirestoreSyncQueue: Échec de la synchronisation: $e. Prochain essai dans $_retryDelaySeconds secondes...');
-      _isSyncing = false;
-      
-      // Exponential backoff
+      _retryDelaySeconds = 5;
+    } catch (error) {
+      debugPrint('FirestoreSyncQueue: Sync failed: $error');
       _scheduleSync(delayMs: _retryDelaySeconds * 1000);
-      _retryDelaySeconds = (_retryDelaySeconds * 2).clamp(5, _maxRetryDelaySeconds);
+      _retryDelaySeconds =
+          (_retryDelaySeconds * 2).clamp(5, _maxRetryDelaySeconds).toInt();
+      return;
+    } finally {
+      _isSyncing = false;
     }
+
+    if (_queue.isNotEmpty) _scheduleSync();
   }
 
   Future<void> _saveToPrefs() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_prefsKey, jsonEncode(_queue));
-    } catch (e) {
-      debugPrint('FirestoreSyncQueue: Erreur lors de la sauvegarde de la file: $e');
-    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefsKey, jsonEncode(_queue));
   }
 
   Future<void> _loadFromPrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final String? jsonStr = prefs.getString(_prefsKey);
-      if (jsonStr != null && jsonStr.isNotEmpty) {
-        final List<dynamic> decoded = jsonDecode(jsonStr);
-        _queue.clear();
-        for (final item in decoded) {
-          _queue.add(Map<String, dynamic>.from(item));
+      final jsonString = prefs.getString(_prefsKey);
+      if (jsonString == null || jsonString.isEmpty) return;
+
+      final decoded = jsonDecode(jsonString);
+      if (decoded is! List) throw const FormatException('Queue is not a list.');
+
+      _queue
+        ..clear()
+        ..addAll(
+          decoded
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .where(_isValidPersistedOperation)
+              .take(_maxQueueLength),
+        );
+      await _saveToPrefs();
+    } catch (error) {
+      debugPrint('FirestoreSyncQueue: Invalid persisted queue cleared: $error');
+      _queue.clear();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefsKey);
+    }
+  }
+
+  bool _isValidPersistedOperation(Map<String, dynamic> operation) {
+    final type = operation['type'];
+    if (type != 'add' && type != 'set') return false;
+    if (operation['path'] is! String || operation['data'] is! Map) return false;
+    if (type == 'add' && operation['documentId'] is! String) return false;
+    return true;
+  }
+
+  static dynamic _serialize(dynamic value) {
+    if (value is FieldValue) {
+      throw ArgumentError(
+        'FieldValue cannot be persisted safely. Use FirestoreQueueValue instead.',
+      );
+    }
+    if (value is Map) {
+      return value.map(
+        (key, nested) => MapEntry(key.toString(), _serialize(nested)),
+      );
+    }
+    if (value is Iterable) {
+      return value.map(_serialize).toList();
+    }
+    if (value is DateTime) return value.toUtc().toIso8601String();
+    return value;
+  }
+
+  static dynamic _deserialize(dynamic value) {
+    if (value is Map) {
+      final type = value['__guardianQueueType'];
+      if (type == 'serverTimestamp') return FieldValue.serverTimestamp();
+      if (type == 'increment') {
+        final increment = value['value'];
+        if (increment is! num) {
+          throw const FormatException('Invalid increment sentinel.');
         }
-        debugPrint('FirestoreSyncQueue: Chargement de ${_queue.length} opérations en attente.');
+        return FieldValue.increment(increment);
       }
-    } catch (e) {
-      debugPrint('FirestoreSyncQueue: Erreur lors du chargement de la file: $e');
+      return value.map(
+        (key, nested) => MapEntry(key.toString(), _deserialize(nested)),
+      );
     }
-  }
-
-  static dynamic _serialize(dynamic val) {
-    if (val is Map) {
-      return val.map((k, v) => MapEntry(k.toString(), _serialize(v)));
-    } else if (val is List) {
-      return val.map((v) => _serialize(v)).toList();
-    } else if (val is FieldValue) {
-      final str = val.toString();
-      if (str.contains('serverTimestamp')) {
-        return {'__type': 'timestamp'};
-      }
-      if (str.contains('increment')) {
-        final match = RegExp(r'increment,\s*(-?\d+)').firstMatch(str);
-        final incVal = int.tryParse(match?.group(1) ?? '1') ?? 1;
-        return {'__type': 'increment', 'value': incVal};
-      }
-    }
-    return val;
-  }
-
-  static dynamic _deserialize(dynamic val) {
-    if (val is Map) {
-      if (val['__type'] == 'timestamp') {
-        return FieldValue.serverTimestamp();
-      }
-      if (val['__type'] == 'increment') {
-        return FieldValue.increment(val['value'] ?? 1);
-      }
-      return val.map((k, v) => MapEntry(k.toString(), _deserialize(v)));
-    } else if (val is List) {
-      return val.map((v) => _deserialize(v)).toList();
-    }
-    return val;
+    if (value is List) return value.map(_deserialize).toList();
+    return value;
   }
 }

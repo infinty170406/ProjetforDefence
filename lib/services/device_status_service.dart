@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:battery_plus/battery_plus.dart';
+import 'guardian_api.dart';
 import '../utils/child_path_helper.dart';
 
 /// DeviceStatusService
@@ -69,10 +70,26 @@ class DeviceStatusService {
 
       await _firestore.doc(childPath).update({
         'deviceStatus': status,
-        'lastHeartbeat': FieldValue.serverTimestamp(), // Aligné avec les règles Firestore
-        'batteryLevel': batteryLevel,
-        'isCharging': isCharging,
+        'lastHeartbeat': FieldValue.serverTimestamp(),
       });
+
+      final parentId = prefs.getString('parent_id');
+      final childId = prefs.getString('child_id');
+      if (parentId != null && childId != null) {
+        try {
+          await GuardianApi.post(
+            '/api/v1/device/metadata',
+            body: {
+              'parentId': parentId,
+              'childId': childId,
+              'batteryLevel': batteryLevel,
+              'isCharging': isCharging,
+            },
+          ).timeout(const Duration(seconds: 15));
+        } catch (error) {
+          debugPrint('DeviceStatusService: Battery metadata sync failed: $error');
+        }
+      }
     } catch (e) {
       debugPrint('DeviceStatusService: Error updating status: $e');
     }

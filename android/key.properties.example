@@ -1,0 +1,7 @@
+# Local-only Android release signing configuration.
+# Copy this file to android/key.properties and replace every placeholder.
+# Never commit android/key.properties or the keystore itself.
+storeFile=path/to/guardian-release.jks
+storePassword=REPLACE_WITH_SECRET
+keyAlias=REPLACE_WITH_ALIAS
+keyPassword=REPLACE_WITH_SECRET

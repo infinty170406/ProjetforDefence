@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'monitoring_service.dart';
 import 'package_service.dart';
@@ -94,16 +93,6 @@ class BackgroundService {
       }
     });
 
-    service.on('updateNativeVpnState').listen((data) {
-      if (data != null && data.containsKey('start')) {
-        final start = data['start'] as bool;
-        if (start) {
-          const MethodChannel('app.theguardian.child/system').invokeMethod('startVpn');
-        } else {
-          const MethodChannel('app.theguardian.child/system').invokeMethod('stopVpn');
-        }
-      }
-    });
 
     service.on('scheduleWatchdog').listen((_) {
       const MethodChannel('app.theguardian.child/system')

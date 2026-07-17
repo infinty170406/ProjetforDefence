@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/auth_service.dart';
@@ -18,34 +17,32 @@ class AppState extends ChangeNotifier {
   final AuthService _authService = AuthService();
   final RulesService _rulesService = RulesService();
 
-  bool _isActivated   = false;
-  bool _isLoading     = true;
-  bool _isOnline      = false;
+  bool _isActivated = false;
+  bool _isLoading = true;
+  bool _isOnline = false;
   bool _hasUsagePermission = false;
   bool _hasAccessibilityPermission = false;
   bool _hasOverlayPermission = false;
   bool _hasLocationPermission = false;
   bool _hasBatteryExemption = false;
-  bool _hasDeviceAdminPermission = false;
   ChildProfile? _childProfile;
   ActiveRules _activeRules = ActiveRules.empty;
 
   StreamSubscription<ChildProfile?>? _profileSub;
-  Timer? _usageTimer;
+  StreamSubscription<dynamic>? _screenTimeSub;
 
   // ── Getters ────────────────────────────────────────────────────────────────
 
-  bool get isActivated  => _isActivated;
-  bool get isLoading    => _isLoading;
-  bool get isOnline     => _isOnline;
+  bool get isActivated => _isActivated;
+  bool get isLoading => _isLoading;
+  bool get isOnline => _isOnline;
   bool get hasUsagePermission => _hasUsagePermission;
   bool get hasAccessibilityPermission => _hasAccessibilityPermission;
   bool get hasOverlayPermission => _hasOverlayPermission;
   bool get hasLocationPermission => _hasLocationPermission;
   bool get hasBatteryExemption => _hasBatteryExemption;
-  bool get hasDeviceAdminPermission => _hasDeviceAdminPermission;
   ChildProfile? get childProfile => _childProfile;
-  String get childName  => _childProfile?.name ?? '';
+  String get childName => _childProfile?.name ?? '';
   ActiveRules get activeRules => _activeRules;
 
   bool get isScreenTimeLimitReached {
@@ -53,7 +50,8 @@ class AppState extends ChangeNotifier {
     final isReached = rules.dailyLimitMinutes > 0 &&
         (_todayUsedMinutes >= rules.dailyLimitMinutes);
     if (isReached) {
-      debugPrint('AppState: Daily limit reached! Used: $_todayUsedMinutes, Limit: ${rules.dailyLimitMinutes}');
+      debugPrint(
+          'AppState: Daily limit reached! Used: $_todayUsedMinutes, Limit: ${rules.dailyLimitMinutes}');
     }
     return isReached;
   }
@@ -61,13 +59,13 @@ class AppState extends ChangeNotifier {
   bool get isOutsideAllowedHours {
     final rules = _activeRules;
     final start = rules.allowedTimeStart;
-    final end   = rules.allowedTimeEnd;
+    final end = rules.allowedTimeEnd;
     if (start == null || end == null) return false;
 
-    final now     = DateTime.now();
+    final now = DateTime.now();
     final current = now.hour * 60 + now.minute;
-    final s       = _parseTime(start);
-    final e       = _parseTime(end);
+    final s = _parseTime(start);
+    final e = _parseTime(end);
     if (s == null || e == null) return false;
 
     if (s <= e) return current < s || current >= e;
@@ -87,7 +85,8 @@ class AppState extends ChangeNotifier {
       if (startStr != null) {
         final start = _parseTime(startStr);
         if (start != null) {
-          var unlock = DateTime(now.year, now.month, now.day, start ~/ 60, start % 60);
+          var unlock =
+              DateTime(now.year, now.month, now.day, start ~/ 60, start % 60);
           if (unlock.isBefore(now)) {
             unlock = unlock.add(const Duration(days: 1));
           }
@@ -98,10 +97,12 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
-  int get blockedAppCount => _activeRules.effectiveBlockedPackages(
-    socialMediaPackages: EnforcementService.socialMedia,
-    gamingPackages: EnforcementService.gaming,
-  ).length;
+  int get blockedAppCount => _activeRules
+      .effectiveBlockedPackages(
+        socialMediaPackages: EnforcementService.socialMedia,
+        gamingPackages: EnforcementService.gaming,
+      )
+      .length;
 
   bool get isWebFilteringActive =>
       _activeRules.blockAdultContent ||
@@ -142,6 +143,10 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _startListeners() async {
+    await _profileSub?.cancel();
+    await _screenTimeSub?.cancel();
+    _rulesService.removeListener(_onRulesChanged);
+
     _profileSub = _authService.watchChildProfile().listen((p) {
       if (p != null) {
         _childProfile = p;
@@ -154,22 +159,21 @@ class AppState extends ChangeNotifier {
     _rulesService.addListener(_onRulesChanged);
     _activeRules = _rulesService.current;
 
-    FlutterBackgroundService().on('screenTimeUpdate').listen((data) {
+    _screenTimeSub =
+        FlutterBackgroundService().on('screenTimeUpdate').listen((data) {
       final minutes = data?['minutes'] as int? ?? 0;
       if (minutes != _todayUsedMinutes) {
         _todayUsedMinutes = minutes;
         notifyListeners();
       }
     });
-    
+
     notifyListeners();
   }
 
-
-
   void _onRulesChanged(ActiveRules rules) {
     _activeRules = rules;
-    
+
     // NOUVEAU : Synchroniser immédiatement les packages bloqués avec le natif depuis l'isolate UI.
     // Cela garantit que GuardianAccessibilityService (natif) a la bonne liste même si
     // le service d'arrière-plan (FlutterBackgroundService) est arrêté ou redémarre.
@@ -201,8 +205,7 @@ class AppState extends ChangeNotifier {
       _hasOverlayPermission = true;
       _hasLocationPermission = true;
       _hasBatteryExemption = true;
-      _hasDeviceAdminPermission = true;
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('onboarding_complete', true);
       notifyListeners();
@@ -211,26 +214,26 @@ class AppState extends ChangeNotifier {
 
     final r = await Future.wait([
       UsageStats.checkUsagePermission(),
-      const MethodChannel('app.theguardian.child/system').invokeMethod<bool>('isAccessibilityEnabled'),
-      const MethodChannel('app.theguardian.child/system').invokeMethod<bool>('hasOverlayPermission'),
+      const MethodChannel('app.theguardian.child/system')
+          .invokeMethod<bool>('isAccessibilityEnabled'),
+      const MethodChannel('app.theguardian.child/system')
+          .invokeMethod<bool>('hasOverlayPermission'),
       Permission.location.isGranted,
-      const MethodChannel('app.theguardian.child/system').invokeMethod<bool>('isIgnoringBatteryOptimizations'),
-      const MethodChannel('app.theguardian.child/system').invokeMethod<bool>('isDeviceAdminEnabled'),
+      const MethodChannel('app.theguardian.child/system')
+          .invokeMethod<bool>('isIgnoringBatteryOptimizations'),
     ]);
 
-    _hasUsagePermission         = r[0] ?? false;
+    _hasUsagePermission = r[0] ?? false;
     _hasAccessibilityPermission = r[1] ?? false;
-    _hasOverlayPermission       = r[2] ?? false;
-    _hasLocationPermission      = r[3] ?? false;
-    _hasBatteryExemption        = r[4] ?? false;
-    _hasDeviceAdminPermission   = true; // Forcé à true pour les tests
-    
-    // NOUVEAU : Onboarding considéré fini si le trio critique (Usage + A11y + Overlay + Device Admin) est là.
+    _hasOverlayPermission = r[2] ?? false;
+    _hasLocationPermission = r[3] ?? false;
+    _hasBatteryExemption = r[4] ?? false;
+    // Device Admin n'est pas disponible dans cette version. Les permissions
+    // critiques effectives sont Usage, Accessibilité et Overlay.
     // La localisation est importante pour le parent mais ne bloque pas l'enforcement des apps.
-    final hasCriticalPermissions = _hasUsagePermission && 
-                                  _hasAccessibilityPermission && 
-                                  _hasOverlayPermission &&
-                                  _hasDeviceAdminPermission;
+    final hasCriticalPermissions = _hasUsagePermission &&
+        _hasAccessibilityPermission &&
+        _hasOverlayPermission;
 
     if (hasCriticalPermissions) {
       final prefs = await SharedPreferences.getInstance();
@@ -273,13 +276,6 @@ class AppState extends ChangeNotifier {
     await checkAllPermissions();
   }
 
-  Future<void> requestDeviceAdminPermission() async {
-    await const MethodChannel('app.theguardian.child/system')
-        .invokeMethod('requestDeviceAdmin');
-    await Future.delayed(const Duration(seconds: 2));
-    await checkAllPermissions();
-  }
-
   int? _parseTime(String t) {
     final p = t.split(':');
     if (p.length != 2) return null;
@@ -292,6 +288,7 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _profileSub?.cancel();
+    _screenTimeSub?.cancel();
     _rulesService.removeListener(_onRulesChanged);
     super.dispose();
   }

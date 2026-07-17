@@ -281,16 +281,6 @@ class EnforcementService {
     updateNativeBlockedWebsites(rules.blockedWebsites);
     updateNativeCategoryFilters(rules);
 
-    // Le VPN est désactivé au profit de l'Accessibilité
-    /*
-    final needsVpn =
-        rules.blockedWebsites.isNotEmpty ||
-        rules.blockAdultContent ||
-        rules.blockViolence ||
-        rules.blockGambling;
-    _updateNativeVpnState(needsVpn);
-    */
-
     debugPrint(
       'EnforcementService: Rules updated. ${blocked.length} apps blocked. '
       'Limit: ${rules.dailyLimitMinutes} min. '
@@ -301,26 +291,6 @@ class EnforcementService {
     _tick();
   }
 
-  /*
-  Future<void> _updateNativeVpnState(bool start) async {
-    if (!Platform.isAndroid) return;
-
-    if (_backgroundService != null) {
-      _backgroundService!.invoke('updateNativeVpnState', {'start': start});
-      return;
-    }
-
-    try {
-      if (start) {
-        await _methodChannel.invokeMethod('startVpn');
-      } else {
-        await _methodChannel.invokeMethod('stopVpn');
-      }
-    } catch (e) {
-      debugPrint('EnforcementService: VPN update error: $e');
-    }
-  }
-  */
 
   Future<void> updateNativeCategoryFilters(ActiveRules rules) async {
     if (!Platform.isAndroid) return;
@@ -939,9 +909,9 @@ class EnforcementService {
     _lastUrl = domain;
 
     await _alertService.sendAlert(
-      type: AlertType.blockedApp,
+      type: AlertType.keywordDetected,
       cooldownKey: 'search:$searchQuery',
-      detail: 'Votre enfant a cherché "$searchQuery"',
+      detail: 'Une recherche contenant un terme restreint a été bloquée.',
     );
 
     final reason = 'Recherche restreinte détectée ("$searchQuery").';
@@ -982,11 +952,11 @@ class EnforcementService {
         'websites': {
           domain.replaceAll('.', '_'): {
             'domain': domain,
-            'lastVisit': FieldValue.serverTimestamp(),
-            'visits': FieldValue.increment(1),
+            'lastVisit': FirestoreQueueValue.serverTimestamp,
+            'visits': FirestoreQueueValue.increment(1),
           },
         },
-        'lastSync': FieldValue.serverTimestamp(),
+        'lastSync': FirestoreQueueValue.serverTimestamp,
       }, merge: true);
 
       // On garde aussi l'historique linéaire pour le parent via FirestoreSyncQueue
@@ -1007,7 +977,7 @@ class EnforcementService {
         'status': status ?? 'Autorisé',
         'date': date ?? today,
         'time': time ?? '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-        'timestamp': FieldValue.serverTimestamp(),
+        'timestamp': FirestoreQueueValue.serverTimestamp,
       });
 
       debugPrint('EnforcementService: 🌐 Enriched web history synced to Firestore.');
@@ -1164,7 +1134,6 @@ class EnforcementService {
       final prefs = await SharedPreferences.getInstance();
       final childPath = await readChildPath(prefs);
       final childId = prefs.getString('child_id');
-      final parentId = prefs.getString('parent_id');
       if (childPath == null || childId == null) return;
 
       final now = DateTime.now();
@@ -1172,11 +1141,10 @@ class EnforcementService {
       
       final data = {
         'childId': childId,
-        'parentId': parentId,
         'usedMinutes': minutes,
         'totalMinutes': minutes,
+        'date': today,
         'lastSync': FieldValue.serverTimestamp(),
-        'lastUpdate': FieldValue.serverTimestamp(),
       };
 
       // Path principal utilisé par le Dashboard Parent

@@ -1,148 +1,122 @@
 package app.theguardian.child
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
-import java.nio.charset.StandardCharsets
 
 data class GeminiAnalysisResult(
-    val risk: String,        // "SAFE", "LOW", "MEDIUM", "HIGH", "CRITICAL"
-    val score: Int,          // 0-100
-    val category: String,    // "GROOMING", "VIOLENCE", "DROGUE", etc.
+    val risk: String,
+    val score: Int,
+    val category: String,
     val blocked: Boolean,
     val confidence: Double,
-    val reason: String
+    val reason: String,
 )
 
 object GeminiNotificationAnalyzer {
 
     private const val TAG = "GeminiAnalyzer"
-    private const val GEMINI_MODEL = "gemini-1.5-flash"
+    private const val BASE_URL = "https://guardian-secure-api.onrender.com"
+    private val allowedRisks = setOf("SAFE", "LOW", "MEDIUM", "HIGH", "CRITICAL")
 
     /**
-     * Analyse le contenu d'une notification via l'API Gemini.
+     * Analyses a notification via the authenticated Render backend.
+     * Firebase Functions are no longer used; all analysis calls go to
+     * POST /api/v1/device/notifications/analyze.
      */
-    suspend fun analyze(context: Context, extracted: ExtractedNotification): GeminiAnalysisResult = withContext(Dispatchers.IO) {
+    suspend fun analyze(
+        context: Context,
+        extracted: ExtractedNotification,
+    ): GeminiAnalysisResult = withContext(Dispatchers.IO) {
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val apiKey = prefs.getString("gemini_api_key", null)
-            ?: prefs.getString("flutter.gemini_api_key", null)
+        val parentId = readFlutterPreference(prefs, "parent_id")
+        val childId = readFlutterPreference(prefs, "child_id")
+        val idToken = readFlutterPreference(prefs, "firebase_id_token")
 
-        if (apiKey.isNullOrBlank()) {
-            Log.w(TAG, "Gemini API key is not configured. Defaulting to SAFE.")
-            return@withContext GeminiAnalysisResult(
-                risk = "SAFE",
-                score = 0,
-                category = "NONE",
-                blocked = false,
-                confidence = 1.0,
-                reason = "Clé API Gemini non configurée dans SharedPreferences."
-            )
+        if (parentId == null || childId == null) {
+            return@withContext safeFallback("Appareil non associé.")
+        }
+        if (idToken == null) {
+            return@withContext safeFallback("Token d'authentification indisponible.")
         }
 
         try {
-            val systemPrompt = """
-                Tu es un expert en protection de l'enfance et en sécurité numérique.
-                Analyse la notification suivante reçue sur le téléphone d'un enfant :
-                
-                Application : ${extracted.applicationName}
-                Expéditeur : ${extracted.sender}
-                Conversation : ${extracted.conversationTitle}
-                Message : ${extracted.messageText}
-                
-                Identifie les menaces potentielles parmi : cyberharcèlement, grooming (prédateurs sexuels), chantage/extorsion, violence, drogues, escroquerie, suicide, automutilation, contenu sexuel, menace physique, radicalisation, harcèlement scolaire, ou manipulation psychologique.
-                
-                Tu DOIS impérativement retourner un objet JSON respectant exactement cette structure :
-                {
-                  "risk": "SAFE" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
-                  "score": <un entier entre 0 et 100 indiquant le niveau de danger>,
-                  "category": "GROOMING" | "VIOLENCE" | "DROGUE" | "CYBERHARCELEMENT" | "SUICIDE" | "AUTOMUTILATION" | "CONTENU_SEXUEL" | "MENACE" | "ESCROQUERIE" | "RADICALISATION" | "HARCELEMENT_SCOLAIRE" | "MANIPULATION" | "NONE",
-                  "blocked": true | false,
-                  "confidence": <un nombre décimal entre 0.0 et 1.0>,
-                  "reason": "<une explication claire et concise en français résumant pourquoi cette décision a été prise>"
-                }
-                
-                Ne génère aucun texte avant ou après le JSON. Renvoie uniquement le JSON brut.
-            """.trimIndent()
-
-            // Construction du payload HTTP
             val payload = JSONObject().apply {
-                put("contents", org.json.JSONArray().apply {
-                    put(JSONObject().apply {
-                        put("parts", org.json.JSONArray().apply {
-                            put(JSONObject().apply {
-                                put("text", systemPrompt)
-                            })
-                        })
-                    })
-                })
-                put("generationConfig", JSONObject().apply {
-                    put("responseMimeType", "application/json")
-                })
+                put("parentId", parentId)
+                put("childId", childId)
+                put("application", extracted.applicationName)
+                put("sender", extracted.sender)
+                put("conversation", extracted.conversationTitle)
+                put("message", extracted.messageText)
             }
 
-            val urlString = "https://generativelanguage.googleapis.com/v1beta/models/$GEMINI_MODEL:generateContent?key=$apiKey"
-            val url = URL(urlString)
-            val conn = url.openConnection() as HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            conn.doOutput = true
-            conn.connectTimeout = 8000
-            conn.readTimeout = 8000
+            val raw = postJson(
+                url = "$BASE_URL/api/v1/device/notifications/analyze",
+                idToken = idToken,
+                body = payload,
+            ) ?: return@withContext safeFallback("Analyse indisponible.")
 
-            OutputStreamWriter(conn.outputStream, StandardCharsets.UTF_8).use { writer ->
-                writer.write(payload.toString())
-                writer.flush()
-            }
+            val riskCandidate = raw.optString("risk", "SAFE").uppercase()
+            val risk = if (riskCandidate in allowedRisks) riskCandidate else "SAFE"
+            val score = raw.optInt("score", 0).coerceIn(0, 100)
+            val confidence = raw.optDouble("confidence", 0.0).coerceIn(0.0, 1.0)
 
-            val responseCode = conn.responseCode
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val responseText = conn.inputStream.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
-                val responseJson = JSONObject(responseText)
-                
-                // Extraction du texte de la réponse Gemini
-                val candidates = responseJson.optJSONArray("candidates")
-                if (candidates != null && candidates.length() > 0) {
-                    val candidate = candidates.getJSONObject(0)
-                    val content = candidate.optJSONObject("content")
-                    val parts = content?.optJSONArray("parts")
-                    if (parts != null && parts.length() > 0) {
-                        val text = parts.getJSONObject(0).optString("text")
-                        
-                        // Parse le JSON interne retourné par Gemini
-                        val innerJson = JSONObject(text.trim())
-                        return@withContext GeminiAnalysisResult(
-                            risk = innerJson.optString("risk", "SAFE").uppercase(),
-                            score = innerJson.optInt("score", 0),
-                            category = innerJson.optString("category", "NONE").uppercase(),
-                            blocked = innerJson.optBoolean("blocked", false),
-                            confidence = innerJson.optDouble("confidence", 0.0),
-                            reason = innerJson.optString("reason", "Aucune explication fournie par l'IA.")
-                        )
-                    }
-                }
-                throw Exception("Invalid format or empty candidates in Gemini response")
-            } else {
-                val errorText = conn.errorStream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() } ?: ""
-                Log.e(TAG, "Gemini API error code: $responseCode, details: $errorText")
-                throw Exception("HTTP error code $responseCode from Gemini API")
-            }
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to analyze notification with Gemini: ${e.message}")
-            // Fallback SAFE en cas d'erreur réseau pour ne pas bloquer les notifications
-            return@withContext GeminiAnalysisResult(
-                risk = "SAFE",
-                score = 0,
-                category = "NONE",
-                blocked = false,
-                confidence = 0.0,
-                reason = "Erreur de connexion à Gemini : ${e.message}"
+            GeminiAnalysisResult(
+                risk = risk,
+                score = score,
+                category = raw.optString("category", "NONE").uppercase().take(80),
+                blocked = raw.optBoolean("blocked", false),
+                confidence = confidence,
+                reason = raw.optString("reason", "Analyse terminée.").take(300),
             )
+        } catch (error: Exception) {
+            Log.e(TAG, "Server-side notification analysis failed.", error)
+            safeFallback("Analyse temporairement indisponible.")
         }
     }
+
+    private fun postJson(url: String, idToken: String, body: JSONObject): JSONObject? {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        return try {
+            connection.requestMethod = "POST"
+            connection.setRequestProperty("Authorization", "Bearer $idToken")
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("Accept", "application/json")
+            connection.connectTimeout = 30_000
+            connection.readTimeout = 30_000
+            connection.doOutput = true
+
+            connection.outputStream.bufferedWriter().use { it.write(body.toString()) }
+
+            if (connection.responseCode !in 200..299) {
+                Log.w(TAG, "Analyze endpoint returned HTTP ${connection.responseCode}")
+                return null
+            }
+
+            val responseText = connection.inputStream.bufferedReader().readText()
+            JSONObject(responseText)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun readFlutterPreference(prefs: SharedPreferences, key: String): String? {
+        return (prefs.getString("flutter.$key", null) ?: prefs.getString(key, null))
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+    }
+
+    private fun safeFallback(reason: String) = GeminiAnalysisResult(
+        risk = "SAFE",
+        score = 0,
+        category = "NONE",
+        blocked = false,
+        confidence = 0.0,
+        reason = reason,
+    )
 }

@@ -12,10 +12,12 @@ class PermissionsOnboardingScreen extends StatefulWidget {
   const PermissionsOnboardingScreen({super.key});
 
   @override
-  State<PermissionsOnboardingScreen> createState() => _PermissionsOnboardingScreenState();
+  State<PermissionsOnboardingScreen> createState() =>
+      _PermissionsOnboardingScreenState();
 }
 
-class _PermissionsOnboardingScreenState extends State<PermissionsOnboardingScreen> with WidgetsBindingObserver {
+class _PermissionsOnboardingScreenState
+    extends State<PermissionsOnboardingScreen> with WidgetsBindingObserver {
   bool _isChecking = false;
 
   @override
@@ -112,7 +114,7 @@ class _PermissionsOnboardingScreenState extends State<PermissionsOnboardingScree
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 40),
-                    
+
                     // Liste des permissions
                     _PermissionCard(
                       title: 'Display over other apps',
@@ -134,15 +136,6 @@ class _PermissionsOnboardingScreenState extends State<PermissionsOnboardingScree
                       isGranted: appState.hasUsagePermission,
                       onTap: appState.requestUsagePermission,
                     ),
-                    /*
-                    const SizedBox(height: 16),
-                    _PermissionCard(
-                      title: 'Device Administrator',
-                      description: 'Prevents unauthorized uninstallation of the app.',
-                      isGranted: appState.hasDeviceAdminPermission,
-                      onTap: appState.requestDeviceAdminPermission,
-                    ),
-                    */
                     const SizedBox(height: 16),
                     _PermissionCard(
                       title: 'Location',
@@ -153,7 +146,8 @@ class _PermissionsOnboardingScreenState extends State<PermissionsOnboardingScree
                     const SizedBox(height: 16),
                     _PermissionCard(
                       title: 'Battery Optimization',
-                      description: 'Crucial to prevent the protection from closing itself.',
+                      description:
+                          'Crucial to prevent the protection from closing itself.',
                       isGranted: appState.hasBatteryExemption,
                       onTap: appState.requestBatteryExemption,
                     ),
@@ -162,11 +156,13 @@ class _PermissionsOnboardingScreenState extends State<PermissionsOnboardingScree
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const PersistenceHelpScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const PersistenceHelpScreen()),
                         );
                       },
                       icon: const Icon(Icons.help_outline_rounded, size: 20),
-                      label: const Text('Help for staying active (Xiaomi, Samsung...)'),
+                      label: const Text(
+                          'Help for staying active (Xiaomi, Samsung...)'),
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.textGray400,
                       ),
@@ -175,7 +171,8 @@ class _PermissionsOnboardingScreenState extends State<PermissionsOnboardingScree
                     if (_isChecking)
                       const Padding(
                         padding: EdgeInsets.only(bottom: 32),
-                        child: CircularProgressIndicator(color: AppColors.primary),
+                        child:
+                            CircularProgressIndicator(color: AppColors.primary),
                       ),
                     const SizedBox(height: 32),
                   ],
@@ -210,7 +207,9 @@ class _PermissionCard extends StatelessWidget {
         color: AppColors.textDark.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isGranted ? Colors.green.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05),
+          color: isGranted
+              ? Colors.green.withValues(alpha: 0.3)
+              : Colors.white.withValues(alpha: 0.05),
           width: 1,
         ),
       ),
@@ -220,7 +219,9 @@ class _PermissionCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: isGranted ? Colors.green.withValues(alpha: 0.1) : AppColors.primary.withValues(alpha: 0.1),
+              color: isGranted
+                  ? Colors.green.withValues(alpha: 0.1)
+                  : AppColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(

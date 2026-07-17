@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -106,15 +105,15 @@ class ActiveRules {
     this.customKeywords    = const {},
     this.geofences         = const [],
     this.appTimeLimits     = const {},
-    this.blockDrugs        = true,
-    this.blockSexualPredators = true,
+    this.blockDrugs        = false,
+    this.blockSexualPredators = false,
     this.blockAnxietyDepression = false,
-    this.blockSelfHarm     = true,
-    this.blockCyberbullying = true,
+    this.blockSelfHarm     = false,
+    this.blockCyberbullying = false,
     this.blockMatureContent = false,
     this.blockEatingDisorders = false,
-    this.monitorAccountActivity = true,
-    this.locationAlerts    = true,
+    this.monitorAccountActivity = false,
+    this.locationAlerts    = false,
   });
 
   /// Règles vides = aucune restriction active
@@ -136,11 +135,14 @@ class ActiveRules {
         blockSocialMedia:  data['blockSocialMedia']  as bool? ?? false,
         blockGaming:       data['blockGaming']       as bool? ?? false,
         blockedWebsites:   webs.map((e) => e.toString()).toSet(),
-        blockAdultContent: data['blockAdultContent'] as bool? ?? false,
-        blockViolence:     data['blockViolence']     as bool? ?? false,
+        blockAdultContent: data['blockAdultContent'] as bool? ?? true,
+        blockViolence:     data['blockViolence']     as bool? ?? true,
         blockGambling:     data['blockGambling']     as bool? ?? false,
         customKeywords:    keys.map((e) => e.toString()).toSet(),
-        geofences:         geos.map((e) => Geofence.fromFirestore(e)).toList(),
+        geofences: geos
+            .whereType<Map>()
+            .map((e) => Geofence.fromFirestore(Map<String, dynamic>.from(e)))
+            .toList(),
         appTimeLimits:     limits.map((k, v) => MapEntry(k, (v as num).toInt())),
         blockDrugs:        data['blockDrugs']        as bool? ?? true,
         blockSexualPredators: data['blockSexualPredators'] as bool? ?? true,
@@ -300,82 +302,77 @@ class RulesService {
   RulesService._internal();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  // dynamic car ce subscription écoute soit un DocumentSnapshot (chemin direct
-  // parents/{parentId}/children/{childId}/rules/active), soit un QuerySnapshot
-  // (fallback collectionGroup('rules')). Les deux usages partagent cette variable.
-  StreamSubscription<dynamic>? _subscription;
-  StreamSubscription<QuerySnapshot>? _geofencesSub;
-  StreamSubscription<User?>? _authSub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _subscription;
+  Timer? _retryTimer;
   ActiveRules _current = ActiveRules.empty;
   bool _isStarting = false;
   int _retryCount = 0;
 
-  // Callbacks enregistrés par les consommateurs
   final List<void Function(ActiveRules)> _listeners = [];
 
   ActiveRules get current => _current;
 
   static const String _cacheKey = 'cached_rules';
+  static const String _monitoredPackagesKey =
+      'monitored_notification_packages';
+  static const String _monitorAccountActivityKey =
+      'guardian_monitor_account_activity';
+  static const String _locationAlertsKey = 'guardian_location_alerts';
 
-  /// Démarre l'écoute temps réel du document rules/active.
-  /// Idempotent — appels multiples sont ignorés.
+  /// Starts the only Firestore listener authorized by the parent backend:
+  /// `parents/{parentId}/children/{childId}/rules/active`.
+  ///
+  /// The previous collection-group fallback could not satisfy the parent's
+  /// security rules and could also select another child's rules document.
   Future<void> start({bool waitForFirstLoad = false}) async {
-    if (_subscription != null) return;
-    if (_isStarting) return;
+    if (_subscription != null || _isStarting) return;
     _isStarting = true;
 
-    Completer<void>? firstLoadCompleter;
-    if (waitForFirstLoad) {
-      firstLoadCompleter = Completer<void>();
-    }
+    Completer<void>? firstLoadCompleter =
+        waitForFirstLoad ? Completer<void>() : null;
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.reload(); // IMPORTANT: Obligatoire pour voir les changements faits par l'autre isolate
-      
-      debugPrint('RulesService: Starting... (waitForFirstLoad=$waitForFirstLoad)');
-      
-      // 1. Charger les règles depuis le cache local (offline-first)
+      await prefs.reload();
+
       final cachedJson = prefs.getString(_cacheKey);
       if (cachedJson != null) {
         try {
-          _current = ActiveRules.fromFirestore(json.decode(cachedJson));
-          debugPrint('RulesService: Loaded from local cache.');
+          _current = ActiveRules.fromFirestore(
+            Map<String, dynamic>.from(json.decode(cachedJson) as Map),
+          );
           _notifyListeners();
-          // Si on a du cache, on considère que c'est un "premier chargement" suffisant
-          firstLoadCompleter?.complete();
-          firstLoadCompleter = null; 
+          if (firstLoadCompleter != null &&
+              !firstLoadCompleter.isCompleted) {
+            firstLoadCompleter.complete();
+          }
         } catch (e) {
-          debugPrint('RulesService: Cache decode error: $e');
+          debugPrint('RulesService: Invalid local rules cache: $e');
         }
       }
 
       final parentId = prefs.getString('parent_id');
-      final childId  = prefs.getString('child_id');
-      final childDeviceUid = prefs.getString('device_uid') ?? FirebaseAuth.instance.currentUser?.uid;
-      debugPrint('RulesService: Resolved childDeviceUid = $childDeviceUid, parentId = $parentId, childId = $childId');
-
-      if (parentId != null && childId != null) {
-        _listenToFirestoreDirect(parentId, childId, firstLoadCompleter: firstLoadCompleter);
-      } else if (childDeviceUid != null) {
-        _listenToFirestore(childDeviceUid, firstLoadCompleter: firstLoadCompleter);
-      } else {
-        debugPrint('RulesService: ⚠️ Neither parentId/childId nor childDeviceUid set — cannot start rules listener.');
-        _isStarting = false;
-        if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
+      final childId = prefs.getString('child_id');
+      if (parentId == null || childId == null) {
+        debugPrint('RulesService: Pairing identifiers are missing.');
+        if (firstLoadCompleter != null &&
+            !firstLoadCompleter.isCompleted) {
           firstLoadCompleter.complete();
         }
         return;
       }
 
-      // 2. Écouter aussi les Geofences
-      _checkAndStartGeofences(prefs);
-      
+      _listenToFirestoreDirect(
+        parentId,
+        childId,
+        firstLoadCompleter: firstLoadCompleter,
+      );
+
       if (firstLoadCompleter != null) {
         await firstLoadCompleter.future.timeout(
           const Duration(seconds: 10),
-          onTimeout: () => debugPrint('RulesService: Timeout waiting for first load'),
+          onTimeout: () =>
+              debugPrint('RulesService: Initial rules load timed out.'),
         );
       }
     } finally {
@@ -383,234 +380,110 @@ class RulesService {
     }
   }
 
-  void _checkAndStartGeofences(SharedPreferences prefs) {
-    if (_geofencesSub != null) return;
-
-    final parentId = prefs.getString('parent_id');
-    final childId  = prefs.getString('child_id');
-
-    debugPrint('RulesService: Checking for geofences sub (parent=$parentId, child=$childId)');
-
-    if (parentId == null || childId == null) {
-      debugPrint('RulesService: ⚠️ Cannot start Geofences sub — missing parent_id or child_id');
-      return;
-    }
-
-    // Guard: attendre que Firebase Auth soit restauré avant de lire Firestore,
-    // sinon request.auth est null → PERMISSION_DENIED sur la collection géofences.
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      debugPrint('RulesService: Auth ready (${user.uid}), starting geofences listener.');
-      _listenToGeofences(parentId, childId);
-    } else {
-      debugPrint('RulesService: Auth not ready — waiting for authStateChanges to start geofences.');
-      _authSub?.cancel();
-      _authSub = FirebaseAuth.instance.authStateChanges().listen((u) {
-        if (u != null && _geofencesSub == null) {
-          debugPrint('RulesService: Auth restored (${u.uid}), starting geofences listener.');
-          _listenToGeofences(parentId, childId);
-          _authSub?.cancel();
-          _authSub = null;
-        }
-      });
-    }
-  }
-
-  void _listenToFirestoreDirect(String parentId, String childId, {Completer<void>? firstLoadCompleter}) {
+  void _listenToFirestoreDirect(
+    String parentId,
+    String childId, {
+    Completer<void>? firstLoadCompleter,
+  }) {
     _subscription?.cancel();
-    final docRef = _firestore
-        .collection('parents')
-        .doc(parentId)
-        .collection('children')
-        .doc(childId)
-        .collection('rules')
-        .doc('active');
+    _retryTimer?.cancel();
 
-    debugPrint('RulesService: Listening directly to document path: ${docRef.path}');
+    final docRef = _firestore.doc(
+      'parents/$parentId/children/$childId/rules/active',
+    );
+
     _subscription = docRef.snapshots().listen(
-      (snap) async {
-        _retryCount = 0; // Reset retry on success
-        
-        if (!snap.exists) {
-          debugPrint('RulesService (Direct): ❌ Rules document active does not exist at ${docRef.path}');
+      (snapshot) async {
+        _retryCount = 0;
+        final data = snapshot.data();
+        if (!snapshot.exists || data == null) {
           _current = ActiveRules.empty;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove(_cacheKey);
+          await prefs.remove(_monitoredPackagesKey);
+          await prefs.setBool(_monitorAccountActivityKey, false);
+          await prefs.setBool(_locationAlertsKey, false);
+          await prefs.remove('gemini_api_key');
+          await prefs.remove('flutter.gemini_api_key');
         } else {
-          final data = snap.data();
-          if (data == null) {
-            debugPrint('RulesService (Direct): 📄 Rules data is null');
-            _current = ActiveRules.empty;
-          } else {
-            debugPrint('RulesService (Direct): 📄 Raw data received: $data');
-            try {
-              final newRules = ActiveRules.fromFirestore(data);
-              
-              final hasGeofencesInDoc = data['geofences'] != null && (data['geofences'] as List).isNotEmpty;
-              if (!hasGeofencesInDoc && _current.geofences.isNotEmpty) {
-                debugPrint('RulesService (Direct): 🛡️ Preserving ${_current.geofences.length} existing geofences from sub-collection.');
-                _current = newRules.copyWith(geofences: _current.geofences);
-              } else {
-                _current = newRules;
-              }
-              
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString(_cacheKey, json.encode(_current.toMap()));
-            } catch (e) {
-              debugPrint('RulesService (Direct): ❌ Parsing failed. Retaining current rules. Error: $e');
-            }
-          }
-        }
-
-        debugPrint('RulesService (Direct): ✅ Rules updated → $_current');
-        _notifyListeners();
-        
-        if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
-          firstLoadCompleter.complete();
-        }
-      },
-      onError: (e) {
-        debugPrint('RulesService (Direct): Firestore error: $e. Falling back to collectionGroup query.');
-        if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
-          firstLoadCompleter.complete();
-        }
-        
-        // Si la souscription directe échoue, on tente le fallback par collectionGroup
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          _listenToFirestore(user.uid);
-        } else {
-          _handleRetryDirect(parentId, childId);
-        }
-      },
-    );
-  }
-
-  void _listenToFirestore(String childDeviceUid, {Completer<void>? firstLoadCompleter}) {
-    _subscription?.cancel();
-    debugPrint('RulesService: Subscribed via collectionGroup for childDeviceUid: $childDeviceUid');
-    _subscription = _firestore
-        .collectionGroup('rules')
-        .where('childDeviceUid', isEqualTo: childDeviceUid)
-        .snapshots()
-        .listen(
-      (snap) async {
-        _retryCount = 0; // Reset retry on success
-        
-        if (snap.docs.isEmpty) {
-          debugPrint('RulesService: ❌ Rules document DOES NOT EXIST or no rules found for childDeviceUid: $childDeviceUid');
-          _current = ActiveRules.empty;
-        } else {
-          final data = snap.docs.first.data();
-          debugPrint('RulesService: 📄 Raw data received for rules: $data');
-          
           try {
-            final newRules = ActiveRules.fromFirestore(data);
-            
-            // FUSION : Si le document rules/active ne contient pas de geofences
-            // (ce qui est normal si elles sont gérées en sous-collection),
-            // on préserve celles que nous avons déjà reçues via _listenToGeofences.
-            final hasGeofencesInDoc = data['geofences'] != null && (data['geofences'] as List).isNotEmpty;
-            
-            if (!hasGeofencesInDoc && _current.geofences.isNotEmpty) {
-              debugPrint('RulesService: 🛡️ Preserving ${_current.geofences.length} existing geofences from sub-collection.');
-              _current = newRules.copyWith(geofences: _current.geofences);
-            } else {
-              _current = newRules;
-            }
-            
-            // Sauvegarder dans le cache local
+            final parsed = ActiveRules.fromFirestore(data);
+            _current = parsed;
+
             final prefs = await SharedPreferences.getInstance();
-            await prefs.setString(_cacheKey, json.encode(_current.toMap()));
+            await prefs.setString(_cacheKey, json.encode(parsed.toMap()));
+            await prefs.setBool(
+              _monitorAccountActivityKey,
+              parsed.monitorAccountActivity,
+            );
+            await prefs.setBool(_locationAlertsKey, parsed.locationAlerts);
+
+            final packages = data['monitoredNotificationPackages'] ??
+                data['monitored_notification_packages'];
+            if (packages is List) {
+              await prefs.setString(
+                _monitoredPackagesKey,
+                json.encode(packages.map((e) => e.toString()).toList()),
+              );
+            } else {
+              await prefs.remove(_monitoredPackagesKey);
+            }
+
+            // Provider API keys are intentionally never copied to the device.
+            await prefs.remove('gemini_api_key');
+            await prefs.remove('flutter.gemini_api_key');
           } catch (e) {
-            debugPrint('RulesService: ❌ Parsing failed. Retaining current rules. Error: $e');
-            // On ne remplace pas _current, ce qui préserve les règles existantes ou le cache chargé au démarrage.
+            debugPrint(
+              'RulesService: Invalid rules payload; keeping last valid rules: $e',
+            );
           }
         }
 
-        debugPrint('RulesService: ✅ Rules updated → $_current');
         _notifyListeners();
-        
-        if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
+        if (firstLoadCompleter != null &&
+            !firstLoadCompleter.isCompleted) {
           firstLoadCompleter.complete();
         }
       },
-      onError: (e) {
-        debugPrint('RulesService: Firestore error: $e');
-        if (e is FirebaseException && e.code == 'permission-denied') {
-          debugPrint('RulesService: FirebaseException [permission-denied] - Cannot read rules. Check Firebase Security Rules.');
-        }
-        if (firstLoadCompleter != null && !firstLoadCompleter.isCompleted) {
+      onError: (Object error) {
+        debugPrint('RulesService: Rules listener failed: $error');
+        if (firstLoadCompleter != null &&
+            !firstLoadCompleter.isCompleted) {
           firstLoadCompleter.complete();
         }
-        _handleRetry(childDeviceUid);
+        _scheduleRetry(parentId, childId);
       },
     );
   }
 
-  void _listenToGeofences(String parentId, String childId) {
-    _geofencesSub?.cancel();
-    _geofencesSub = _firestore
-        .collection('parents')
-        .doc(parentId)
-        .collection('geofences')
-        .where('childId', isEqualTo: childId)
-        .snapshots()
-        .listen((snap) async {
-      final geos = snap.docs
-          .map((doc) => Geofence.fromFirestore({...doc.data(), 'id': doc.id}))
-          .toList();
-      
-      _current = _current.copyWith(geofences: geos);
-      debugPrint('RulesService: Geofences updated → ${geos.length} zones');
-      
-      // Sauvegarder dans le cache local
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_cacheKey, json.encode(_current.toMap()));
-      } catch (e) {
-        debugPrint('RulesService: Failed to cache geofences offline: $e');
-      }
-
-      _notifyListeners();
-    });
-  }
-
-  void _handleRetryDirect(String parentId, String childId) {
-    _retryCount++;
-    final delay = Duration(seconds: (_retryCount * 5).clamp(5, 60));
-    debugPrint('RulesService (Direct): Retrying in ${delay.inSeconds}s (attempt $_retryCount)...');
-    
-    Timer(delay, () => _listenToFirestoreDirect(parentId, childId));
-  }
-
-  void _handleRetry(String childDeviceUid) {
-    _retryCount++;
-    final delay = Duration(seconds: (_retryCount * 5).clamp(5, 60));
-    debugPrint('RulesService: Retrying in ${delay.inSeconds}s (attempt $_retryCount)...');
-    
-    Timer(delay, () => _listenToFirestore(childDeviceUid));
+  void _scheduleRetry(String parentId, String childId) {
+    _retryTimer?.cancel();
+    _retryCount += 1;
+    final seconds = (_retryCount * 5).clamp(5, 60).toInt();
+    _retryTimer = Timer(
+      Duration(seconds: seconds),
+      () => _listenToFirestoreDirect(parentId, childId),
+    );
   }
 
   void _notifyListeners() {
-    for (final cb in List.of(_listeners)) {
-      cb(_current);
+    for (final callback in List<void Function(ActiveRules)>.of(_listeners)) {
+      callback(_current);
     }
   }
 
-  /// Arrête l'écoute et réinitialise les règles.
   Future<void> stop() async {
+    _retryTimer?.cancel();
+    _retryTimer = null;
     await _subscription?.cancel();
-    await _geofencesSub?.cancel();
-    await _authSub?.cancel();
     _subscription = null;
-    _geofencesSub = null;
-    _authSub = null;
     _current = ActiveRules.empty;
+    _retryCount = 0;
     debugPrint('RulesService: Stopped.');
   }
 
-  /// Enregistre un callback appelé à chaque mise à jour des règles.
   void addListener(void Function(ActiveRules) callback) {
-    _listeners.add(callback);
+    if (!_listeners.contains(callback)) _listeners.add(callback);
   }
 
   void removeListener(void Function(ActiveRules) callback) {

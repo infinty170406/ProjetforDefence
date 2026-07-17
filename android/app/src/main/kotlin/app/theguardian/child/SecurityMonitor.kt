@@ -1,7 +1,5 @@
 package app.theguardian.child
 
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
 import android.content.Context
 import android.os.UserManager
 import android.provider.Settings
@@ -10,8 +8,8 @@ import org.json.JSONObject
 
 /**
  * Surveille la sécurité de l'application et détecte les tentatives de contournement.
- * Détecte le Safe Mode, le multi-utilisateur, le clonage d'applications, le retrait de Device Admin,
- * de permissions (superposition/overlay), et les tentatives de désinstallation.
+ * Détecte le Safe Mode, le multi-utilisateur, le clonage d'applications,
+ * la perte de permissions (superposition/overlay) et les tentatives de désinstallation.
  */
 class SecurityMonitor(private val context: Context) {
 
@@ -60,24 +58,7 @@ class SecurityMonitor(private val context: Context) {
             triggerSecurityAlert("Tentative de clonage de l'application Guardian détectée.")
         }
 
-        // 4. Détection de la perte des droits d'administration de l'appareil (Device Admin)
-        try {
-            val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
-            val adminComponent = ComponentName(context, GuardianDeviceAdminReceiver::class.java)
-            val isAdminActive = true // dpm?.isAdminActive(adminComponent) ?: false
-            results["is_admin_active"] = isAdminActive
-            if (!isAdminActive) {
-                triggerSecurityAlert("Le statut de Device Admin (administrateur de l'appareil) a été désactivé.")
-            }
-        } catch (e: Exception) {
-            try {
-                Log.e(TAG, "Error checking Device Admin status", e)
-            } catch (t: Throwable) {
-                println("[$TAG] Error checking Device Admin status: ${e.message}")
-            }
-        }
-
-        // 5. Détection de la perte de la permission de superposition (Draw Overlay)
+        // 4. Détection de la perte de la permission de superposition (Draw Overlay)
         try {
             val hasOverlayPermission = Settings.canDrawOverlays(context)
             results["has_overlay_permission"] = hasOverlayPermission

@@ -115,7 +115,7 @@ object NativeHistoryRepository {
             try {
                 val db = GuardianDatabase.getInstance(context)
                 val id = db.historyDao().insert(entry)
-                Log.d(TAG, "Recorded entry #$id: ${entry.url} [blocked=${entry.isBlocked}]")
+                Log.d(TAG, "Recorded navigation entry #$id [blocked=${entry.isBlocked}]")
 
                 // Écrire aussi dans FlutterSharedPreferences pour que le service
                 // Flutter puisse drainer et sync vers Firebase

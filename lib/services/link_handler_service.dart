@@ -10,7 +10,7 @@ import '../screens/auth/expired_link_screen.dart';
 
 /// LinkHandlerService
 ///
-/// Intercepte les deep links de jumelage (guardian:// et https://the-guardian.app/pair/…)
+/// Intercepte les liens de jumelage `guardian://` et `/child/pair?code=…`.
 /// et orchestre le processus d'activation.
 class LinkHandlerService {
   static final LinkHandlerService _instance = LinkHandlerService._internal();
@@ -24,9 +24,9 @@ class LinkHandlerService {
   String? _pendingLink;
 
   void initialize() {
+    _linkSubscription?.cancel();
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
-      debugPrint('LinkHandler: Incoming deep link: $uri');
-      _handleLink(uri.toString());
+      unawaited(_handleLink(uri.toString()));
     }, onError: (err) {
       debugPrint('LinkHandler: Stream error: $err');
     });
@@ -38,9 +38,8 @@ class LinkHandlerService {
     try {
       final uri = await _appLinks.getInitialLink();
       if (uri != null) {
-        debugPrint('LinkHandler: Initial link (cold start): $uri');
         await Future.delayed(const Duration(milliseconds: 500));
-        _handleLink(uri.toString());
+        await _handleLink(uri.toString());
       }
     } catch (e) {
       debugPrint('LinkHandler: Failed to get initial link: $e');
@@ -51,11 +50,11 @@ class LinkHandlerService {
     if (_pendingLink != null) {
       final link = _pendingLink!;
       _pendingLink = null;
-      _handleLink(link);
+      unawaited(_handleLink(link));
     }
   }
 
-  void _handleLink(String link) async {
+  Future<void> _handleLink(String link) async {
     if (await _authService.isDeviceActivated()) {
       debugPrint('LinkHandler: Device already activated, ignoring link.');
       return;
@@ -140,7 +139,7 @@ class LinkHandlerService {
             action: SnackBarAction(
               label: 'RÉESSAYER',
               textColor: Colors.white,
-              onPressed: () => _handleLink(link),
+              onPressed: () => unawaited(_handleLink(link)),
             ),
           ),
         );

@@ -1,18 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:the_guardian_child/services/enforcement_service.dart';
-import 'package:the_guardian_child/services/rules_service.dart';
 
 void main() {
   group('EnforcementService Logic Tests', () {
-    late EnforcementService enforcementService;
-
-    setUp(() {
-      enforcementService = EnforcementService();
-    });
-
     test('Keyword Matching Logic', () {
       final adultKeywords = {
-        'porn', 'sex', 'adult',
+        'porn',
+        'sex',
+        'adult',
       };
 
       bool matches(String url, Set<String> keywords) {
@@ -20,7 +14,9 @@ void main() {
       }
 
       expect(matches('https://www.pornhub.com', adultKeywords), isTrue);
-      expect(matches('https://www.google.com/search?q=sexy+stuff', adultKeywords), isTrue);
+      expect(
+          matches('https://www.google.com/search?q=sexy+stuff', adultKeywords),
+          isTrue);
       expect(matches('https://www.wikipedia.org', adultKeywords), isFalse);
     });
 
@@ -49,7 +45,8 @@ void main() {
         return h * 60 + m;
       }
 
-      bool isOutsideAllowedHours(String start, String end, int currentHour, int currentMinute) {
+      bool isOutsideAllowedHours(
+          String start, String end, int currentHour, int currentMinute) {
         final current = currentHour * 60 + currentMinute;
         final s = parseTime(start);
         final e = parseTime(end);
@@ -61,13 +58,13 @@ void main() {
 
       // 08:00 to 20:00
       expect(isOutsideAllowedHours('08:00', '20:00', 10, 0), isFalse); // Inside
-      expect(isOutsideAllowedHours('08:00', '20:00', 7, 0), isTrue);  // Before
+      expect(isOutsideAllowedHours('08:00', '20:00', 7, 0), isTrue); // Before
       expect(isOutsideAllowedHours('08:00', '20:00', 21, 0), isTrue); // After
-      
+
       // Overnight: 22:00 to 06:00
       expect(isOutsideAllowedHours('22:00', '06:00', 23, 0), isFalse); // Inside
-      expect(isOutsideAllowedHours('22:00', '06:00', 2, 0), isFalse);  // Inside
-      expect(isOutsideAllowedHours('22:00', '06:00', 12, 0), isTrue);  // Outside
+      expect(isOutsideAllowedHours('22:00', '06:00', 2, 0), isFalse); // Inside
+      expect(isOutsideAllowedHours('22:00', '06:00', 12, 0), isTrue); // Outside
     });
   });
 }

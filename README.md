@@ -1,31 +1,47 @@
-# 🛡️ The Guardian - Workspace Application Enfant (Child App)
+# The Guardian — application enfant
 
-Ce dossier contient le code source de l'application **Enfant** du projet **The Guardian**. Elle fonctionne en étroite collaboration avec l'application **Parent** (`ProjetforDefence-frontend`) et le backend **Firebase**.
+Ce dépôt contient l'application Flutter/Android installée sur l'appareil de l'enfant. Elle utilise le même projet Firebase que l'application parent : `control-parental-5f115`.
 
-## 🚀 Rôle de l'application Enfant
+## Contrat avec l'application parent
 
-L'application enfant a pour but d'exécuter les restrictions définies par les parents et de remonter les informations d'état de l'appareil. Elle est composée de deux couches principales :
+- Package Android : `app.theguardian.child`
+- Liaison : lien opaque à usage unique, par exemple `https://the-guardian.app/child/pair?code=<token>`
+- Authentification enfant : compte Firebase anonyme créé pendant la liaison
+- Identité autorisée : le document enfant contient `childDeviceUid`, qui doit correspondre à l'UID Firebase actif sur l'appareil
+- Règles actives : `parents/{parentId}/children/{childId}/rules/active`
+- Statistiques : `parents/{parentId}/children/{childId}/alerts/usage/{apps|websites}/{date}`
+- Inventaire : `parents/{parentId}/children/{childId}/inventory/**`
+- Position : `parents/{parentId}/children/{childId}/location/current` et `location_history/**`
+- Alertes parentales : créées uniquement par la Cloud Function authentifiée `reportChildAlert`
 
-1.  **Interface Flutter** : Permet la liaison initiale à l'aide d'un code d'invitation à 6 chiffres généré par le parent, et affiche le statut de connexion.
-2.  **Moteur Natif Android (Kotlin)** : Exécute les règles de sécurité en arrière-plan de manière robuste et non contournable.
+L'application enfant n'accepte plus les anciens codes enfant à six caractères comme preuve de liaison. Le code OTP à six chiffres de l'application parent est un flux distinct et ne doit pas être confondu avec le token de liaison enfant.
 
----
+## Sécurité
 
-## ⚙️ Composants Natifs Clés
+- Aucune clé Gemini n'est copiée dans l'application ou dans `SharedPreferences`.
+- L'analyse facultative des notifications passe par `analyzeChildNotification` côté serveur.
+- Les secrets de signature Android sont chargés depuis `android/key.properties`, ignoré par Git. Utiliser `android/key.properties.example` comme modèle.
+- Les anciennes archives et représentations Base64 de secrets ont été retirées du projet. Elles doivent aussi être purgées de l'historique Git et les secrets concernés doivent être renouvelés.
+- Le faux service VPN et les affirmations Device Admin ont été supprimés. L'application ne garantit pas l'impossibilité de désinstallation sans provisioning Android de type device owner.
 
-*   **`GuardianAccessibilityService`** :
-    *   *Blocage d'applications* : Intercepte le lancement des packages interdits.
-    *   *Filtrage Web* : Analyse la barre d'adresse (Chrome, Samsung Internet, Firefox) pour bloquer les URLs interdites.
-    *   *Auto-Défense* : Empêche l'accès aux paramètres d'accessibilité et d'administration système pour éviter la désactivation du service par l'enfant.
-*   **`BlockActivity`** : Écran natif s'affichant immédiatement lors d'une tentative d'ouverture d'un contenu bloqué (neutre vis-à-vis du bouton retour).
-*   **`GuardianForegroundService`** : Service d'arrière-plan avec notification persistante pour la géolocalisation continue et la survie du processus.
-*   **`GuardianDeviceAdminReceiver`** : Gestionnaire d'administration pour empêcher la désinstallation de l'application.
+## Backend partagé
 
----
+Le dossier `functions/` contient la version du backend nécessaire à l'application enfant. Avant déploiement :
 
-## 🎨 Architecture & Cache Local
+1. Fusionner ces fonctions dans le dépôt parent canonique ou utiliser cette copie comme source de déploiement unique.
+2. Configurer le secret `GEMINI_API_KEY` et le paramètre non secret `GEMINI_MODEL`.
+3. Déployer les fonctions sur le projet Firebase explicitement indiqué par `.firebaserc`.
 
-Les règles de blocage (applications et URLs) sont synchronisées via Firestore puis mises en cache localement dans les `SharedPreferences` de l'appareil. 
-Le service d'accessibilité écoute les changements sur ce cache et applique les règles en mémoire vive, garantissant des performances maximales et un impact minimal sur la batterie.
+Voir `BACKEND_DEPLOYMENT.md`, `AUDIT_ARCHITECTURE_FLUTTER.md` et `integration/PARENT_ACTIONS_REQUIRED.md`.
 
-Pour plus d'informations sur l'architecture globale, veuillez consulter le dossier principal de l'application Parent : [ProjetforDefence-frontend](../ProjetforDefence-frontend/README.md).
+## Vérifications locales recommandées
+
+```bash
+flutter pub get
+flutter analyze
+flutter test
+cd android && ./gradlew testDebugUnitTest
+cd ../functions && npm ci && node --check index.js
+```
+
+Des tests sur un appareil Android réel restent indispensables pour l'accessibilité, les permissions, la relance après redémarrage, la collecte d'usage et la géolocalisation de fond.

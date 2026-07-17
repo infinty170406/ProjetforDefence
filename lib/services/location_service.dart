@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'alert_service.dart';
+import 'guardian_api.dart';
 import 'rules_service.dart';
 import '../utils/child_path_helper.dart';
 
@@ -28,6 +29,7 @@ class LocationService {
 
   StreamSubscription<geo.Position>? _positionStream;
   Timer? _periodicTimer;
+  Timer? _gpsStatusTimer;
 
   bool _isTracking = false;
 
@@ -37,8 +39,8 @@ class LocationService {
   // État local des zones (ID Geofence -> est_dedans)
   final Map<String, bool> _lastGeofenceStates = {};
 
-  static const double MIN_DISTANCE = 30; // mètres minimum pour sauvegarder l'historique
-  static const int MIN_TIME = 300;       // 5 minutes minimum entre deux sauvegardes si peu de mouvement
+  static const double minDistanceMeters = 30; // mètres minimum pour sauvegarder l'historique
+  static const int minSaveIntervalSeconds = 300;       // 5 minutes minimum entre deux sauvegardes si peu de mouvement
 
   // ───────── PERMISSIONS ─────────
 
@@ -112,7 +114,8 @@ class LocationService {
     });
 
     // Surveillance GPS OFF
-    Timer.periodic(const Duration(minutes: 1), (_) async {
+    _gpsStatusTimer?.cancel();
+    _gpsStatusTimer = Timer.periodic(const Duration(minutes: 1), (_) async {
       if (!_isTracking) return;
       bool enabled = await geo.Geolocator.isLocationServiceEnabled();
       if (!enabled) {
@@ -127,8 +130,10 @@ class LocationService {
   Future<void> stopTracking() async {
     await _positionStream?.cancel();
     _periodicTimer?.cancel();
+    _gpsStatusTimer?.cancel();
     _positionStream = null;
     _periodicTimer = null;
+    _gpsStatusTimer = null;
     _isTracking = false;
     debugPrint("LocationService: tracking stopped.");
   }
@@ -153,7 +158,7 @@ class LocationService {
 
   void _checkGeofences(geo.Position position) {
     final rules = _rulesService.current;
-    if (rules.geofences.isEmpty) return;
+    if (!rules.locationAlerts || rules.geofences.isEmpty) return;
 
     for (final zone in rules.geofences) {
       final distance = geo.Geolocator.distanceBetween(
@@ -206,8 +211,8 @@ class LocationService {
 
     final timeDiff = DateTime.now().difference(_lastSaveTime!).inSeconds;
 
-    if (distance > MIN_DISTANCE) return true;
-    if (timeDiff > MIN_TIME) return true;
+    if (distance > minDistanceMeters) return true;
+    if (timeDiff > minSaveIntervalSeconds) return true;
 
     return false;
   }
@@ -228,20 +233,31 @@ class LocationService {
         "timestamp": FieldValue.serverTimestamp(),
       };
 
-      // Update position actuelle sur le document principal
-      await _firestore.doc(childPath).update({
-        "lastLatitude":       position.latitude,
-        "lastLongitude":      position.longitude,
-        "lastLocationUpdate": FieldValue.serverTimestamp(),
-      });
-
-      // Point actuel dans collection dédiée
+      // Point actuel dans collection dédiée (autorisé à l'appareil enfant)
       await _firestore.doc("$childPath/location/current").set(locationData);
 
       // Historique
       await _firestore.collection("$childPath/location_history").add(locationData);
 
-      debugPrint("LocationService: Saved lat=${position.latitude}, lng=${position.longitude}");
+      final parentId = prefs.getString('parent_id');
+      final childId = prefs.getString('child_id');
+      if (parentId != null && childId != null) {
+        try {
+          await GuardianApi.post(
+            '/api/v1/device/metadata',
+            body: {
+              'parentId': parentId,
+              'childId': childId,
+              'latitude': position.latitude,
+              'longitude': position.longitude,
+            },
+          ).timeout(const Duration(seconds: 15));
+        } catch (error) {
+          debugPrint('LocationService: Parent summary sync failed: $error');
+        }
+      }
+
+      debugPrint('LocationService: Location synchronized.');
     } catch (e) {
       debugPrint("LocationService: Firestore error $e");
     }
@@ -250,8 +266,9 @@ class LocationService {
   // ───────── GPS OFF ALERT ─────────
 
   Future<void> _sendGpsDisabledAlert() async {
+    if (!_rulesService.current.locationAlerts) return;
     await _alertService.sendAlert(
-      type: AlertType.outsideHours, // Utilisation par défaut
+      type: AlertType.gpsDisabled,
       detail: "Le GPS a été désactivé sur l'appareil de l'enfant.",
     );
   }

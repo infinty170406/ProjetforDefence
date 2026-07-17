@@ -20,7 +20,7 @@ class ChildProfile {
       id:       doc.id,
       parentId: data['parentId'] as String?,
       name:     data['name'] ?? data['displayName'] ?? '',
-      deviceId: data['deviceId'] as String?,
+      deviceId: (data['childDeviceUid'] ?? data['deviceId']) as String?,
     );
   }
 }

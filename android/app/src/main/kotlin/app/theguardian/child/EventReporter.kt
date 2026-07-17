@@ -76,7 +76,7 @@ class EventReporter(private val context: Context) {
             putExtra("time", timeStr)
         }
         context.sendBroadcast(broadcastIntent)
-        Log.d(TAG, "Report sent: ${report.url} [${report.status}]")
+        Log.d(TAG, "Navigation report sent [${report.status}]")
     }
 }
 

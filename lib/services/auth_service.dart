@@ -1,296 +1,243 @@
 import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import '../models/link_activation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'guardian_api.dart';
 import '../models/child_profile.dart';
+import '../models/link_activation.dart';
+import '../utils/pairing_token.dart';
 
 class AuthService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final AuthService _instance = AuthService._internal();
+  factory AuthService() => _instance;
+  AuthService._internal();
 
-  static const String baseUrl = 'https://api.the-guardian.app/v1';
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   static const String _childIdKey = 'child_id';
   static const String _parentIdKey = 'parent_id';
   static const String _childPathKey = 'child_path';
   static const String _deviceUidKey = 'device_uid';
   static const String _migratedKey = 'storage_migrated';
+  static final RegExp _identifierPattern = RegExp(r'^[A-Za-z0-9_-]{1,128}$');
 
-  final _secureStorage = const FlutterSecureStorage(
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
 
   String? _cachedChildId;
   String? _cachedParentId;
   String? _cachedChildPath;
-
-  String? _extractToken(String rawLink) {
-    final trimmed = rawLink.trim();
-
-    if (trimmed.startsWith('http') || trimmed.startsWith('guardian://')) {
-      try {
-        final uri = Uri.parse(trimmed);
-
-        final childId = uri.queryParameters['childId'];
-        if (childId != null && childId.isNotEmpty) return childId;
-
-        final token = uri.queryParameters['token'] ?? uri.queryParameters['code'];
-        if (token != null && token.isNotEmpty) return token;
-
-        final segments = uri.pathSegments;
-        if (segments.isNotEmpty) {
-          final last = segments.last;
-          if (last.isNotEmpty && last != 'pair') return last;
-        }
-      } catch (e) {
-        debugPrint('AuthService: Error parsing link: $e');
-      }
-      return null;
-    }
-
-    if (!trimmed.contains('/') && !trimmed.contains(' ') && trimmed.isNotEmpty) {
-      return trimmed;
-    }
-
-    return null;
-  }
+  String? _cachedDeviceUid;
 
   Future<LinkActivation> activateDevice(String rawLink) async {
-    debugPrint('AuthService: Activating device with link: $rawLink');
-
-    final token = _extractToken(rawLink);
-    if (token == null || token.isEmpty) {
-      debugPrint('AuthService: Could not extract token from link');
+    final token = extractPairingToken(rawLink);
+    if (token == null) {
       return const LinkActivation(status: LinkStatus.invalid);
     }
 
-    debugPrint('AuthService: Extracted token: $token');
-
     try {
-      // 1. Check Connectivity
-      final connectivityResultList = await Connectivity().checkConnectivity();
-      if (connectivityResultList.contains(ConnectivityResult.none)) {
-        debugPrint('AuthService: ❌ No internet connection');
+      final connectivityResults = await Connectivity().checkConnectivity();
+      if (connectivityResults.contains(ConnectivityResult.none)) {
         return const LinkActivation(
           status: LinkStatus.networkError,
-          errorMessage: 'No internet connection available.',
+          errorMessage: 'Aucune connexion Internet disponible.',
         );
       }
 
-      // 1b. Authentification anonyme
-      debugPrint('AuthService: Starting anonymous auth...');
-      
-      // Petite pause pour stabiliser la connexion sur certains appareils (Xiaomi)
-      await Future.delayed(const Duration(seconds: 1));
-
-      final userCredential = await FirebaseAuth.instance
-          .signInAnonymously()
-          .timeout(const Duration(seconds: 20), onTimeout: () {
-        throw TimeoutException('Authentication timeout. Please check your connection.');
-      });
-
-      final uid = userCredential.user!.uid;
-      debugPrint('AuthService: Anonymous auth successful, UID: $uid');
-
-      // 2. Recherche du document enfant
-      QuerySnapshot? query;
-      try {
-        debugPrint('AuthService: Searching collectionGroup "children" where id == $token');
-        query = await _firestore
-            .collectionGroup('children')
-            .where('id', isEqualTo: token)
-            .limit(1)
-            .get()
-            .timeout(const Duration(seconds: 15));
-      } catch (e) {
-        debugPrint('AuthService: ⚠️ Query by id failed (possibly permission-denied): $e');
-      }
-
-      if (query == null || query.docs.isEmpty) {
-        try {
-          debugPrint('AuthService: Trying by "invitationToken"...');
-          query = await _firestore
-              .collectionGroup('children')
-              .where('invitationToken', isEqualTo: token)
-              .limit(1)
-              .get()
-              .timeout(const Duration(seconds: 15));
-        } catch (e) {
-          debugPrint('AuthService: ❌ Query by invitationToken failed: $e');
-        }
-      }
-
-      if (query == null || query.docs.isEmpty) {
-        debugPrint('AuthService: ❌ No document found for token: $token');
+      final user = await _ensureAnonymousUser();
+      final activation = await GuardianApi.post(
+        '/api/v1/device/pair',
+        body: {'token': token},
+      ).timeout(const Duration(seconds: 45));
+      final childId = activation['childId'] as String?;
+      final parentId = activation['parentId'] as String?;
+      if (!_isValidIdentifier(childId) || !_isValidIdentifier(parentId)) {
         return const LinkActivation(status: LinkStatus.invalid);
       }
 
-      final childDoc = query.docs.first;
-      final childRef = childDoc.reference;
-      final childData = childDoc.data() as Map<String, dynamic>;
-      debugPrint('AuthService: Document found at path: ${childRef.path}');
+      final childPath = 'parents/$parentId/children/$childId';
+      await _persistPairing(
+        childId: childId!,
+        parentId: parentId!,
+        childPath: childPath,
+        deviceUid: user.uid,
+      );
 
-      // 3. Log du statut actuel pour debug
-      final isAlreadyLinked = childData['isLinked'] == true;
-      final existingDeviceUid = childData['deviceUid'] as String?;
-      if (isAlreadyLinked && existingDeviceUid != null) {
-        debugPrint('AuthService: Link already used (existingDeviceUid: $existingDeviceUid). Re-linking with UID: $uid');
-      } else {
-        debugPrint('AuthService: First-time linking.');
-      }
-
-      // 4. Transaction : on met toujours à jour deviceUid avec le nouvel UID
-      // On respecte les règles Firestore qui autorisent la modif de ces 3 clés uniquement.
-      bool isValid = false;
-      try {
-        debugPrint('AuthService: Starting linking transaction for UID: $uid');
-        await _firestore.runTransaction((transaction) async {
-          final snap = await transaction.get(childRef);
-          if (!snap.exists) {
-            debugPrint('AuthService: ❌ Document disappeared during transaction.');
-            return;
-          }
-
-          // On vérifie qu'on n'envoie que les clés autorisées par les règles Firestore
-          final Map<String, dynamic> updateData = {
-            'isLinked': true,
-            'childDeviceUid': uid, // Doit correspondre au champ attendu par les règles Firestore
-          };
-
-          transaction.update(childRef, updateData);
-          isValid = true;
-        }).timeout(const Duration(seconds: 20));
-
-        debugPrint('AuthService: ✅ Transaction complete.');
-      } catch (e) {
-        debugPrint('AuthService: ❌ Transaction failed: $e');
-        if (e is FirebaseException) {
-          debugPrint('AuthService: Firebase Error [${e.code}]: ${e.message}');
-        }
-        rethrow;
-      }
-
-      if (!isValid) {
-        return const LinkActivation(status: LinkStatus.expired);
-      }
-
-      // 5. Persister les données localement
-      final childId = childDoc.id;
-      final parentId = childData['parentId'] as String? ?? '';
-      final childPath = childRef.path;
-
-      _cachedChildId = childId;
-      _cachedParentId = parentId;
-      _cachedChildPath = childPath;
-
-      // 5. Persister les données de manière sécurisée
-      await _secureStorage.write(key: _childIdKey, value: childId);
-      await _secureStorage.write(key: _parentIdKey, value: parentId);
-      await _secureStorage.write(key: _childPathKey, value: childPath);
-      await _secureStorage.write(key: _deviceUidKey, value: uid);
-
-      // Persister aussi dans SharedPreferences pour les services d'arrière-plan
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_childIdKey, childId);
-      await prefs.setString(_parentIdKey, parentId);
-      await prefs.setString(_childPathKey, childPath);
-      await prefs.setString(_deviceUidKey, uid);
-      await prefs.setBool(_migratedKey, true);
-
-      debugPrint('AuthService: ✅ Activation successful — Child: $childId, Parent: $parentId');
-
+      debugPrint('AuthService: Device pairing completed.');
       return LinkActivation(
         status: LinkStatus.success,
         childId: childId,
         parentId: parentId,
       );
-    } catch (e) {
-      debugPrint('AuthService: activation error: $e');
-      String msg = 'An error occurred during activation.';
-      
-      if (e is FirebaseException) {
-        debugPrint('AuthService: Firebase Detailed Error Code: ${e.code}');
-        if (e.code == 'operation-not-allowed') {
-          msg = 'Anonymous authentication is not enabled in Firebase.';
-        } else if (e.code == 'permission-denied') {
-          msg = 'Access denied by security rules. Please check if the device is already linked or if rules are correct.';
-        } else if (e.code == 'failed-precondition') {
-          msg = 'A Firestore index is required for this operation. Please check the Firebase console logs.';
-        } else {
-          msg = 'Firebase Error (${e.code}): ${e.message}';
-        }
-      } else if (e is TimeoutException) {
-        msg = 'The server is not responding. Please check your connection.';
+    } on GuardianApiException catch (error) {
+      debugPrint('AuthService: Pairing backend error (${error.code}).');
+      if (error.statusCode == 400) {
+        return const LinkActivation(status: LinkStatus.invalid);
       }
-
-      return LinkActivation(
+      if (error.statusCode == 404 ||
+          error.statusCode == 410 ||
+          error.statusCode == 412 ||
+          error.statusCode == 403) {
+        return const LinkActivation(status: LinkStatus.expired);
+      }
+      return const LinkActivation(
         status: LinkStatus.networkError,
-        errorMessage: msg,
+        errorMessage: 'Le service de jumelage est indisponible.',
+      );
+    } on TimeoutException {
+      return const LinkActivation(
+        status: LinkStatus.networkError,
+        errorMessage: 'Le serveur ne répond pas. Vérifiez la connexion.',
+      );
+    } on FirebaseAuthException catch (error) {
+      debugPrint('AuthService: Anonymous authentication failed (${error.code}).');
+      return const LinkActivation(
+        status: LinkStatus.networkError,
+        errorMessage: 'Impossible d’authentifier cet appareil.',
+      );
+    } catch (error) {
+      debugPrint('AuthService: Pairing failed: $error');
+      return const LinkActivation(
+        status: LinkStatus.networkError,
+        errorMessage: 'Une erreur est survenue pendant le jumelage.',
       );
     }
   }
 
-  Future<bool> isDeviceActivated() async {
-    final user = FirebaseAuth.instance.currentUser;
-    debugPrint('AuthService: isDeviceActivated - Current Firebase UID: ${user?.uid}');
-    
-    if (_cachedChildId != null) return true;
+  Future<User> _ensureAnonymousUser() async {
+    var user = _auth.currentUser;
+    if (user != null && !user.isAnonymous) {
+      await _auth.signOut();
+      user = null;
+    }
+    user ??= (await _auth.signInAnonymously().timeout(
+      const Duration(seconds: 20),
+    ))
+        .user;
+    if (user == null || !user.isAnonymous) {
+      throw FirebaseAuthException(
+        code: 'anonymous-auth-failed',
+        message: 'Anonymous child authentication failed.',
+      );
+    }
+    return user;
+  }
 
-    // Tentative de lecture depuis le stockage sécurisé
-    final secureChildId = await _secureStorage.read(key: _childIdKey);
-    if (secureChildId != null) {
-      _cachedChildId = secureChildId;
+  Future<void> _persistPairing({
+    required String childId,
+    required String parentId,
+    required String childPath,
+    required String deviceUid,
+  }) async {
+    _cachedChildId = childId;
+    _cachedParentId = parentId;
+    _cachedChildPath = childPath;
+    _cachedDeviceUid = deviceUid;
+
+    await Future.wait([
+      _secureStorage.write(key: _childIdKey, value: childId),
+      _secureStorage.write(key: _parentIdKey, value: parentId),
+      _secureStorage.write(key: _childPathKey, value: childPath),
+      _secureStorage.write(key: _deviceUidKey, value: deviceUid),
+    ]);
+
+    // Les services Android et l'isolate de fond doivent pouvoir lire ces
+    // identifiants. Ils ne constituent pas un secret d'autorisation : les
+    // règles Firebase vérifient toujours l'UID authentifié childDeviceUid.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_childIdKey, childId);
+    await prefs.setString(_parentIdKey, parentId);
+    await prefs.setString(_childPathKey, childPath);
+    await prefs.setString(_deviceUidKey, deviceUid);
+    await prefs.setBool(_migratedKey, true);
+  }
+
+  Future<bool> isDeviceActivated() async {
+    await _hydratePairing();
+    if (!_isValidIdentifier(_cachedChildId) ||
+        !_isValidIdentifier(_cachedParentId) ||
+        !_isValidIdentifier(_cachedDeviceUid)) {
+      return false;
+    }
+
+    final expectedPath =
+        'parents/$_cachedParentId/children/$_cachedChildId';
+    if (_cachedChildPath != expectedPath) {
+      _cachedChildPath = expectedPath;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_childPathKey, expectedPath);
+      await _secureStorage.write(key: _childPathKey, value: expectedPath);
+    }
+
+    User? user = _auth.currentUser;
+    user ??= await _auth.authStateChanges().first.timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => null,
+        );
+
+    return user != null &&
+        user.isAnonymous &&
+        user.uid == _cachedDeviceUid;
+  }
+
+  Future<void> _hydratePairing() async {
+    if (_cachedChildId != null &&
+        _cachedParentId != null &&
+        _cachedDeviceUid != null) {
+      return;
+    }
+
+    try {
+      _cachedChildId = await _secureStorage.read(key: _childIdKey);
       _cachedParentId = await _secureStorage.read(key: _parentIdKey);
       _cachedChildPath = await _secureStorage.read(key: _childPathKey);
-      return true;
+      _cachedDeviceUid = await _secureStorage.read(key: _deviceUidKey);
+    } catch (error) {
+      debugPrint('AuthService: Secure storage read failed: $error');
     }
 
-    // Migration depuis SharedPreferences si nécessaire
+    if (_cachedChildId != null &&
+        _cachedParentId != null &&
+        _cachedDeviceUid != null) {
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
-    final hasOldData = prefs.containsKey(_childIdKey);
-    
-    if (hasOldData) {
-      debugPrint('AuthService: Migrating data to secure storage...');
-      final cid = prefs.getString(_childIdKey);
-      final pid = prefs.getString(_parentIdKey);
-      final path = prefs.getString(_childPathKey);
-      final uid = prefs.getString(_deviceUidKey);
+    final childId = prefs.getString(_childIdKey);
+    final parentId = prefs.getString(_parentIdKey);
+    final deviceUid = prefs.getString(_deviceUidKey);
+    if (childId == null || parentId == null || deviceUid == null) return;
 
-      if (cid != null) await _secureStorage.write(key: _childIdKey, value: cid);
-      if (pid != null) await _secureStorage.write(key: _parentIdKey, value: pid);
-      if (path != null) await _secureStorage.write(key: _childPathKey, value: path);
-      if (uid != null) await _secureStorage.write(key: _deviceUidKey, value: uid);
-
-      // Nettoyer SharedPreferences pour la sécurité
-      // On conserve TOUTES les clés car le background isolate (RulesService, EnforcementService) en a besoin
-      // await prefs.remove(_childIdKey);
-      // await prefs.remove(_parentIdKey);
-      // await prefs.remove(_childPathKey);
-      // await prefs.remove(_deviceUidKey); 
-      await prefs.setBool(_migratedKey, true);
-
-      _cachedChildId = cid;
-      _cachedParentId = pid;
-      _cachedChildPath = path;
-      return true;
-    }
-
-    return false;
+    final childPath = 'parents/$parentId/children/$childId';
+    await _persistPairing(
+      childId: childId,
+      parentId: parentId,
+      childPath: childPath,
+      deviceUid: deviceUid,
+    );
   }
+
+  bool _isValidIdentifier(String? value) =>
+      value != null && _identifierPattern.hasMatch(value);
 
   Future<ChildProfile?> getChildProfile() async {
     final childPath = await _getChildPath();
     if (childPath == null) return null;
 
     try {
-      final doc = await _firestore.doc(childPath).get();
-      if (!doc.exists) return null;
-      return ChildProfile.fromFirestore(doc);
-    } catch (e) {
-      debugPrint('AuthService: getChildProfile error: $e');
+      final document = await _firestore.doc(childPath).get();
+      if (!document.exists) return null;
+      return ChildProfile.fromFirestore(document);
+    } catch (error) {
+      debugPrint('AuthService: Child profile read failed: $error');
       return null;
     }
   }
@@ -301,27 +248,28 @@ class AuthService {
       yield null;
       return;
     }
-    yield* _firestore.doc(childPath).snapshots().map((snap) {
-      if (!snap.exists) return null;
-      return ChildProfile.fromFirestore(snap);
+    yield* _firestore.doc(childPath).snapshots().map((snapshot) {
+      if (!snapshot.exists) return null;
+      return ChildProfile.fromFirestore(snapshot);
     });
   }
 
   Future<String?> _getChildPath() async {
-    if (_cachedChildPath != null) return _cachedChildPath;
-    _cachedChildPath = await _secureStorage.read(key: _childPathKey);
-    return _cachedChildPath;
+    await _hydratePairing();
+    if (!_isValidIdentifier(_cachedChildId) ||
+        !_isValidIdentifier(_cachedParentId)) {
+      return null;
+    }
+    return 'parents/$_cachedParentId/children/$_cachedChildId';
   }
 
   Future<String?> getChildId() async {
-    if (_cachedChildId != null) return _cachedChildId;
-    _cachedChildId = await _secureStorage.read(key: _childIdKey);
+    await _hydratePairing();
     return _cachedChildId;
   }
 
   Future<String?> getParentId() async {
-    if (_cachedParentId != null) return _cachedParentId;
-    _cachedParentId = await _secureStorage.read(key: _parentIdKey);
+    await _hydratePairing();
     return _cachedParentId;
   }
 
@@ -332,26 +280,40 @@ class AuthService {
         service.invoke('stopService');
         await Future.delayed(const Duration(milliseconds: 500));
       }
-    } catch (e) {
-      debugPrint('AuthService: stopService error: $e');
+    } catch (error) {
+      debugPrint('AuthService: Background service stop failed: $error');
     }
 
     _cachedChildId = null;
     _cachedParentId = null;
     _cachedChildPath = null;
+    _cachedDeviceUid = null;
 
     await _secureStorage.deleteAll();
-
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_childIdKey);
-    await prefs.remove(_parentIdKey);
-    await prefs.remove(_childPathKey);
-    await prefs.remove(_deviceUidKey);
-    await prefs.remove(_migratedKey);
-    await prefs.remove('onboarding_complete');
-    await prefs.remove('cached_rules');
+    for (final key in <String>{
+      _childIdKey,
+      _parentIdKey,
+      _childPathKey,
+      _deviceUidKey,
+      _migratedKey,
+      'onboarding_complete',
+      'cached_rules',
+      'monitored_notification_packages',
+      'guardian_monitor_account_activity',
+      'guardian_location_alerts',
+      'gemini_api_key',
+      'guardian_pending_firestore_ops',
+    }) {
+      await prefs.remove(key);
+    }
+    for (final key in prefs.getKeys().where(
+          (key) => key.startsWith('guardian_alert_'),
+        )) {
+      await prefs.remove(key);
+    }
 
-    await FirebaseAuth.instance.signOut();
-    debugPrint('AuthService: Logout complete — session and background monitoring cleared.');
+    await _auth.signOut();
+    debugPrint('AuthService: Local child session cleared.');
   }
 }

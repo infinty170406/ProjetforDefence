@@ -8,11 +8,12 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.firebase.firestore.SetOptions
-import com.google.firebase.firestore.WriteBatch
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -21,31 +22,34 @@ object NativeFirebaseSync {
 
     private const val TAG = "NativeFirebaseSync"
     private const val BATCH_SIZE = 50
+    private val identifierPattern = Regex("^[A-Za-z0-9_-]{1,128}$")
 
-    /**
-     * Point d'entrée principal pour la synchronisation.
-     */
+    private data class PairingContext(
+        val parentId: String,
+        val childId: String,
+        val deviceUid: String,
+    ) {
+        val childPath: String
+            get() = "parents/$parentId/children/$childId"
+    }
+
+    /** Point d'entrée principal pour la synchronisation native. */
     suspend fun syncPendingEntries(context: Context): Boolean = withContext(Dispatchers.IO) {
         try {
-            val childPath = resolveChildPath(context)
-            if (childPath == null) {
-                Log.w(TAG, "childPath not set — device not paired yet. Sync skipped.")
+            val pairing = resolvePairingContext(context)
+            if (pairing == null) {
+                Log.w(TAG, "Pairing metadata is unavailable. Sync skipped.")
                 return@withContext false
             }
 
             ensureFirebaseInitialized(context)
 
-            // S'assurer que l'utilisateur est authentifié
-            val auth = FirebaseAuth.getInstance()
-            if (auth.currentUser == null) {
-                Log.w(TAG, "Firebase user not signed in. Attempting anonymous sign-in...")
-                try {
-                    auth.signInAnonymously().await()
-                    Log.i(TAG, "Signed in anonymously: ${auth.currentUser?.uid}")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Anonymous sign-in failed: ${e.message}. Sync skipped.")
-                    return@withContext false
-                }
+            // Flutter owns the anonymous session used during pairing. Creating a
+            // second anonymous user here would no longer match childDeviceUid.
+            val authenticatedUid = FirebaseAuth.getInstance().currentUser?.uid
+            if (authenticatedUid == null || authenticatedUid != pairing.deviceUid) {
+                Log.w(TAG, "The paired Firebase session is unavailable. Sync skipped.")
+                return@withContext false
             }
 
             val firestore = FirebaseFirestore.getInstance()
@@ -53,31 +57,29 @@ object NativeFirebaseSync {
                 firestore.firestoreSettings = FirebaseFirestoreSettings.Builder()
                     .setPersistenceEnabled(true)
                     .build()
-            } catch (e: Exception) {
-                Log.d(TAG, "Firestore settings already set: ${e.message}")
+            } catch (_: Exception) {
+                // Settings can only be assigned before the first Firestore use.
             }
 
-            // 1. Synchronisation de l'historique web
-            val webSuccess = syncWebHistory(context, firestore, childPath)
+            val webSuccess = syncWebHistory(context, firestore, pairing.childPath)
+            val notificationSuccess = syncNotificationHistory(context, firestore, pairing.childPath)
+            val alertsSuccess = syncPendingAlerts(context, pairing)
 
-            // 2. Synchronisation de l'historique des notifications
-            val notifSuccess = syncNotificationHistory(context, firestore, childPath)
-
-            // 3. Synchronisation des alertes de sécurité stockées en SharedPreferences (Étape 7)
-            val alertsSuccess = syncPendingAlerts(context, firestore, childPath)
-
-            return@withContext webSuccess && notifSuccess && alertsSuccess
-        } catch (e: Exception) {
-            Log.e(TAG, "syncPendingEntries fatal error: ${e.message}", e)
-            return@withContext false
+            webSuccess && notificationSuccess && alertsSuccess
+        } catch (error: Exception) {
+            Log.e(TAG, "Native sync failed.", error)
+            false
         }
     }
 
-    private suspend fun syncWebHistory(context: Context, firestore: FirebaseFirestore, childPath: String): Boolean {
+    private suspend fun syncWebHistory(
+        context: Context,
+        firestore: FirebaseFirestore,
+        childPath: String,
+    ): Boolean {
         val unsynced = NativeHistoryRepository.getUnsynced(context)
         if (unsynced.isEmpty()) return true
 
-        Log.i(TAG, "Syncing ${unsynced.size} web history entries...")
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
         var successCount = 0
@@ -96,35 +98,42 @@ object NativeFirebaseSync {
                     .collection("$childPath/inventory/websites/history")
                     .document()
 
-                batch.set(historyRef, mapOf(
-                    "url" to entry.url,
-                    "domain" to domain,
-                    "package" to entry.packageName,
-                    "searchQuery" to (entry.searchQuery ?: ""),
-                    "title" to entry.title.ifBlank { buildTitle(entry) },
-                    "category" to entry.category,
-                    "riskLevel" to entry.riskLevel,
-                    "isSiteBlocked" to entry.isSiteBlocked,
-                    "isWordBlocked" to entry.isWordBlocked,
-                    "status" to (if (entry.isBlocked) "Bloqué" else "Autorisé"),
-                    "date" to dateStr,
-                    "time" to timeStr,
-                    "timestamp" to FieldValue.serverTimestamp()
-                ))
+                batch.set(
+                    historyRef,
+                    mapOf(
+                        "url" to entry.url,
+                        "domain" to domain,
+                        "package" to entry.packageName,
+                        "searchQuery" to (entry.searchQuery ?: ""),
+                        "title" to entry.title.ifBlank { buildTitle(entry) },
+                        "category" to entry.category,
+                        "riskLevel" to entry.riskLevel,
+                        "isSiteBlocked" to entry.isSiteBlocked,
+                        "isWordBlocked" to entry.isWordBlocked,
+                        "status" to if (entry.isBlocked) "Bloqué" else "Autorisé",
+                        "date" to dateStr,
+                        "time" to timeStr,
+                        "timestamp" to FieldValue.serverTimestamp(),
+                    ),
+                )
 
                 if (domain.isNotBlank()) {
                     val statsRef = firestore.document("$childPath/alerts/usage/websites/$dateStr")
                     val safeKey = domain.replace('.', '_')
-                    batch.set(statsRef, mapOf(
-                        "websites" to mapOf(
-                            safeKey to mapOf(
-                                "domain" to domain,
-                                "lastVisit" to FieldValue.serverTimestamp(),
-                                "visits" to FieldValue.increment(1)
-                            )
+                    batch.set(
+                        statsRef,
+                        mapOf(
+                            "websites" to mapOf(
+                                safeKey to mapOf(
+                                    "domain" to domain,
+                                    "lastVisit" to FieldValue.serverTimestamp(),
+                                    "visits" to FieldValue.increment(1),
+                                ),
+                            ),
+                            "lastSync" to FieldValue.serverTimestamp(),
                         ),
-                        "lastSync" to FieldValue.serverTimestamp()
-                    ), SetOptions.merge())
+                        SetOptions.merge(),
+                    )
                 }
 
                 processedIds.add(entry.id)
@@ -134,18 +143,21 @@ object NativeFirebaseSync {
                 batch.commit().await()
                 NativeHistoryRepository.markSynced(context, processedIds)
                 successCount += processedIds.size
-            } catch (e: Exception) {
-                Log.e(TAG, "Web batch commit failed: ${e.message}")
+            } catch (error: Exception) {
+                Log.e(TAG, "A web-history batch could not be synchronized.", error)
             }
         }
         return successCount == unsynced.size
     }
 
-    private suspend fun syncNotificationHistory(context: Context, firestore: FirebaseFirestore, childPath: String): Boolean {
+    private suspend fun syncNotificationHistory(
+        context: Context,
+        firestore: FirebaseFirestore,
+        childPath: String,
+    ): Boolean {
         val unsynced = NotificationHistoryRepository.getUnsynced(context)
         if (unsynced.isEmpty()) return true
 
-        Log.i(TAG, "Syncing ${unsynced.size} notification history entries...")
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
         var successCount = 0
@@ -156,29 +168,28 @@ object NativeFirebaseSync {
 
             for (entry in chunk) {
                 val entryDate = Date(entry.timestamp)
-                val dateStr = dateFormat.format(entryDate)
-                val timeStr = timeFormat.format(entryDate)
-
                 val historyRef = firestore
                     .collection("$childPath/inventory/notifications/history")
                     .document()
 
-                batch.set(historyRef, mapOf(
-                    "application" to entry.application,
-                    "packageName" to entry.packageName,
-                    "sender" to entry.sender,
-                    "conversation" to entry.conversation,
-                    "message" to entry.message,
-                    "geminiCategory" to entry.geminiCategory,
-                    "score" to entry.score,
-                    "riskLevel" to entry.riskLevel,
-                    "decision" to entry.decision,
-                    "reason" to entry.reason,
-                    "date" to dateStr,
-                    "time" to timeStr,
-                    "timestamp" to FieldValue.serverTimestamp()
-                ))
-
+                batch.set(
+                    historyRef,
+                    mapOf(
+                        "application" to entry.application,
+                        "packageName" to entry.packageName,
+                        "sender" to entry.sender,
+                        "conversation" to entry.conversation,
+                        "message" to entry.message,
+                        "geminiCategory" to entry.geminiCategory,
+                        "score" to entry.score,
+                        "riskLevel" to entry.riskLevel,
+                        "decision" to entry.decision,
+                        "reason" to entry.reason,
+                        "date" to dateFormat.format(entryDate),
+                        "time" to timeFormat.format(entryDate),
+                        "timestamp" to FieldValue.serverTimestamp(),
+                    ),
+                )
                 processedIds.add(entry.id)
             }
 
@@ -186,88 +197,135 @@ object NativeFirebaseSync {
                 batch.commit().await()
                 NotificationHistoryRepository.markSynced(context, processedIds)
                 successCount += processedIds.size
-            } catch (e: Exception) {
-                Log.e(TAG, "Notification batch commit failed: ${e.message}")
+            } catch (error: Exception) {
+                Log.e(TAG, "A notification-history batch could not be synchronized.", error)
             }
         }
         return successCount == unsynced.size
     }
 
-    private suspend fun syncPendingAlerts(context: Context, firestore: FirebaseFirestore, childPath: String): Boolean {
+    private suspend fun syncPendingAlerts(
+        context: Context,
+        pairing: PairingContext,
+    ): Boolean {
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val allKeys = prefs.all
-        val alertKeys = allKeys.keys.filter { it.startsWith("flutter.guardian_alert_") }
+        val alertKeys = prefs.all.keys.filter { it.startsWith("flutter.guardian_alert_") }
         if (alertKeys.isEmpty()) return true
 
-        Log.i(TAG, "Syncing ${alertKeys.size} security alerts from SharedPreferences...")
+        val idToken = readFlutterPreference(prefs, "firebase_id_token")
+        if (idToken == null) {
+            Log.w(TAG, "Firebase ID token unavailable, skipping queued alerts.")
+            return false
+        }
+
         var success = true
 
         for (key in alertKeys) {
             val rawValue = prefs.getString(key, null) ?: continue
             try {
                 val json = JSONObject(rawValue)
-                val collectionRef = firestore.collection("$childPath/alerts/notifications/items")
-                val docRef = collectionRef.document()
+                val extra = JSONObject()
+                listOf("appName", "appPackage", "sender", "category", "reason").forEach { field ->
+                    val v = json.optString(field).trim()
+                    if (v.isNotEmpty()) extra.put(field, v)
+                }
+                if (json.has("score")) extra.put("score", json.optInt("score", 0).coerceIn(0, 100))
 
-                val data = mapOf(
-                    "childId" to json.optString("childId"),
-                    "type" to json.optString("type"),
-                    "title" to json.optString("title"),
-                    "description" to json.optString("description"),
-                    "detail" to json.optString("detail"),
-                    "severity" to json.optString("severity"),
-                    "status" to json.optString("status"),
-                    "genre" to json.optString("genre"),
-                    "read" to json.optBoolean("read"),
-                    "timestamp" to FieldValue.serverTimestamp(),
-                    "createdAt" to FieldValue.serverTimestamp(),
-                    "ai_processed" to json.optBoolean("ai_processed"),
-                    "appName" to json.optString("appName"),
-                    "appPackage" to json.optString("appPackage"),
-                    "sender" to json.optString("sender"),
-                    "category" to json.optString("category"),
-                    "score" to json.optInt("score"),
-                    "reason" to json.optString("reason"),
-                    "message" to json.optString("description")
+                val payload = JSONObject().apply {
+                    put("parentId", pairing.parentId)
+                    put("childId", pairing.childId)
+                    put("eventId", deterministicEventId(key))
+                    put("type", json.optString("type", "NOTIFICATION_RISK"))
+                    put("detail", json.optString("detail", json.optString("description", "Alerte enfant")))
+                    put("severity", json.optString("severity", "HIGH"))
+                    put("genre", json.optString("genre", "security"))
+                    put("extra", extra)
+                }
+
+                val statusCode = postJson(
+                    url = "https://guardian-secure-api.onrender.com/api/v1/device/alerts",
+                    idToken = idToken,
+                    body = payload,
                 )
 
-                docRef.set(data).await()
-                prefs.edit().remove(key).apply()
-                Log.d(TAG, "Alert successfully synced and removed from prefs: $key")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to sync alert $key: ${e.message}")
+                if (statusCode in 200..299) {
+                    prefs.edit().remove(key).apply()
+                } else {
+                    Log.w(TAG, "Alert endpoint returned HTTP $statusCode for key=$key")
+                    success = false
+                }
+            } catch (error: Exception) {
+                Log.e(TAG, "A queued child alert could not be synchronized.", error)
                 success = false
             }
         }
         return success
     }
 
-    private fun ensureFirebaseInitialized(context: Context) {
-        try {
-            if (FirebaseApp.getApps(context).isEmpty()) {
-                FirebaseApp.initializeApp(context)
-                Log.i(TAG, "Firebase initialized from NativeFirebaseSync.")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Firebase init error: ${e.message}")
+    private fun copyString(source: JSONObject, target: MutableMap<String, Any>, key: String) {
+        val value = source.optString(key).trim()
+        if (value.isNotEmpty()) target[key] = value
+    }
+
+    private fun postJson(url: String, idToken: String, body: JSONObject): Int {
+        val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+        return try {
+            connection.requestMethod = "POST"
+            connection.setRequestProperty("Authorization", "Bearer $idToken")
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("Accept", "application/json")
+            connection.connectTimeout = 30_000
+            connection.readTimeout = 30_000
+            connection.doOutput = true
+            connection.outputStream.bufferedWriter().use { it.write(body.toString()) }
+            connection.responseCode
+        } finally {
+            connection.disconnect()
         }
     }
 
-    private fun resolveChildPath(context: Context): String? {
+    private fun deterministicEventId(rawKey: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(rawKey.toByteArray(Charsets.UTF_8))
+            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+        return "native_${digest.take(40)}"
+    }
+
+    private fun ensureFirebaseInitialized(context: Context) {
+        if (FirebaseApp.getApps(context).isEmpty()) {
+            checkNotNull(FirebaseApp.initializeApp(context)) { "Firebase initialization failed." }
+        }
+    }
+
+    private fun resolvePairingContext(context: Context): PairingContext? {
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val raw = prefs.getString("child_path", null)
-            ?: prefs.getString("flutter.child_path", null)
-            ?: return null
-        val trimmed = raw.trim().trimEnd('/')
-        return if (trimmed.isBlank()) null else trimmed
+        val parentId = readFlutterPreference(prefs, "parent_id") ?: return null
+        val childId = readFlutterPreference(prefs, "child_id") ?: return null
+        val deviceUid = readFlutterPreference(prefs, "device_uid") ?: return null
+
+        if (!identifierPattern.matches(parentId) ||
+            !identifierPattern.matches(childId) ||
+            !identifierPattern.matches(deviceUid)
+        ) {
+            return null
+        }
+        return PairingContext(parentId, childId, deviceUid)
+    }
+
+    private fun readFlutterPreference(
+        prefs: android.content.SharedPreferences,
+        key: String,
+    ): String? {
+        return (prefs.getString("flutter.$key", null) ?: prefs.getString(key, null))
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
     }
 
     private fun extractDomain(url: String): String {
         return try {
-            val uri = android.net.Uri.parse(url)
-            val host = uri.host ?: return ""
+            val host = android.net.Uri.parse(url).host ?: return ""
             if (host.startsWith("www.")) host.substring(4) else host
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             ""
         }
     }
@@ -276,7 +334,6 @@ object NativeFirebaseSync {
         if (!entry.searchQuery.isNullOrBlank()) {
             return "Recherche : \"${entry.searchQuery}\""
         }
-        val domain = extractDomain(entry.url)
-        return domain.ifBlank { entry.url }
+        return extractDomain(entry.url).ifBlank { entry.url }
     }
 }

@@ -75,7 +75,7 @@ object NotificationHistoryRepository {
             try {
                 val db = GuardianDatabase.getInstance(context)
                 val id = db.notificationHistoryDao().insert(entry)
-                Log.d(TAG, "Recorded notification entry #$id: from=${entry.sender} risk=${entry.riskLevel}")
+                Log.d(TAG, "Recorded notification entry #$id: risk=${entry.riskLevel}")
 
                 // Purge des anciennes entrées synchronisées (> 7 jours)
                 if ((id % 20L) == 0L) {

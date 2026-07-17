@@ -77,19 +77,26 @@
                 <data android:scheme="guardian"/>
             </intent-filter>
 
-            <!-- https links -->
+            <!-- Current parent-app pairing URL -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="the-guardian.app"
+                    android:pathPrefix="/child/pair"/>
+            </intent-filter>
 
-                <data android:scheme="https"
+            <!-- Legacy links kept for already-shared invitations -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
                     android:host="the-guardian.app"
                     android:pathPrefix="/pair"/>
-
-                <data android:scheme="https"
-                    android:host="guardian.app"
-                    android:pathPrefix="/install"/>
             </intent-filter>
 
         </activity>
@@ -130,16 +137,6 @@
             </intent-filter>
         </service>
 
-        <!-- VPN SERVICE -->
-        <service
-            android:name=".GuardianVpnService"
-            android:exported="false"
-            android:permission="android.permission.BIND_VPN_SERVICE">
-            <intent-filter>
-                <action android:name="android.net.VpnService" />
-            </intent-filter>
-        </service>
-
         <!-- BOOT RECEIVER -->
         <receiver
             android:name=".BootReceiver"
@@ -156,12 +153,7 @@
         <!-- WATCHDOG RECEIVER -->
         <receiver
             android:name=".WatchdogReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="app.theguardian.child.GUARDIAN_WATCHDOG"/>
-            </intent-filter>
-        </receiver>
+            android:exported="false" />
 
         <!-- DEVICE ADMIN RECEIVER (Commented out for development/tests)
         <receiver

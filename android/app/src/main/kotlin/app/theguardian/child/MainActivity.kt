@@ -226,23 +226,6 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
 
-                    "isDeviceAdminEnabled" -> {
-                        result.success(true)
-                    }
-
-                    "requestDeviceAdmin" -> {
-                        val adminComponent = android.content.ComponentName(this, GuardianDeviceAdminReceiver::class.java)
-                        val intent = Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-                            putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
-                            val resId = resources.getIdentifier("device_admin_description", "string", packageName)
-                            val explanation = if (resId != 0) getString(resId) else "Cette autorisation empêche l\'enfant de désinstaller ou de désactiver la protection."
-                            putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION, explanation)
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                        startActivity(intent)
-                        result.success(null)
-                    }
-
                     "scheduleWatchdog" -> {
                         GuardianWorker.scheduleIfNeeded(this)
                         WatchdogReceiver.schedule(this)
@@ -281,27 +264,6 @@ class MainActivity : FlutterActivity() {
                                 }
                             }
                         }.start()
-                    }
-
-                    "startVpn" -> {
-                        val vpnIntent = android.net.VpnService.prepare(this@MainActivity)
-                        if (vpnIntent != null) {
-                            startActivityForResult(vpnIntent, 100)
-                        } else {
-                            val intent = Intent(this@MainActivity, GuardianVpnService::class.java).apply {
-                                action = GuardianVpnService.ACTION_START
-                            }
-                            startService(intent)
-                        }
-                        result.success(null)
-                    }
-
-                    "stopVpn" -> {
-                        val intent = Intent(this@MainActivity, GuardianVpnService::class.java).apply {
-                            action = GuardianVpnService.ACTION_STOP
-                        }
-                        startService(intent)
-                        result.success(null)
                     }
 
                     else -> result.notImplemented()
@@ -359,16 +321,6 @@ class MainActivity : FlutterActivity() {
                     unregisterForegroundReceiver()
                 }
             })
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 100 && resultCode == android.app.Activity.RESULT_OK) {
-            val intent = Intent(this, GuardianVpnService::class.java).apply {
-                action = GuardianVpnService.ACTION_START
-            }
-            startService(intent)
-        }
     }
 
     private fun registerBlockReceiver() {

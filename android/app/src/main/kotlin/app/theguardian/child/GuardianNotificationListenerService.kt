@@ -46,6 +46,8 @@ class GuardianNotificationListenerService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        if (!isAccountMonitoringEnabled()) return
+
         val packageName = sbn.packageName
 
         // 1. Filtrer les applications surveillées choisies par le parent (Étape 1)
@@ -84,7 +86,7 @@ class GuardianNotificationListenerService : NotificationListenerService() {
         // A. Vérifier le cache mémoire (Étape 10 : Optimisations)
         var analysisResult = memoryCache.get(cacheKey)
         if (analysisResult != null) {
-            Log.d(TAG, "Found result in memory cache for: ${extracted.sender}")
+            Log.d(TAG, "Found notification result in memory cache.")
             applyDecision(extracted, sbn, analysisResult)
             return
         }
@@ -100,7 +102,7 @@ class GuardianNotificationListenerService : NotificationListenerService() {
             )
         }
         if (dbDuplicate != null) {
-            Log.d(TAG, "Found result in database cache for: ${extracted.sender}")
+            Log.d(TAG, "Found notification result in database cache.")
             analysisResult = GeminiAnalysisResult(
                 risk = dbDuplicate.riskLevel,
                 score = dbDuplicate.score,
@@ -115,7 +117,7 @@ class GuardianNotificationListenerService : NotificationListenerService() {
         }
 
         // C. Appeler l'analyse de l'API Gemini (Étape 3)
-        Log.i(TAG, "Analyzing new notification from ${extracted.sender} via Gemini API...")
+        Log.i(TAG, "Analyzing a new notification through the authenticated backend.")
         analysisResult = GeminiNotificationAnalyzer.analyze(applicationContext, extracted)
 
         // D. Sauvegarder dans le cache mémoire
@@ -132,14 +134,14 @@ class GuardianNotificationListenerService : NotificationListenerService() {
     ) {
         // Évaluation du risque (Étape 4)
         val decision = NotificationRiskEngine.evaluate(result)
-        Log.d(TAG, "Evaluation result for ${extracted.sender}: risk=${result.risk} decision=$decision")
+        Log.d(TAG, "Notification evaluation: risk=${result.risk} decision=$decision")
 
         // Exécution de l'action de blocage / suppression (Étape 5)
         if (decision == NotificationDecision.DISMISS || decision == NotificationDecision.BLOCK_AND_ALERT) {
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     cancelNotification(sbn.key)
-                    Log.i(TAG, "Successfully canceled/dismissed notification from ${extracted.sender} due to ${result.category}")
+                    Log.i(TAG, "Notification canceled after a ${result.category} risk decision.")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to cancel notification: ${e.message}")
@@ -148,6 +150,18 @@ class GuardianNotificationListenerService : NotificationListenerService() {
 
         // Enregistrement historique + Alerte parent (Étape 5 et 6)
         NotificationRiskEngine.processDecision(applicationContext, extracted, result, decision)
+    }
+
+
+    private fun isAccountMonitoringEnabled(): Boolean {
+        val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        return when {
+            prefs.contains("flutter.guardian_monitor_account_activity") ->
+                prefs.getBoolean("flutter.guardian_monitor_account_activity", false)
+            prefs.contains("guardian_monitor_account_activity") ->
+                prefs.getBoolean("guardian_monitor_account_activity", false)
+            else -> false
+        }
     }
 
     private fun getMonitoredPackages(): Set<String> {

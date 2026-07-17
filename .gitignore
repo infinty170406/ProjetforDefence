@@ -43,3 +43,29 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Credentials, exported configuration and local signing material
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+*.base64
+*.secret
+*.secrets
+.env
+.env.*
+!*.env.example
+android/key.properties
+google_services_base64.txt
+keystore_base64.txt
+android.zip
+lib.zip
+
+# Local SDK paths and generated diagnostics
+/android/local.properties
+/analyze_output.txt
+/android/build_error.txt
+
+# Local archives must never be committed
+/*.zip

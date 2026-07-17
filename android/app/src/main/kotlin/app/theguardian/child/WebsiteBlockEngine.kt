@@ -116,9 +116,9 @@ class WebsiteBlockEngine {
                 host
             } catch (e: Exception) {
                 try {
-                    android.util.Log.e(TAG, "Error normalizing URL: $url", e)
+                    android.util.Log.e(TAG, "Error normalizing a URL.", e)
                 } catch (t: Throwable) {
-                    println("[$TAG] Error normalizing URL: $url: ${e.message}")
+                    println("[$TAG] Error normalizing a URL.")
                 }
                 ""
             }
