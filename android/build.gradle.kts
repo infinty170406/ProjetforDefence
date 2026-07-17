@@ -51,15 +51,14 @@ subprojects {
 // BaseExtension.
 // ---------------------------------------------------------------------------
 subprojects {
-    val configureAction = Action<Project> {
-        extensions.findByType(com.android.build.gradle.BaseExtension::class.java)
-            ?.buildToolsVersion = "36.1.0"
-    }
-    if (state.executed) {
-        configureAction.execute(this)
-    } else {
-        afterEvaluate {
-            configureAction.execute(this@subprojects)
+    if (project.name != "app") {
+        project.plugins.configureEach {
+            if (this is com.android.build.gradle.LibraryPlugin) {
+                project.extensions.configure<com.android.build.gradle.LibraryExtension> {
+                    buildToolsVersion = "36.1.0"
+                    compileSdkVersion(36)
+                }
+            }
         }
     }
 }
