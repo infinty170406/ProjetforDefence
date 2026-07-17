@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/child_enforcement_service.dart';
+import '../../core/services/api_service.dart';
+import '../../core/services/api_config.dart';
 
 class ChildPairingScreen extends StatefulWidget {
   final String? initialCode;
@@ -63,12 +64,12 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
       }
 
       // ── Step 2: consume the one-time token server-side ───────────────────
-      final result = await FirebaseFunctions.instance
-          .httpsCallable('activateChildDevice')
-          .call<Map<String, dynamic>>({'token': code});
-      final data = Map<String, dynamic>.from(result.data);
-      final parentId = data['parentId'] as String?;
-      final childId = data['childId'] as String?;
+      final result = await ApiService().postWithAuth(
+        ApiConfig.pairDevice,
+        {'token': code},
+      );
+      final parentId = result['parentId'] as String?;
+      final childId = result['childId'] as String?;
       if (parentId == null || childId == null) {
         throw StateError('Invalid pairing response.');
       }

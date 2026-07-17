@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
+import 'api_config.dart';
+import 'api_service.dart';
 
 /// Gère l'invitation d'un second parent via un code Firestore.
 class ParentInviteService {
@@ -16,10 +17,11 @@ class ParentInviteService {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return null;
 
-      final result = await FirebaseFunctions.instance
-          .httpsCallable('createParentInvite')
-          .call<Map<String, dynamic>>();
-      return result.data['code'] as String?;
+      final result = await ApiService().postWithAuth(
+        ApiConfig.createInvite,
+        const {},
+      );
+      return result['code'] as String?;
     } catch (e) {
       debugPrint('INVITE: Erreur lors de la génération du code: $e');
       return null;
@@ -34,16 +36,17 @@ class ParentInviteService {
     if (user == null) return ParentInviteResult.notAuthenticated;
 
     try {
-      await FirebaseFunctions.instance
-          .httpsCallable('acceptParentInvite')
-          .call<Map<String, dynamic>>({'code': code});
+      await ApiService().postWithAuth(
+        ApiConfig.acceptInvite,
+        {'code': code},
+      );
       return ParentInviteResult.success;
-    } on FirebaseFunctionsException catch (e) {
-      return switch (e.code) {
-        'not-found' => ParentInviteResult.notFound,
-        'deadline-exceeded' => ParentInviteResult.expired,
-        'failed-precondition' => ParentInviteResult.alreadyUsed,
-        'permission-denied' => ParentInviteResult.ownCode,
+    } on ApiException catch (e) {
+      return switch (e.statusCode) {
+        404 => ParentInviteResult.notFound,
+        410 => ParentInviteResult.expired,
+        412 => ParentInviteResult.alreadyUsed,
+        403 => ParentInviteResult.ownCode,
         _ => ParentInviteResult.error,
       };
     } catch (e) {

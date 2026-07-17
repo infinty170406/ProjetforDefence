@@ -42,6 +42,12 @@ class ApiConfig {
   // login and register are now handled via Firebase Magic Link / OTP
   static const String sendOtp = '/api/v1/auth/otp/send';
   static const String verifyOtp = '/api/v1/auth/otp/verify';
+  static const String createInvite = '/api/v1/family/invites';
+  static const String acceptInvite = '/api/v1/family/invites/accept';
+  static const String pairDevice = '/api/v1/device/pair';
+  static const String reportAlert = '/api/v1/device/alerts';
+  static const String updateMetadata = '/api/v1/device/metadata';
+  static const String analyzeNotification = '/api/v1/device/notifications/analyze';
   static const String verifyKyc = '/api/v1/auth/kyc/verify';
   static const String billingCheckout = '/api/v1/billing/checkout';
   static const String billingCharge = '/api/v1/billing/charge';

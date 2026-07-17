@@ -393,6 +393,13 @@ class ApiService extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> postWithAuth(
+    String path,
+    Map<String, dynamic> data,
+  ) async {
+    return _postWithFirebaseAuth(path, data);
+  }
+
   Future<Map<String, dynamic>> getMyChildren() async {
     try {
       final children = await FirestoreService().getMyChildren();
