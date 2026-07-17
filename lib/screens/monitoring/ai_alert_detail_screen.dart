@@ -75,7 +75,11 @@ class _AiAlertDetailScreenState extends State<AiAlertDetailScreen> {
           'description': alert.description,
         },
       );
-      if (mounted) setState(() { _analysis = analysis; _isLoading = false; });
+      if (mounted)
+        setState(() {
+          _analysis = analysis;
+          _isLoading = false;
+        });
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -108,15 +112,25 @@ class _AiAlertDetailScreenState extends State<AiAlertDetailScreen> {
                                 fontSize: 12,
                                 letterSpacing: 1.5)),
                         const SizedBox(height: 16),
-                        _buildActionButton('Ajuster les règles',
-                            Icons.settings_outlined, AppColors.primary, _onAdjustRules),
+                        _buildActionButton(
+                            'Ajuster les règles',
+                            Icons.settings_outlined,
+                            AppColors.primary,
+                            _onAdjustRules),
                         const SizedBox(height: 12),
-                        _buildActionButton('Réduire le temps d\'écran',
-                            Icons.timer_off_outlined, Colors.red, _onReduceLimit),
+                        _buildActionButton(
+                            'Réduire le temps d\'écran',
+                            Icons.timer_off_outlined,
+                            Colors.red,
+                            _onReduceLimit),
                         const SizedBox(height: 12),
-                        _buildActionButton('Ignorer cette fois',
+                        _buildActionButton(
+                            'Ignorer cette fois',
                             Icons.check_circle_outline,
-                            Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                            Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.4),
                             () => context.pop()),
                       ],
                     ),
@@ -159,7 +173,8 @@ class _AiAlertDetailScreenState extends State<AiAlertDetailScreen> {
       context.pop();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Erreur: $e')));
     }
   }
 
@@ -172,10 +187,13 @@ class _AiAlertDetailScreenState extends State<AiAlertDetailScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-              icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
+              icon: Icon(Icons.close,
+                  color: Theme.of(context).colorScheme.onSurface),
               onPressed: () => context.pop()),
           Text('DÉTAIL DE L\'ALERTE',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(width: 48),
         ],
       ),
@@ -194,7 +212,9 @@ class _AiAlertDetailScreenState extends State<AiAlertDetailScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: risk.color.withValues(alpha: 0.12), shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                    color: risk.color.withValues(alpha: 0.12),
+                    shape: BoxShape.circle),
                 child: Icon(Icons.warning_amber_rounded, color: risk.color),
               ),
               const SizedBox(width: 12),
@@ -210,14 +230,19 @@ class _AiAlertDetailScreenState extends State<AiAlertDetailScreen> {
           const SizedBox(height: 16),
           Text(alert?.description ?? 'Aucun détail disponible.',
               style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 15, height: 1.5)),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 15,
+                  height: 1.5)),
           if (_analysis != null) ...[
             const SizedBox(height: 16),
             Row(
               children: [
-                _buildSmallBadge('Risque: ${_analysis!.risk.label}', _analysis!.risk.color),
+                _buildSmallBadge(
+                    'Risque: ${_analysis!.risk.label}', _analysis!.risk.color),
                 const SizedBox(width: 8),
-                Flexible(child: _buildSmallBadge(_analysis!.frequency, Theme.of(context).colorScheme.onSurface)),
+                Flexible(
+                    child: _buildSmallBadge(_analysis!.frequency,
+                        Theme.of(context).colorScheme.onSurface)),
               ],
             ),
           ],
@@ -237,7 +262,8 @@ class _AiAlertDetailScreenState extends State<AiAlertDetailScreen> {
       child: Text(text,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+          style: TextStyle(
+              color: color, fontSize: 11, fontWeight: FontWeight.bold)),
     );
   }
 
@@ -251,7 +277,9 @@ class _AiAlertDetailScreenState extends State<AiAlertDetailScreen> {
             const SizedBox(width: 8),
             Text('ANALYSE GUARDIAN',
                 style: TextStyle(
-                    color: AppColors.accentTeal, fontWeight: FontWeight.bold, fontSize: 14)),
+                    color: AppColors.accentTeal,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14)),
             if (_isLoading)
               const Padding(
                 padding: EdgeInsets.only(left: 12),
@@ -260,7 +288,8 @@ class _AiAlertDetailScreenState extends State<AiAlertDetailScreen> {
                   height: 12,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentTeal),
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(AppColors.accentTeal),
                   ),
                 ),
               ),
@@ -269,13 +298,17 @@ class _AiAlertDetailScreenState extends State<AiAlertDetailScreen> {
         const SizedBox(height: 12),
         if (_analysis?.context.isNotEmpty ?? false) ...[
           Text(_analysis!.context,
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13.5, height: 1.5)),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 13.5,
+                  height: 1.5)),
           const SizedBox(height: 10),
         ],
         Text(
             _isLoading
                 ? 'Analyse de la situation en cours...'
-                : (_analysis?.comment ?? 'Analyse indisponible pour le moment.'),
+                : (_analysis?.comment ??
+                    'Analyse indisponible pour le moment.'),
             style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 14,
@@ -285,7 +318,8 @@ class _AiAlertDetailScreenState extends State<AiAlertDetailScreen> {
     );
   }
 
-  Widget _buildActionButton(String label, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildActionButton(
+      String label, IconData icon, Color color, VoidCallback onTap) {
     return GlassCard(
       onTap: onTap,
       child: Padding(
@@ -296,9 +330,14 @@ class _AiAlertDetailScreenState extends State<AiAlertDetailScreen> {
             const SizedBox(width: 16),
             Text(label,
                 style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w600)),
             const Spacer(),
-            Icon(Icons.chevron_right, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24)),
+            Icon(Icons.chevron_right,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.24)),
           ],
         ),
       ),

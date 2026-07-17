@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../constants/app_constants.dart';
-import '../utils/device_status_helper.dart';
 
 class ChildRepository {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -18,18 +17,34 @@ class ChildRepository {
 
   CollectionReference get _childrenCol => _parentDoc.collection('children');
 
-  /// Récupère la liste des enfants en temps réel
-  Stream<List<Map<String, dynamic>>> watchChildren() {
-    if (_uid == null) return Stream.value([]);
-    return _childrenCol
-        .orderBy('createdAt', descending: false)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              data['id'] = doc.id;
-              return data;
-            }).toList());
+  static const _pairingTokenAlphabet =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+
+  String _newPairingToken() {
+    final random = Random.secure();
+    return List.generate(
+      48,
+      (_) =>
+          _pairingTokenAlphabet[random.nextInt(_pairingTokenAlphabet.length)],
+    ).join();
   }
+
+  /// Source de vérité Firestore pour la liste des enfants.
+  Stream<List<Map<String, dynamic>>> watchChildren() {
+    return _childrenCol
+        .orderBy('createdAt')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => <String, dynamic>{
+                  ...(doc.data() as Map<String, dynamic>),
+                  'id': doc.id,
+                })
+            .toList());
+  }
+
+  Future<int> getChildrenCount() => _childrenCol.count().get().then(
+        (snapshot) => snapshot.count ?? 0,
+      );
 
   /// Récupère l'historique d'un enfant
   Future<List<Map<String, dynamic>>> getHistory(String childId) async {
@@ -48,14 +63,26 @@ class ChildRepository {
     }
   }
 
-  /// Crée un nouvel enfant avec une structure par défaut
   Future<Map<String, dynamic>> createChild({
     required String displayName,
     required int age,
     bool isMinor = true,
+    String? avatar,
+    String? relation,
   }) async {
     final docRef = _childrenCol.doc();
-    final randomToken = (100000 + Random().nextInt(900000)).toString(); // 6 digits
+    final randomToken = _newPairingToken();
+
+    String? familyId;
+    try {
+      final parentSnap = await _parentDoc.get();
+      if (parentSnap.exists) {
+        final parentData = parentSnap.data() as Map<String, dynamic>?;
+        familyId = parentData?['familyId'] as String?;
+      }
+    } catch (e) {
+      if (kDebugMode) print('ChildRepository: fetch familyId error: $e');
+    }
 
     final data = {
       'id': docRef.id,
@@ -64,20 +91,39 @@ class ChildRepository {
       'isMinor': isMinor,
       'ageGroup': isMinor ? 'MINOR' : 'ADULT',
       'parentId': _uid,
+      if (familyId != null) 'familyId': familyId,
       'deviceStatus': AppConstants.statusOffline,
       'createdAt': FieldValue.serverTimestamp(),
       'isLinked': false,
       'invitationToken': randomToken,
+      'invitationExpiresAt': Timestamp.fromDate(
+        DateTime.now().add(const Duration(hours: 48)),
+      ),
+      if (avatar != null) 'avatar': avatar,
+      if (relation != null) 'relation': relation,
     };
 
     await docRef.set(data);
     await _initDefaultRules(docRef, isMinor);
     await _ensureChildStructure(docRef.id);
 
+    if (familyId != null) {
+      try {
+        await _db.collection('families').doc(familyId).update({
+          'children': FieldValue.arrayUnion([docRef.id]),
+        });
+      } catch (e) {
+        if (kDebugMode) {
+          print('ChildRepository: update family children error: $e');
+        }
+      }
+    }
+
     return {...data, 'id': docRef.id};
   }
 
-  Future<void> _initDefaultRules(DocumentReference childDoc, bool isMinor) async {
+  Future<void> _initDefaultRules(
+      DocumentReference childDoc, bool isMinor) async {
     await childDoc.collection('rules').doc('active').set({
       'blockedApps': [],
       'dailyLimitMinutes': isMinor ? 120 : 0,
@@ -107,18 +153,28 @@ class ChildRepository {
     final childDoc = _childrenCol.doc(childId);
 
     // Initialisation des hubs d'alertes
-    batch.set(childDoc.collection('alerts').doc('usage'), {'initialized': true, 'type': 'usage_hub'}, SetOptions(merge: true));
-    batch.set(childDoc.collection('alerts').doc('notifications'), {'initialized': true, 'type': 'notif_hub'}, SetOptions(merge: true));
+    batch.set(childDoc.collection('alerts').doc('usage'),
+        {'initialized': true, 'type': 'usage_hub'}, SetOptions(merge: true));
+    batch.set(childDoc.collection('alerts').doc('notifications'),
+        {'initialized': true, 'type': 'notif_hub'}, SetOptions(merge: true));
 
     // Structure des statistiques
-    batch.set(childDoc.collection('alerts').doc('usage').collection('apps').doc(today), {
-      'lastInit': FieldValue.serverTimestamp(),
-      'childId': childId,
-      'date': today,
-    }, SetOptions(merge: true));
+    batch.set(
+        childDoc
+            .collection('alerts')
+            .doc('usage')
+            .collection('apps')
+            .doc(today),
+        {
+          'lastInit': FieldValue.serverTimestamp(),
+          'childId': childId,
+          'date': today,
+        },
+        SetOptions(merge: true));
 
     // Inventaire
-    batch.set(childDoc.collection('inventory').doc('summary'), {'initialized': true}, SetOptions(merge: true));
+    batch.set(childDoc.collection('inventory').doc('summary'),
+        {'initialized': true}, SetOptions(merge: true));
 
     await batch.commit();
   }
@@ -135,9 +191,11 @@ class ChildRepository {
   }
 
   Stream<String> watchDeviceStatus(String childId) {
-    if (_uid == null || childId.isEmpty) return Stream.value(AppConstants.statusOffline);
-    return _childrenCol.doc(childId).snapshots().map((snap) {
-      return resolveDeviceStatus(snap.data() as Map<String, dynamic>?);
-    });
+    return _childrenCol.doc(childId).snapshots().map(
+          (snapshot) =>
+              (snapshot.data() as Map<String, dynamic>?)?['deviceStatus']
+                  as String? ??
+              AppConstants.statusOffline,
+        );
   }
 }

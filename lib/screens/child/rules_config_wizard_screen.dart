@@ -8,7 +8,7 @@ import '../../core/services/firestore_service.dart';
 
 class _RulesConfig {
   int dailyLimitMinutes;
-  bool screenTimeEnabled;
+  bool screenTimeEnabled = true;
   String? allowedTimeStart;
   String? allowedTimeEnd;
   bool scheduleEnabled = false;
@@ -33,7 +33,6 @@ class _RulesConfig {
 
   _RulesConfig({
     this.dailyLimitMinutes = 120,
-    this.screenTimeEnabled = true,
     this.blockAdultContent = true,
     this.blockSocialMedia = false,
     this.blockGaming = false,
@@ -124,22 +123,102 @@ class _RulesConfig {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const _kKnownApps = [
-  {'pkg': 'com.facebook.katana', 'name': 'Facebook', 'cat': 'Social', 'icon': Icons.facebook},
-  {'pkg': 'com.instagram.android', 'name': 'Instagram', 'cat': 'Social', 'icon': Icons.photo_camera},
-  {'pkg': 'com.snapchat.android', 'name': 'Snapchat', 'cat': 'Social', 'icon': Icons.remove_red_eye},
-  {'pkg': 'com.zhiliaoapp.musically', 'name': 'TikTok', 'cat': 'Social', 'icon': Icons.music_video},
-  {'pkg': 'com.twitter.android', 'name': 'Twitter/X', 'cat': 'Social', 'icon': Icons.alternate_email},
-  {'pkg': 'com.whatsapp', 'name': 'WhatsApp', 'cat': 'Messaging', 'icon': Icons.chat},
-  {'pkg': 'com.discord', 'name': 'Discord', 'cat': 'Messaging', 'icon': Icons.headset},
-  {'pkg': 'com.google.android.youtube', 'name': 'YouTube', 'cat': 'Entertainment', 'icon': Icons.play_circle},
-  {'pkg': 'com.netflix.mediaclient', 'name': 'Netflix', 'cat': 'Entertainment', 'icon': Icons.live_tv},
-  {'pkg': 'com.spotify.music', 'name': 'Spotify', 'cat': 'Entertainment', 'icon': Icons.music_note},
-  {'pkg': 'com.roblox.client', 'name': 'Roblox', 'cat': 'Gaming', 'icon': Icons.games},
-  {'pkg': 'com.mojang.minecraftpe', 'name': 'Minecraft', 'cat': 'Gaming', 'icon': Icons.grid_view},
-  {'pkg': 'com.activision.callofduty.shooter', 'name': 'Call of Duty', 'cat': 'Gaming', 'icon': Icons.sports_esports},
-  {'pkg': 'com.google.android.gm', 'name': 'Gmail', 'cat': 'Productivity', 'icon': Icons.email},
-  {'pkg': 'com.google.android.apps.maps', 'name': 'Maps', 'cat': 'Utility', 'icon': Icons.map},
-  {'pkg': 'com.android.chrome', 'name': 'Chrome', 'cat': 'Browser', 'icon': Icons.language},
+  {
+    'pkg': 'com.facebook.katana',
+    'name': 'Facebook',
+    'cat': 'Social',
+    'icon': Icons.facebook
+  },
+  {
+    'pkg': 'com.instagram.android',
+    'name': 'Instagram',
+    'cat': 'Social',
+    'icon': Icons.photo_camera
+  },
+  {
+    'pkg': 'com.snapchat.android',
+    'name': 'Snapchat',
+    'cat': 'Social',
+    'icon': Icons.remove_red_eye
+  },
+  {
+    'pkg': 'com.zhiliaoapp.musically',
+    'name': 'TikTok',
+    'cat': 'Social',
+    'icon': Icons.music_video
+  },
+  {
+    'pkg': 'com.twitter.android',
+    'name': 'Twitter/X',
+    'cat': 'Social',
+    'icon': Icons.alternate_email
+  },
+  {
+    'pkg': 'com.whatsapp',
+    'name': 'WhatsApp',
+    'cat': 'Messaging',
+    'icon': Icons.chat
+  },
+  {
+    'pkg': 'com.discord',
+    'name': 'Discord',
+    'cat': 'Messaging',
+    'icon': Icons.headset
+  },
+  {
+    'pkg': 'com.google.android.youtube',
+    'name': 'YouTube',
+    'cat': 'Entertainment',
+    'icon': Icons.play_circle
+  },
+  {
+    'pkg': 'com.netflix.mediaclient',
+    'name': 'Netflix',
+    'cat': 'Entertainment',
+    'icon': Icons.live_tv
+  },
+  {
+    'pkg': 'com.spotify.music',
+    'name': 'Spotify',
+    'cat': 'Entertainment',
+    'icon': Icons.music_note
+  },
+  {
+    'pkg': 'com.roblox.client',
+    'name': 'Roblox',
+    'cat': 'Gaming',
+    'icon': Icons.games
+  },
+  {
+    'pkg': 'com.mojang.minecraftpe',
+    'name': 'Minecraft',
+    'cat': 'Gaming',
+    'icon': Icons.grid_view
+  },
+  {
+    'pkg': 'com.activision.callofduty.shooter',
+    'name': 'Call of Duty',
+    'cat': 'Gaming',
+    'icon': Icons.sports_esports
+  },
+  {
+    'pkg': 'com.google.android.gm',
+    'name': 'Gmail',
+    'cat': 'Productivity',
+    'icon': Icons.email
+  },
+  {
+    'pkg': 'com.google.android.apps.maps',
+    'name': 'Maps',
+    'cat': 'Utility',
+    'icon': Icons.map
+  },
+  {
+    'pkg': 'com.android.chrome',
+    'name': 'Chrome',
+    'cat': 'Browser',
+    'icon': Icons.language
+  },
 ];
 
 const _kKnownWebsites = [
@@ -157,8 +236,24 @@ const _kKnownWebsites = [
   {'domain': 'instagram.com', 'name': 'Instagram'},
 ];
 
-const _kStepLabels = ['Screen Time', 'Apps', 'Websites', 'Content', 'Keywords', 'Safe Zones', 'Summary'];
-const _kStepIcons = [Icons.timer_outlined, Icons.apps, Icons.language, Icons.shield_outlined, Icons.manage_search, Icons.location_on, Icons.check_circle_outline];
+const _kStepLabels = [
+  'Screen Time',
+  'Apps',
+  'Websites',
+  'Content',
+  'Keywords',
+  'Safe Zones',
+  'Summary'
+];
+const _kStepIcons = [
+  Icons.timer_outlined,
+  Icons.apps,
+  Icons.language,
+  Icons.shield_outlined,
+  Icons.manage_search,
+  Icons.location_on,
+  Icons.check_circle_outline
+];
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -167,7 +262,8 @@ class RulesConfigWizardScreen extends StatefulWidget {
   const RulesConfigWizardScreen({super.key, this.child});
 
   @override
-  State<RulesConfigWizardScreen> createState() => _RulesConfigWizardScreenState();
+  State<RulesConfigWizardScreen> createState() =>
+      _RulesConfigWizardScreenState();
 }
 
 class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
@@ -209,16 +305,19 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
       if (_cfg.scheduleEnabled) {
         final startParts = (_cfg.allowedTimeStart ?? '08:00').split(':');
         final endParts = (_cfg.allowedTimeEnd ?? '21:00').split(':');
-        final startMin = int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
+        final startMin =
+            int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
         final endMin = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
-        
+
         int scheduleDuration = endMin - startMin;
         if (scheduleDuration < 0) {
           scheduleDuration += 24 * 60; // overnight
         }
-        
-        if (_cfg.screenTimeEnabled && _cfg.dailyLimitMinutes > scheduleDuration) {
-          _timeError = "Schedule duration must be greater than or equal to the screen time limit.";
+
+        if (_cfg.screenTimeEnabled &&
+            _cfg.dailyLimitMinutes > scheduleDuration) {
+          _timeError =
+              "Schedule duration must be greater than or equal to the screen time limit.";
         }
       }
     });
@@ -228,9 +327,9 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
     _validateTime();
     if (_timeError != null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_timeError!), backgroundColor: AppColors.statusDanger)
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(_timeError!),
+            backgroundColor: AppColors.statusDanger));
       }
       return;
     }
@@ -242,9 +341,12 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
         childId,
         blockedApps: _cfg.blockedApps,
         blockedWebsites: _cfg.blockedWebsites,
-        dailyLimitMinutes: _cfg.screenTimeEnabled ? _cfg.dailyLimitMinutes : 1440,
-        allowedTimeStart: _cfg.scheduleEnabled ? (_cfg.allowedTimeStart ?? '08:00') : null,
-        allowedTimeEnd: _cfg.scheduleEnabled ? (_cfg.allowedTimeEnd ?? '21:00') : null,
+        dailyLimitMinutes:
+            _cfg.screenTimeEnabled ? _cfg.dailyLimitMinutes : 1440,
+        allowedTimeStart:
+            _cfg.scheduleEnabled ? (_cfg.allowedTimeStart ?? '08:00') : null,
+        allowedTimeEnd:
+            _cfg.scheduleEnabled ? (_cfg.allowedTimeEnd ?? '21:00') : null,
         blockSocialMedia: _cfg.blockSocialMedia,
         blockGaming: _cfg.blockGaming,
         blockAdultContent: _cfg.blockAdultContent,
@@ -263,14 +365,16 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
         blockReason: _cfg.blockReason,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Rules saved ✓'), backgroundColor: Colors.green.shade700));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Rules saved ✓'),
+            backgroundColor: Colors.green.shade700));
         context.pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.statusDanger));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppColors.statusDanger));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -283,7 +387,6 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
     final age = (widget.child?['age'] ?? 12) as int;
 
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -311,13 +414,16 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
           Row(
             children: [
               IconButton(
-                icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
+                icon: Icon(Icons.close,
+                    color: Theme.of(context).colorScheme.onSurface),
                 onPressed: () => context.pop(),
               ),
               Spacer(),
               Text('Configure Rules',
                   style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold)),
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
               Spacer(),
               SizedBox(width: 48),
             ],
@@ -325,7 +431,9 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
           SizedBox(height: 4),
           Center(
             child: Text('$name · $age years old',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13)),
           ),
         ],
       ),
@@ -344,7 +452,12 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 height: 2,
-                color: stepIdx < _step ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
+                color: stepIdx < _step
+                    ? AppColors.primary
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.12),
               ),
             );
           }
@@ -361,17 +474,31 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                   ? AppColors.primary
                   : isCurrent
                       ? AppColors.primary.withValues(alpha: 0.2)
-                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+                      : Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.06),
               border: Border.all(
-                color: (isDone || isCurrent) ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24),
+                color: (isDone || isCurrent)
+                    ? AppColors.primary
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.24),
                 width: 2,
               ),
             ),
             child: Center(
               child: isDone
-                  ? Icon(Icons.check, color: Theme.of(context).colorScheme.onSurface, size: 16)
+                  ? Icon(Icons.check,
+                      color: Theme.of(context).colorScheme.onSurface, size: 16)
                   : Icon(_kStepIcons[stepIdx],
-                      color: isCurrent ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
+                      color: isCurrent
+                          ? AppColors.primary
+                          : Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.38),
                       size: 16),
             ),
           );
@@ -425,7 +552,12 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
         if (_cfg.screenTimeEnabled) ...[
           SizedBox(height: 24),
           Text('Daily screen time limit',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 14)),
+              style: TextStyle(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.70),
+                  fontSize: 14)),
           SizedBox(height: 16),
           Center(
             child: Text(
@@ -442,7 +574,8 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             max: 1440,
             divisions: 96,
             activeColor: AppColors.primary,
-            inactiveColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
+            inactiveColor:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
             onChanged: (v) {
               setState(() => _cfg.dailyLimitMinutes = v.round());
               _validateTime();
@@ -451,8 +584,14 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('0 min', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
-              Text('24 hours', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
+              Text('0 min',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 11)),
+              Text('24 hours',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 11)),
             ],
           ),
         ],
@@ -475,18 +614,15 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
               Expanded(
                   child: _timePicker('From', _cfg.allowedTimeStart ?? '08:00',
                       (t) {
-                        setState(() => _cfg.allowedTimeStart = t);
-                        _validateTime();
-                      },
-                      hasError: _timeError != null)),
+                setState(() => _cfg.allowedTimeStart = t);
+                _validateTime();
+              }, hasError: _timeError != null)),
               SizedBox(width: 12),
               Expanded(
-                  child: _timePicker('To', _cfg.allowedTimeEnd ?? '21:00',
-                      (t) {
-                        setState(() => _cfg.allowedTimeEnd = t);
-                        _validateTime();
-                      },
-                      hasError: _timeError != null)),
+                  child: _timePicker('To', _cfg.allowedTimeEnd ?? '21:00', (t) {
+                setState(() => _cfg.allowedTimeEnd = t);
+                _validateTime();
+              }, hasError: _timeError != null)),
             ],
           ),
           if (_timeError != null)
@@ -494,7 +630,10 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
               padding: EdgeInsets.only(top: 8, left: 4),
               child: Text(
                 _timeError!,
-                style: TextStyle(color: AppColors.statusDanger, fontSize: 12, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                    color: AppColors.statusDanger,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500),
               ),
             ),
         ],
@@ -517,7 +656,8 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             return Theme(
               data: Theme.of(context).copyWith(
                 colorScheme: ColorScheme.dark(
-                  primary: AppColors.primary.withValues(alpha: 0.6), // Dimmed purple
+                  primary:
+                      AppColors.primary.withValues(alpha: 0.6), // Dimmed purple
                   surface: Theme.of(context).scaffoldBackgroundColor,
                   onSurface: Theme.of(context).colorScheme.onSurface,
                   onPrimary: Theme.of(context).colorScheme.onSurface,
@@ -548,7 +688,8 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
           children: [
             Text(label,
                 style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 11)),
             SizedBox(height: 4),
             Text(value,
                 style: TextStyle(
@@ -565,7 +706,8 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
 
   Widget _buildStep2() {
     final age = (widget.child?['age'] ?? 12) as int;
-    final categories = _kKnownApps.map((a) => a['cat'] as String).toSet().toList();
+    final categories =
+        _kKnownApps.map((a) => a['cat'] as String).toSet().toList();
     final filtered = _kKnownApps.where((a) {
       final n = (a['name'] as String).toLowerCase();
       return _appSearch.isEmpty || n.contains(_appSearch.toLowerCase());
@@ -582,7 +724,10 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
           decoration: BoxDecoration(
             color: Theme.of(context).brightness == Brightness.light
                 ? Colors.white.withValues(alpha: 0.92)
-                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+                : Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Theme.of(context).colorScheme.outline),
           ),
@@ -590,9 +735,11 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             decoration: InputDecoration(
               hintText: 'Search apps...',
-              hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              hintStyle: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
               border: InputBorder.none,
-              icon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              icon: Icon(Icons.search,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             onChanged: (v) => setState(() => _appSearch = v),
           ),
@@ -645,7 +792,9 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: blocked ? AppColors.statusDanger.withValues(alpha: 0.4) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
+          color: blocked
+              ? AppColors.statusDanger.withValues(alpha: 0.4)
+              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
         ),
       ),
       child: Row(
@@ -661,7 +810,9 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
           SizedBox(width: 12),
           Expanded(
             child: Text(app['name'] as String,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w500)),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w500)),
           ),
           Switch(
             value: blocked,
@@ -670,12 +821,15 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                 if (v) {
                   _cfg.blockedApps = [..._cfg.blockedApps, pkg];
                 } else {
-                  _cfg.blockedApps = _cfg.blockedApps.where((p) => p != pkg).toList();
+                  _cfg.blockedApps =
+                      _cfg.blockedApps.where((p) => p != pkg).toList();
                 }
               });
             },
             thumbColor: WidgetStateProperty.resolveWith<Color?>(
-              (states) => states.contains(WidgetState.selected) ? AppColors.statusDanger : null,
+              (states) => states.contains(WidgetState.selected)
+                  ? AppColors.statusDanger
+                  : null,
             ),
           ),
         ],
@@ -693,9 +847,20 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
         _buildAiInsightCard(_getSuggestionForStep(2, age)),
         _sectionTitle('Website Filter', Icons.language),
         SizedBox(height: 8),
-        Text('Block specific websites', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 13)),
+        Text('Block specific websites',
+            style: TextStyle(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.70),
+                fontSize: 13)),
         SizedBox(height: 16),
-        Text('SUGGESTED', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
+        Text('SUGGESTED',
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 11,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w700)),
         SizedBox(height: 10),
         ..._kKnownWebsites.map((site) {
           final domain = site['domain']!;
@@ -706,22 +871,45 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             decoration: BoxDecoration(
               color: blocked
                   ? AppColors.statusDanger.withValues(alpha: 0.1)
-                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
+                  : Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: blocked ? AppColors.statusDanger.withValues(alpha: 0.3) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
+                color: blocked
+                    ? AppColors.statusDanger.withValues(alpha: 0.3)
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.10),
               ),
             ),
             child: Row(
               children: [
-                Icon(Icons.language, color: blocked ? AppColors.statusDanger : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), size: 18),
+                Icon(Icons.language,
+                    color: blocked
+                        ? AppColors.statusDanger
+                        : Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.54),
+                    size: 18),
                 SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(site['name']!, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w500)),
-                      Text(domain, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
+                      Text(site['name']!,
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.w500)),
+                      Text(domain,
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              fontSize: 11)),
                     ],
                   ),
                 ),
@@ -731,11 +919,15 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                     if (v) {
                       _cfg.blockedWebsites = [..._cfg.blockedWebsites, domain];
                     } else {
-                      _cfg.blockedWebsites = _cfg.blockedWebsites.where((d) => d != domain).toList();
+                      _cfg.blockedWebsites = _cfg.blockedWebsites
+                          .where((d) => d != domain)
+                          .toList();
                     }
                   }),
                   thumbColor: WidgetStateProperty.resolveWith<Color?>(
-                    (states) => states.contains(WidgetState.selected) ? AppColors.statusDanger : null,
+                    (states) => states.contains(WidgetState.selected)
+                        ? AppColors.statusDanger
+                        : null,
                   ),
                 ),
               ],
@@ -743,9 +935,16 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
           );
         }),
         SizedBox(height: 20),
-        Text('CUSTOM DOMAINS', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
+        Text('CUSTOM DOMAINS',
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 11,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w700)),
         SizedBox(height: 10),
-        if (_cfg.blockedWebsites.where((d) => !_kKnownWebsites.any((s) => s['domain'] == d)).isNotEmpty)
+        if (_cfg.blockedWebsites
+            .where((d) => !_kKnownWebsites.any((s) => s['domain'] == d))
+            .isNotEmpty)
           ..._cfg.blockedWebsites
               .where((d) => !_kKnownWebsites.any((s) => s['domain'] == d))
               .map((d) => Container(
@@ -754,17 +953,31 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.statusDanger.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.statusDanger.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color: AppColors.statusDanger.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.block, color: AppColors.statusDanger, size: 16),
+                        Icon(Icons.block,
+                            color: AppColors.statusDanger, size: 16),
                         SizedBox(width: 12),
-                        Expanded(child: Text(d, style: TextStyle(color: Theme.of(context).colorScheme.onSurface))),
+                        Expanded(
+                            child: Text(d,
+                                style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface))),
                         IconButton(
-                          icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), size: 18),
+                          icon: Icon(Icons.close,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.54),
+                              size: 18),
                           onPressed: () => setState(() {
-                            _cfg.blockedWebsites = _cfg.blockedWebsites.where((x) => x != d).toList();
+                            _cfg.blockedWebsites = _cfg.blockedWebsites
+                                .where((x) => x != d)
+                                .toList();
                           }),
                         ),
                       ],
@@ -775,21 +988,33 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             Expanded(
               child: TextField(
                 controller: _domainController,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                style:
+                    TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 decoration: InputDecoration(
                   hintText: 'example.com',
-                  hintStyle: TextStyle(color: Theme.of(context).brightness == Brightness.light ? const Color(0xFF94A3B8) : AppColors.textGray400),
+                  hintStyle: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? const Color(0xFF94A3B8)
+                          : AppColors.textGray400),
                   filled: true,
-                  fillColor: Theme.of(context).brightness == Brightness.light ? Colors.white.withValues(alpha: 0.92) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+                  fillColor: Theme.of(context).brightness == Brightness.light
+                      ? Colors.white.withValues(alpha: 0.92)
+                      : Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.06),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
+                    borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.outline),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
+                    borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.outline),
                   ),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
                 onSubmitted: (_) => _addCustomDomain(),
               ),
@@ -803,7 +1028,8 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.add, color: Theme.of(context).colorScheme.onSurface),
+                child: Icon(Icons.add,
+                    color: Theme.of(context).colorScheme.onSurface),
               ),
             ),
           ],
@@ -834,9 +1060,19 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
         _sectionTitle('Content Rules', Icons.shield_outlined),
         SizedBox(height: 8),
         Text('Block inappropriate content categories',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 13)),
+            style: TextStyle(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.70),
+                fontSize: 13)),
         SizedBox(height: 24),
-        Text('SAFETY & WELL-BEING', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
+        Text('SAFETY & WELL-BEING',
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 11,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w700)),
         SizedBox(height: 12),
         _buildContentToggle(
           'Anxiety / Depression',
@@ -871,7 +1107,12 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
           isDanger: true,
         ),
         SizedBox(height: 24),
-        Text('RESTRICTED CONTENT', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
+        Text('RESTRICTED CONTENT',
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 11,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w700)),
         SizedBox(height: 12),
         _buildContentToggle(
           'Adult & Pornography',
@@ -921,14 +1162,24 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             SizedBox(width: 8),
             Text(
               'CUSTOM CATEGORIES',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.2),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2),
             ),
           ],
         ),
         SizedBox(height: 6),
         Text(
           'Enter custom content categories (e.g. Manga, Betting) to restrict.',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), fontSize: 12, height: 1.4),
+          style: TextStyle(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.54),
+              fontSize: 12,
+              height: 1.4),
         ),
         SizedBox(height: 14),
         Row(
@@ -936,17 +1187,35 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             Expanded(
               child: TextField(
                 controller: _categoryController,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                style:
+                    TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
                   hintText: 'e.g. Manga, Betting...',
-                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
+                  hintStyle: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 13),
                   filled: true,
-                  fillColor: Theme.of(context).brightness == Brightness.light ? Colors.white.withValues(alpha: 0.92) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).colorScheme.outline)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).colorScheme.outline)),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.6))),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  fillColor: Theme.of(context).brightness == Brightness.light
+                      ? Colors.white.withValues(alpha: 0.92)
+                      : Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.06),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.outline)),
+                  enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                          color: Theme.of(context).colorScheme.outline)),
+                  focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                          color: AppColors.primary.withValues(alpha: 0.6))),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
                 onSubmitted: (_) => _addCategory(),
               ),
@@ -956,8 +1225,11 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
               onTap: _addCategory,
               child: Container(
                 padding: EdgeInsets.all(14),
-                decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(12)),
-                child: Icon(Icons.add, color: Theme.of(context).colorScheme.onSurface),
+                decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.add,
+                    color: Theme.of(context).colorScheme.onSurface),
               ),
             ),
           ],
@@ -967,7 +1239,9 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _cfg.customCategories.map((c) => _buildCategoryChip(c)).toList(),
+            children: _cfg.customCategories
+                .map((c) => _buildCategoryChip(c))
+                .toList(),
           ),
         ],
         SizedBox(height: 80),
@@ -991,18 +1265,29 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
       decoration: BoxDecoration(
         color: AppColors.statusWarning.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.statusWarning.withValues(alpha: 0.35)),
+        border:
+            Border.all(color: AppColors.statusWarning.withValues(alpha: 0.35)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.category, color: AppColors.statusWarning, size: 14),
           SizedBox(width: 6),
-          Text(category, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13, fontWeight: FontWeight.w500)),
+          Text(category,
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500)),
           SizedBox(width: 8),
           GestureDetector(
-            onTap: () => setState(() => _cfg.customCategories = _cfg.customCategories.where((c) => c != category).toList()),
-            child: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38), size: 14),
+            onTap: () => setState(() => _cfg.customCategories =
+                _cfg.customCategories.where((c) => c != category).toList()),
+            child: Icon(Icons.close,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.38),
+                size: 14),
           ),
         ],
       ),
@@ -1021,7 +1306,13 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
         SizedBox(height: 16),
         Text(
           'Add specific words, slang, or topics you want to monitor. Alerts will be triggered when detected.',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), fontSize: 13, height: 1.4),
+          style: TextStyle(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.54),
+              fontSize: 13,
+              height: 1.4),
         ),
         SizedBox(height: 24),
         Row(
@@ -1029,26 +1320,39 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             Expanded(
               child: TextField(
                 controller: _keywordController,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                style:
+                    TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
                   hintText: 'e.g. Fortnite, vaping...',
-                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
+                  hintStyle: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 13),
                   filled: true,
-                  fillColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+                  fillColor: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.06),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                    borderSide: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.3)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12)),
+                    borderSide: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.12)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
+                    borderSide: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.6)),
                   ),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
                 onSubmitted: (_) => _addKeyword(),
               ),
@@ -1062,7 +1366,8 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.add, color: Theme.of(context).colorScheme.onSurface),
+                child: Icon(Icons.add,
+                    color: Theme.of(context).colorScheme.onSurface),
               ),
             ),
           ],
@@ -1072,20 +1377,32 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _cfg.customKeywords.map((kw) => _buildKeywordChip(kw)).toList(),
+            children:
+                _cfg.customKeywords.map((kw) => _buildKeywordChip(kw)).toList(),
           ),
         ],
-
         SizedBox(height: 32),
         Text(
           'CATEGORIES / SUGGESTIONS',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.2),
+          style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2),
         ),
         SizedBox(height: 12),
-        _buildSuggestionCategory('Trends & Apps', ['Roblox', 'Fortnite', 'Omegle', 'Discord', 'TikTok'], Colors.teal.shade400),
-        _buildSuggestionCategory('Slang & Mature', ['NSFW', 'OnlyFans', 'Sugar Daddy', 'Nudes'], Colors.pink.shade400),
-        _buildSuggestionCategory('Substances', ['Vaping', 'Weed', 'Puff', 'Juul', 'Smoke'], Colors.orange.shade400),
-        _buildSuggestionCategory('Toxicity & Bullying', ['Kys', 'Loser', 'Ugly', 'Hate', 'Die'], Colors.redAccent),
+        _buildSuggestionCategory(
+            'Trends & Apps',
+            ['Roblox', 'Fortnite', 'Omegle', 'Discord', 'TikTok'],
+            Colors.teal.shade400),
+        _buildSuggestionCategory('Slang & Mature',
+            ['NSFW', 'OnlyFans', 'Sugar Daddy', 'Nudes'], Colors.pink.shade400),
+        _buildSuggestionCategory(
+            'Substances',
+            ['Vaping', 'Weed', 'Puff', 'Juul', 'Smoke'],
+            Colors.orange.shade400),
+        _buildSuggestionCategory('Toxicity & Bullying',
+            ['Kys', 'Loser', 'Ugly', 'Hate', 'Die'], Colors.redAccent),
         SizedBox(height: 32),
         Row(
           children: [
@@ -1093,36 +1410,57 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             SizedBox(width: 8),
             Text(
               'CUSTOM BLOCK MESSAGE',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.2),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2),
             ),
           ],
         ),
         SizedBox(height: 6),
         Text(
           'Message displayed on the child\'s device when an app or website is blocked.',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), fontSize: 12, height: 1.4),
+          style: TextStyle(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.54),
+              fontSize: 12,
+              height: 1.4),
         ),
         SizedBox(height: 14),
         TextField(
-          onChanged: (val) => _cfg.blockReason = val.trim().isEmpty ? null : val.trim(),
+          onChanged: (val) =>
+              _cfg.blockReason = val.trim().isEmpty ? null : val.trim(),
           style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
           textCapitalization: TextCapitalization.sentences,
           decoration: InputDecoration(
             hintText: 'e.g. It\'s time to focus on homework.',
             hintStyle: TextStyle(color: AppColors.textGray400, fontSize: 13),
             filled: true,
-            fillColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+            fillColor:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12)),
+              borderSide: BorderSide(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.12)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12)),
+              borderSide: BorderSide(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.12)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
+              borderSide:
+                  BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
             ),
             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
@@ -1132,13 +1470,16 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
     );
   }
 
-  Widget _buildSuggestionCategory(String title, List<String> words, Color color) {
+  Widget _buildSuggestionCategory(
+      String title, List<String> words, Color color) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: EdgeInsets.symmetric(vertical: 8),
-          child: Text(title, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600)),
+          child: Text(title,
+              style: TextStyle(
+                  color: color, fontSize: 13, fontWeight: FontWeight.w600)),
         ),
         Wrap(
           spacing: 8,
@@ -1146,28 +1487,55 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
           children: words.map((w) {
             final isSelected = _cfg.customKeywords.contains(w);
             return GestureDetector(
-            onTap: () {
+              onTap: () {
                 if (!isSelected) {
-                setState(() => _cfg.customKeywords = [..._cfg.customKeywords, w]);
-              }
-            },
+                  setState(
+                      () => _cfg.customKeywords = [..._cfg.customKeywords, w]);
+                }
+              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                  color: isSelected ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05) : color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: isSelected ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12) : color.withValues(alpha: 0.3)),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.05)
+                      : color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: isSelected
+                          ? Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.12)
+                          : color.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(isSelected ? Icons.check : Icons.add,
+                        color: isSelected
+                            ? Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.54)
+                            : color,
+                        size: 14),
+                    SizedBox(width: 4),
+                    Text(w,
+                        style: TextStyle(
+                            color: isSelected
+                                ? Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.54)
+                                : color,
+                            fontSize: 12)),
+                  ],
+                ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                    Icon(isSelected ? Icons.check : Icons.add, color: isSelected ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54) : color, size: 14),
-                  SizedBox(width: 4),
-                    Text(w, style: TextStyle(color: isSelected ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54) : color, fontSize: 12)),
-                ],
-              ),
-            ),
             );
           }).toList(),
         ),
@@ -1210,24 +1578,27 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
           SizedBox(width: 8),
           GestureDetector(
             onTap: () => setState(() {
-              _cfg.customKeywords = _cfg.customKeywords.where((k) => k != keyword).toList();
+              _cfg.customKeywords =
+                  _cfg.customKeywords.where((k) => k != keyword).toList();
             }),
-            child: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38), size: 14),
+            child: Icon(Icons.close,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.38),
+                size: 14),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildContentToggle(
-    String title,
-    String subtitle,
-    IconData icon,
-    bool value,
-    void Function(bool) onChanged,
-    {bool isDanger = false}
-  ) {
-    final activeCol = isDanger ? AppColors.statusDanger : Theme.of(context).colorScheme.onSurface;
+  Widget _buildContentToggle(String title, String subtitle, IconData icon,
+      bool value, void Function(bool) onChanged,
+      {bool isDanger = false}) {
+    final activeCol = isDanger
+        ? AppColors.statusDanger
+        : Theme.of(context).colorScheme.onSurface;
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       padding: EdgeInsets.all(16),
@@ -1237,7 +1608,9 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: value ? activeCol.withValues(alpha: 0.4) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
+          color: value
+              ? activeCol.withValues(alpha: 0.4)
+              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
         ),
       ),
       child: Row(
@@ -1245,10 +1618,19 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
           Container(
             padding: EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: (value ? activeCol : Theme.of(context).colorScheme.onSurface).withValues(alpha: 0.15),
+              color:
+                  (value ? activeCol : Theme.of(context).colorScheme.onSurface)
+                      .withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: value ? activeCol : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), size: 20),
+            child: Icon(icon,
+                color: value
+                    ? activeCol
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.70),
+                size: 20),
           ),
           SizedBox(width: 14),
           Expanded(
@@ -1256,9 +1638,13 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600)),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontWeight: FontWeight.w600)),
                 Text(subtitle,
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12)),
               ],
             ),
           ),
@@ -1268,7 +1654,8 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             activeThumbColor: activeCol,
             activeTrackColor: activeCol.withValues(alpha: 0.3),
             inactiveThumbColor: Colors.grey[400],
-            inactiveTrackColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+            inactiveTrackColor:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
           ),
         ],
       ),
@@ -1281,12 +1668,19 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildAiInsightCard("Define geographic boundaries. Alerts will trigger if the device leaves these zones."),
+        _buildAiInsightCard(
+            "Define geographic boundaries. Alerts will trigger if the device leaves these zones."),
         _sectionTitle('Safe Zones', Icons.location_on),
         SizedBox(height: 16),
         Text(
           'Manage the safe areas for your child. Tap below to configure locations on the map.',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), fontSize: 13, height: 1.4),
+          style: TextStyle(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.54),
+              fontSize: 13,
+              height: 1.4),
         ),
         SizedBox(height: 24),
         _buildContentToggle(
@@ -1308,7 +1702,8 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+              border:
+                  Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
             ),
             child: Row(
               children: [
@@ -1325,12 +1720,22 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Configure Safe Zones', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text('Open the map to set perimeters', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+                      Text('Configure Safe Zones',
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16)),
+                      Text('Open the map to set perimeters',
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              fontSize: 12)),
                     ],
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios, color: AppColors.primary, size: 16),
+                Icon(Icons.arrow_forward_ios,
+                    color: AppColors.primary, size: 16),
               ],
             ),
           ),
@@ -1347,17 +1752,68 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
 
     // Collect all active content blocks for a compact display
     final contentBlocks = <Map<String, dynamic>>[
-      if (_cfg.blockAdultContent)    {'label': 'Adult & Porn',     'icon': Icons.no_adult_content,          'color': Colors.red},
-      if (_cfg.blockDrugs)           {'label': 'Drugs & Alcohol',  'icon': Icons.medication_outlined,       'color': Colors.deepPurpleAccent},
-      if (_cfg.blockViolence)        {'label': 'Violence & Gore',  'icon': Icons.warning_amber_outlined,    'color': Colors.deepOrange},
-      if (_cfg.blockSexualPredators) {'label': 'Sexual Predators', 'icon': Icons.security_outlined,         'color': Colors.indigoAccent},
-      if (_cfg.blockSocialMedia)     {'label': 'Social Media',     'icon': Icons.people_outline,            'color': AppColors.primary},
-      if (_cfg.blockGaming)          {'label': 'Gaming',           'icon': Icons.sports_esports,            'color': Colors.red},
-      if (_cfg.blockSelfHarm)        {'label': 'Self-Harm',        'icon': Icons.healing_outlined,          'color': Colors.redAccent},
-      if (_cfg.blockCyberbullying)   {'label': 'Cyberbullying',    'icon': Icons.gavel_outlined,            'color': Colors.orangeAccent},
-      if (_cfg.blockAnxietyDepression) {'label': 'Anxiety/Depression', 'icon': Icons.psychology_outlined,  'color': Colors.tealAccent},
-      if (_cfg.blockEatingDisorders) {'label': 'Eating Disorders', 'icon': Icons.accessibility_new_outlined,'color': Colors.pinkAccent},
-      if (_cfg.blockMatureContent)   {'label': 'Mature Content',   'icon': Icons.explicit_outlined,         'color': Colors.blueGrey},
+      if (_cfg.blockAdultContent)
+        {
+          'label': 'Adult & Porn',
+          'icon': Icons.no_adult_content,
+          'color': Colors.red
+        },
+      if (_cfg.blockDrugs)
+        {
+          'label': 'Drugs & Alcohol',
+          'icon': Icons.medication_outlined,
+          'color': Colors.deepPurpleAccent
+        },
+      if (_cfg.blockViolence)
+        {
+          'label': 'Violence & Gore',
+          'icon': Icons.warning_amber_outlined,
+          'color': Colors.deepOrange
+        },
+      if (_cfg.blockSexualPredators)
+        {
+          'label': 'Sexual Predators',
+          'icon': Icons.security_outlined,
+          'color': Colors.indigoAccent
+        },
+      if (_cfg.blockSocialMedia)
+        {
+          'label': 'Social Media',
+          'icon': Icons.people_outline,
+          'color': AppColors.primary
+        },
+      if (_cfg.blockGaming)
+        {'label': 'Gaming', 'icon': Icons.sports_esports, 'color': Colors.red},
+      if (_cfg.blockSelfHarm)
+        {
+          'label': 'Self-Harm',
+          'icon': Icons.healing_outlined,
+          'color': Colors.redAccent
+        },
+      if (_cfg.blockCyberbullying)
+        {
+          'label': 'Cyberbullying',
+          'icon': Icons.gavel_outlined,
+          'color': Colors.orangeAccent
+        },
+      if (_cfg.blockAnxietyDepression)
+        {
+          'label': 'Anxiety/Depression',
+          'icon': Icons.psychology_outlined,
+          'color': Colors.tealAccent
+        },
+      if (_cfg.blockEatingDisorders)
+        {
+          'label': 'Eating Disorders',
+          'icon': Icons.accessibility_new_outlined,
+          'color': Colors.pinkAccent
+        },
+      if (_cfg.blockMatureContent)
+        {
+          'label': 'Mature Content',
+          'icon': Icons.explicit_outlined,
+          'color': Colors.blueGrey
+        },
     ];
 
     return Column(
@@ -1366,7 +1822,13 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
         _buildAiInsightCard(_getSuggestionForStep(4, age)),
         _sectionTitle('Summary', Icons.check_circle_outline),
         SizedBox(height: 4),
-        Text('Review all settings before saving', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 13)),
+        Text('Review all settings before saving',
+            style: TextStyle(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.70),
+                fontSize: 13)),
         SizedBox(height: 20),
 
         // ── STEP 1: Screen Time ──────────────────────────────────────────
@@ -1377,9 +1839,14 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _summaryGroupTitle('Step 1 · Screen Time', Icons.timer_outlined, stepIndex: 0),
+                _summaryGroupTitle('Step 1 · Screen Time', Icons.timer_outlined,
+                    stepIndex: 0),
                 SizedBox(height: 10),
-                _summaryRow('Daily Limit', _formatMinutes(_cfg.dailyLimitMinutes), Icons.timer_outlined, isAlert: false),
+                _summaryRow(
+                    'Daily Limit',
+                    _formatMinutes(_cfg.dailyLimitMinutes),
+                    Icons.timer_outlined,
+                    isAlert: false),
                 if (_cfg.scheduleEnabled)
                   _summaryRow(
                     'Allowed Hours',
@@ -1387,7 +1854,9 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                     Icons.schedule,
                   )
                 else
-                  _summaryRow('Allowed Hours', 'No schedule set', Icons.schedule, isAlert: false),
+                  _summaryRow(
+                      'Allowed Hours', 'No schedule set', Icons.schedule,
+                      isAlert: false),
               ],
             ),
           ),
@@ -1402,11 +1871,14 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _summaryGroupTitle('Step 2 · App Blocking', Icons.apps, stepIndex: 1),
+                _summaryGroupTitle('Step 2 · App Blocking', Icons.apps,
+                    stepIndex: 1),
                 SizedBox(height: 10),
                 _summaryRow(
                   'Blocked Apps',
-                  _cfg.blockedApps.isEmpty ? 'None' : '${_cfg.blockedApps.length} blocked',
+                  _cfg.blockedApps.isEmpty
+                      ? 'None'
+                      : '${_cfg.blockedApps.length} blocked',
                   Icons.block,
                   isAlert: _cfg.blockedApps.isNotEmpty,
                 ),
@@ -1422,14 +1894,19 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                           orElse: () => {'name': pkg, 'pkg': pkg},
                         );
                         return Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppColors.statusDanger.withValues(alpha: 0.15),
+                            color:
+                                AppColors.statusDanger.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppColors.statusDanger.withValues(alpha: 0.3)),
+                            border: Border.all(
+                                color: AppColors.statusDanger
+                                    .withValues(alpha: 0.3)),
                           ),
                           child: Text(app['name'] as String,
-                              style: TextStyle(color: AppColors.statusDanger, fontSize: 12)),
+                              style: TextStyle(
+                                  color: AppColors.statusDanger, fontSize: 12)),
                         );
                       }).toList(),
                     ),
@@ -1448,11 +1925,14 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _summaryGroupTitle('Step 3 · Website Filter', Icons.language, stepIndex: 2),
+                _summaryGroupTitle('Step 3 · Website Filter', Icons.language,
+                    stepIndex: 2),
                 SizedBox(height: 10),
                 _summaryRow(
                   'Blocked Sites',
-                  _cfg.blockedWebsites.isEmpty ? 'None' : '${_cfg.blockedWebsites.length} blocked',
+                  _cfg.blockedWebsites.isEmpty
+                      ? 'None'
+                      : '${_cfg.blockedWebsites.length} blocked',
                   Icons.language,
                   isAlert: _cfg.blockedWebsites.isNotEmpty,
                 ),
@@ -1462,16 +1942,24 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                     child: Wrap(
                       spacing: 6,
                       runSpacing: 6,
-                      children: _cfg.blockedWebsites.map((domain) => Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.statusDanger.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.statusDanger.withValues(alpha: 0.3)),
-                        ),
-                        child: Text(domain,
-                            style: TextStyle(color: AppColors.statusDanger, fontSize: 11)),
-                      )).toList(),
+                      children: _cfg.blockedWebsites
+                          .map((domain) => Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.statusDanger
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                      color: AppColors.statusDanger
+                                          .withValues(alpha: 0.3)),
+                                ),
+                                child: Text(domain,
+                                    style: TextStyle(
+                                        color: AppColors.statusDanger,
+                                        fontSize: 11)),
+                              ))
+                          .toList(),
                     ),
                   ),
               ],
@@ -1488,10 +1976,14 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _summaryGroupTitle('Step 4 · Content Rules', Icons.shield_outlined, stepIndex: 3),
+                _summaryGroupTitle(
+                    'Step 4 · Content Rules', Icons.shield_outlined,
+                    stepIndex: 3),
                 SizedBox(height: 10),
                 if (contentBlocks.isEmpty)
-                  _summaryRow('Content Filters', 'None enabled', Icons.shield_outlined, isAlert: false)
+                  _summaryRow(
+                      'Content Filters', 'None enabled', Icons.shield_outlined,
+                      isAlert: false)
                 else
                   Wrap(
                     spacing: 8,
@@ -1499,11 +1991,13 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                     children: contentBlocks.map((b) {
                       final color = b['color'] as Color;
                       return Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                         decoration: BoxDecoration(
                           color: color.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: color.withValues(alpha: 0.4)),
+                          border:
+                              Border.all(color: color.withValues(alpha: 0.4)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -1511,7 +2005,10 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                             Icon(b['icon'] as IconData, color: color, size: 13),
                             SizedBox(width: 6),
                             Text(b['label'] as String,
-                                style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+                                style: TextStyle(
+                                    color: color,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600)),
                           ],
                         ),
                       );
@@ -1524,22 +2021,33 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: _cfg.customCategories.map((cat) => Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: AppColors.statusWarning.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.statusWarning.withValues(alpha: 0.4)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.category, color: AppColors.statusWarning, size: 13),
-                          SizedBox(width: 6),
-                          Text(cat, style: TextStyle(color: AppColors.statusWarning, fontSize: 12, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    )).toList(),
+                    children: _cfg.customCategories
+                        .map((cat) => Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: AppColors.statusWarning
+                                    .withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                    color: AppColors.statusWarning
+                                        .withValues(alpha: 0.4)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.category,
+                                      color: AppColors.statusWarning, size: 13),
+                                  SizedBox(width: 6),
+                                  Text(cat,
+                                      style: TextStyle(
+                                          color: AppColors.statusWarning,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ))
+                        .toList(),
                   ),
                 ],
               ],
@@ -1558,25 +2066,34 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _summaryGroupTitle('Step 5 · Custom Monitoring', Icons.manage_search, stepIndex: 4),
+                  _summaryGroupTitle(
+                      'Step 5 · Custom Monitoring', Icons.manage_search,
+                      stepIndex: 4),
                   SizedBox(height: 10),
                   Container(
                     padding: EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.3)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.manage_search, color: AppColors.primary, size: 16),
+                            Icon(Icons.manage_search,
+                                color: AppColors.primary, size: 16),
                             SizedBox(width: 8),
                             Text(
                               '${_cfg.customKeywords.length} Custom Keyword${_cfg.customKeywords.length > 1 ? 's' : ''} Monitored',
-                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 13),
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.70),
+                                  fontSize: 13),
                             ),
                           ],
                         ),
@@ -1584,15 +2101,24 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                         Wrap(
                           spacing: 6,
                           runSpacing: 6,
-                          children: _cfg.customKeywords.map((kw) => Container(
-                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-                            ),
-                            child: Text(kw, style: TextStyle(color: AppColors.primary, fontSize: 12)),
-                          )).toList(),
+                          children: _cfg.customKeywords
+                              .map((kw) => Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                          color: AppColors.primary
+                                              .withValues(alpha: 0.3)),
+                                    ),
+                                    child: Text(kw,
+                                        style: TextStyle(
+                                            color: AppColors.primary,
+                                            fontSize: 12)),
+                                  ))
+                              .toList(),
                         ),
                       ],
                     ),
@@ -1629,28 +2155,41 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
             Icon(Icons.edit, color: AppColors.primary, size: 12),
           ],
           SizedBox(width: 8),
-          Expanded(child: Container(height: 1, color: AppColors.primary.withValues(alpha: 0.2))),
+          Expanded(
+              child: Container(
+                  height: 1, color: AppColors.primary.withValues(alpha: 0.2))),
         ],
       ),
     );
   }
 
-
-
-  Widget _summaryRow(String label, String value, IconData icon, {bool isAlert = false}) {
+  Widget _summaryRow(String label, String value, IconData icon,
+      {bool isAlert = false}) {
     return Container(
       margin: EdgeInsets.only(bottom: 10),
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10)),
+        border: Border.all(
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.10)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: isAlert ? AppColors.statusDanger : AppColors.textGray400, size: 18),
+          Icon(icon,
+              color: isAlert ? AppColors.statusDanger : AppColors.textGray400,
+              size: 18),
           SizedBox(width: 12),
-          Expanded(child: Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70)))),
+          Expanded(
+              child: Text(label,
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.70)))),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
@@ -1680,8 +2219,14 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
     return Container(
       padding: EdgeInsets.fromLTRB(20, 12, 20, 24),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.95),
-        border: Border(top: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12))),
+        color:
+            Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.95),
+        border: Border(
+            top: BorderSide(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.12))),
       ),
       child: Row(
         children: [
@@ -1692,9 +2237,14 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                 onPressed: () => setState(() => _step--),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Theme.of(context).colorScheme.onSurface,
-                  side: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24)),
+                  side: BorderSide(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.24)),
                   padding: EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 child: Text('Back'),
               ),
@@ -1709,7 +2259,8 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                       ? _save
                       : () {
                           if (_step == 0 && !_isTimeValid()) {
-                            setState(() {}); // Show error message and red fields
+                            setState(
+                                () {}); // Show error message and red fields
                             return; // Block navigation
                           }
                           setState(() => _step++);
@@ -1718,13 +2269,16 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                 backgroundColor: AppColors.primary,
                 foregroundColor: Theme.of(context).colorScheme.onSurface,
                 padding: EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               child: _isSaving
                   ? SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onSurface),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Theme.of(context).colorScheme.onSurface),
                     )
                   : Text(
                       isLast ? 'Save Rules' : 'Continue',
@@ -1811,7 +2365,13 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
                 SizedBox(height: 4),
                 Text(
                   suggestion,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 13, height: 1.4),
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.70),
+                      fontSize: 13,
+                      height: 1.4),
                 ),
               ],
             ),
@@ -1825,32 +2385,50 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
     if (age <= 9) {
       // Young Child
       switch (step) {
-        case 0: return "Max 45-60 mins/day. Young children benefit from short, structured sessions with educational focus.";
-        case 1: return "Complete Social Media block is standard for this age. Focus only on trusted learning and play apps.";
-        case 2: return "Strict 'Allow-list' recommended. Browsing should be limited to specifically approved educational sites.";
-        case 3: return "Focus on blocking all mature content and protecting from accidental exposure to graphic materials.";
-        case 4: return "No need for heavy slang mapping here, but monitoring basic app names ensures they stay on track.";
-        default: return "Review has been tailored for a curious young mind. Safety is prioritized over flexibility.";
+        case 0:
+          return "Max 45-60 mins/day. Young children benefit from short, structured sessions with educational focus.";
+        case 1:
+          return "Complete Social Media block is standard for this age. Focus only on trusted learning and play apps.";
+        case 2:
+          return "Strict 'Allow-list' recommended. Browsing should be limited to specifically approved educational sites.";
+        case 3:
+          return "Focus on blocking all mature content and protecting from accidental exposure to graphic materials.";
+        case 4:
+          return "No need for heavy slang mapping here, but monitoring basic app names ensures they stay on track.";
+        default:
+          return "Review has been tailored for a curious young mind. Safety is prioritized over flexibility.";
       }
     } else if (age <= 13) {
       // Pre-teen
       switch (step) {
-        case 0: return "1.5h - 2h is a common standard. Help them balance digital exploration with homework and physical play.";
-        case 1: return "Monitor social apps closely. This is a key age for managing screen dependency and digital habits.";
-        case 2: return "Enable SafeSearch strictly. Block adult content while allowing access to school-related resources.";
-        case 3: return "Prioritize Cyberbullying and Sexual Predator detection as online social interaction increases.";
-        case 4: return "Adding trendy slang or specific games like 'Roblox' ensures you're aware of their social circles.";
-        default: return "Balanced rules for a pre-teen. Encouraging discovery within safe, monitored boundaries.";
+        case 0:
+          return "1.5h - 2h is a common standard. Help them balance digital exploration with homework and physical play.";
+        case 1:
+          return "Monitor social apps closely. This is a key age for managing screen dependency and digital habits.";
+        case 2:
+          return "Enable SafeSearch strictly. Block adult content while allowing access to school-related resources.";
+        case 3:
+          return "Prioritize Cyberbullying and Sexual Predator detection as online social interaction increases.";
+        case 4:
+          return "Adding trendy slang or specific games like 'Roblox' ensures you're aware of their social circles.";
+        default:
+          return "Balanced rules for a pre-teen. Encouraging discovery within safe, monitored boundaries.";
       }
     } else {
       // Teenager
       switch (step) {
-        case 0: return "Build trust by focusing on bedtime boundaries rather than hard daily limits. Discuss responsible use.";
-        case 1: return "Manage high-usage apps but allow most social platforms. Focus on discussion rather than total blocks.";
-        case 2: return "Discuss online privacy and phishing. Block malicious or gambling sites but allow general information.";
-        case 3: return "Focus on nuanced monitoring like Anxiety/Depression and Self-Harm signs to support their well-being.";
-        case 4: return "Monitor for concerning slang or substance references rather than general keywords. Allow privacy but maintain a safety net.";
-        default: return "Trust-based setup for a teenager. Fosters independence while keeping a safety net for critical risks.";
+        case 0:
+          return "Build trust by focusing on bedtime boundaries rather than hard daily limits. Discuss responsible use.";
+        case 1:
+          return "Manage high-usage apps but allow most social platforms. Focus on discussion rather than total blocks.";
+        case 2:
+          return "Discuss online privacy and phishing. Block malicious or gambling sites but allow general information.";
+        case 3:
+          return "Focus on nuanced monitoring like Anxiety/Depression and Self-Harm signs to support their well-being.";
+        case 4:
+          return "Monitor for concerning slang or substance references rather than general keywords. Allow privacy but maintain a safety net.";
+        default:
+          return "Trust-based setup for a teenager. Fosters independence while keeping a safety net for critical risks.";
       }
     }
   }
@@ -1862,10 +2440,10 @@ class _RulesConfigWizardScreenState extends State<RulesConfigWizardScreen> {
         SizedBox(width: 10),
         Text(title,
             style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface, fontSize: 20, fontWeight: FontWeight.bold)),
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 20,
+                fontWeight: FontWeight.bold)),
       ],
     );
   }
-
-
 }

@@ -8,19 +8,16 @@ class PrivacySettingsScreen extends StatefulWidget {
   const PrivacySettingsScreen({super.key});
 
   @override
-  State<PrivacySettingsScreen> createState() =>
-      _PrivacySettingsScreenState();
+  State<PrivacySettingsScreen> createState() => _PrivacySettingsScreenState();
 }
 
-class _PrivacySettingsScreenState
-    extends State<PrivacySettingsScreen> {
+class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
   bool _shareAnalytics = true;
   bool _diagnosticData = true;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -31,7 +28,8 @@ class _PrivacySettingsScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
                   SizedBox(height: 24),
@@ -59,7 +57,9 @@ class _PrivacySettingsScreenState
                                   Text(
                                     'Your data is protected',
                                     style: TextStyle(
-                                        color: Theme.of(context).colorScheme.onSurface,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold),
                                   ),
@@ -69,7 +69,9 @@ class _PrivacySettingsScreenState
                               Text(
                                 'The Guardian uses end-to-end encryption for all data communications between parents and children.',
                                 style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                                     fontSize: 14,
                                     height: 1.5),
                               ),
@@ -96,20 +98,32 @@ class _PrivacySettingsScreenState
                                 onChanged: null,
                                 icon: Icons.lock_outline,
                               ),
-                              Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10), height: 1),
+                              Divider(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.10),
+                                  height: 1),
                               _buildSwitchTile(
                                 title: 'Share Analytics with AI',
                                 subtitle: 'Help improve AI monitoring accuracy',
                                 value: _shareAnalytics,
-                                onChanged: (val) => setState(() => _shareAnalytics = val),
+                                onChanged: (val) =>
+                                    setState(() => _shareAnalytics = val),
                                 icon: Icons.analytics_outlined,
                               ),
-                              Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10), height: 1),
+                              Divider(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.10),
+                                  height: 1),
                               _buildSwitchTile(
                                 title: 'Anonymous Diagnostic Data',
                                 subtitle: 'Send crash reports to developers',
                                 value: _diagnosticData,
-                                onChanged: (val) => setState(() => _diagnosticData = val),
+                                onChanged: (val) =>
+                                    setState(() => _diagnosticData = val),
                                 icon: Icons.bug_report_outlined,
                               ),
                             ],
@@ -140,18 +154,28 @@ class _PrivacySettingsScreenState
                                       color: Colors.red.withValues(alpha: 0.1),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: Icon(Icons.delete_forever, color: Colors.redAccent),
+                                    child: Icon(Icons.delete_forever,
+                                        color: Colors.redAccent),
                                   ),
                                   SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text('Delete Account & Data',
-                                            style: TextStyle(color: Colors.redAccent, fontSize: 16, fontWeight: FontWeight.bold)),
+                                            style: TextStyle(
+                                                color: Colors.redAccent,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold)),
                                         SizedBox(height: 4),
-                                        Text('Permanently remove all family data',
-                                            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+                                        Text(
+                                            'Permanently remove all family data',
+                                            style: TextStyle(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                                fontSize: 13)),
                                       ],
                                     ),
                                   ),
@@ -190,9 +214,16 @@ class _PrivacySettingsScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(title,
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600)),
                 SizedBox(height: 4),
-                Text(subtitle, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+                Text(subtitle,
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 13)),
               ],
             ),
           ),

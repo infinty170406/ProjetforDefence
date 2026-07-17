@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/liquid_background.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/services/api_service.dart';
 import '../../core/models/geo_zone.dart';
-import '../../core/services/location_service.dart';
 import 'widgets/add_safe_zone_modal.dart';
 
 class SafeZonesScreen extends StatefulWidget {
@@ -34,7 +32,8 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
   Future<void> _fetchChildren() async {
     try {
       final response = await ApiService().getMyChildren();
-      final List<Map<String, dynamic>> children = List<Map<String, dynamic>>.from(response['children'] ?? []);
+      final List<Map<String, dynamic>> children =
+          List<Map<String, dynamic>>.from(response['children'] ?? []);
       if (mounted) setState(() => _children = children);
     } catch (e) {
       debugPrint('Error fetching children: $e');
@@ -67,31 +66,38 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
         onAdd: (zone) async {
           debugPrint('DEBUG: Starting onAdd for zone: ${zone.name}');
           try {
-            await ApiService().createGeofence(zone.toJson()).timeout(const Duration(seconds: 15));
+            await ApiService()
+                .createGeofence(zone.toJson())
+                .timeout(const Duration(seconds: 15));
             debugPrint('DEBUG: Geofence created successfully');
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Zone de sécurité enregistrée ✓'), backgroundColor: Colors.green),
+              const SnackBar(
+                  content: Text('Zone de sécurité enregistrée ✓'),
+                  backgroundColor: Colors.green),
             );
             await _fetchZones();
           } catch (e) {
             debugPrint('DEBUG: Error in onAdd: $e');
             String errorMsg = 'Erreur lors de l\'ajout';
-            if (e.toString().contains('UNAVAILABLE') || e.toString().contains('host')) {
+            if (e.toString().contains('UNAVAILABLE') ||
+                e.toString().contains('host')) {
               errorMsg = 'Connexion impossible. Vérifiez votre accès internet.';
             } else {
               errorMsg = 'Erreur: $e';
             }
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(errorMsg), backgroundColor: AppColors.statusDanger),
+              SnackBar(
+                  content: Text(errorMsg),
+                  backgroundColor: AppColors.statusDanger),
             );
-            rethrow; 
+            rethrow;
           }
         },
       ),
     ).then((_) {
-       if (mounted) setState(() => _isAdding = false);
+      if (mounted) setState(() => _isAdding = false);
     });
   }
 
@@ -112,7 +118,6 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -123,7 +128,8 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
                   SizedBox(height: 24),
@@ -145,7 +151,7 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                   ),
                   SizedBox(height: 40),
                   Expanded(
-                    child: _isLoading 
+                    child: _isLoading
                         ? Center(child: CircularProgressIndicator())
                         : _zones.isEmpty && !_isAdding
                             ? _buildEmptyState()
@@ -159,10 +165,12 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                   ),
                   CustomButton(
                     text: _isAdding ? 'Adding Zone...' : 'Add a zone',
-                    onPressed: _isAdding ? null : () {
-                      setState(() => _isAdding = true);
-                      _showAddZoneModal();
-                    },
+                    onPressed: _isAdding
+                        ? null
+                        : () {
+                            setState(() => _isAdding = true);
+                            _showAddZoneModal();
+                          },
                     icon: Icons.add_location_alt_outlined,
                   ),
                 ],
@@ -179,7 +187,12 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.map_outlined, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10), size: 80),
+          Icon(Icons.map_outlined,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.10),
+              size: 80),
           SizedBox(height: 16),
           Text(
             'No zones defined yet',
@@ -203,7 +216,8 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                 color: AppColors.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.location_on, color: AppColors.primary, size: 24),
+              child:
+                  Icon(Icons.location_on, color: AppColors.primary, size: 24),
             ),
             SizedBox(width: 16),
             Expanded(
@@ -222,13 +236,20 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                     children: [
                       Text(
                         'Radius: ${zone.radiusMeters.toInt()}m',
-                        style: TextStyle(color: AppColors.textGray500, fontSize: 13),
+                        style: TextStyle(
+                            color: AppColors.textGray500, fontSize: 13),
                       ),
                       if (zone.childId != null) ...[
-                        Text(' • ', style: TextStyle(color: AppColors.textGray500)),
+                        Text(' • ',
+                            style: TextStyle(color: AppColors.textGray500)),
                         Text(
-                          _children.firstWhere((c) => c['id'] == zone.childId, orElse: () => {'displayName': 'All'})['displayName'],
-                          style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600),
+                          _children.firstWhere((c) => c['id'] == zone.childId,
+                              orElse: () =>
+                                  {'displayName': 'All'})['displayName'],
+                          style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600),
                         ),
                       ],
                     ],
@@ -237,7 +258,8 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
               ),
             ),
             IconButton(
-              icon: Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+              icon:
+                  Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
               onPressed: () => _deleteZone(zone.id),
             ),
           ],
@@ -246,4 +268,3 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
     );
   }
 }
-

@@ -56,9 +56,9 @@ class AlertModel {
       title: json['title'] ?? 'Guardian Alert',
       description: json['description'] ?? '',
       severity: _parseSeverity(json['severity']),
-      timestamp: json['timestamp'] != null 
-          ? (json['timestamp'] is String 
-              ? DateTime.parse(json['timestamp']) 
+      timestamp: json['timestamp'] != null
+          ? (json['timestamp'] is String
+              ? DateTime.parse(json['timestamp'])
               : (json['timestamp'] as Timestamp).toDate())
           : DateTime.now(),
       type: json['type'],
@@ -72,7 +72,9 @@ class AlertModel {
       aiRisk: json['aiRisk'],
       aiFrequency: json['aiFrequency'],
       aiContext: json['aiContext'],
-      aiActions: (json['aiActions'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      aiActions:
+          (json['aiActions'] as List?)?.map((e) => e.toString()).toList() ??
+              const [],
       aiProcessed: json['ai_processed'] ?? false,
     );
   }
@@ -82,10 +84,12 @@ class AlertModel {
 
   static AlertSeverity _parseSeverity(String? severity) {
     switch (severity?.toUpperCase()) {
-      case 'CRITICAL': return AlertSeverity.critical;
-      case 'WARNING': return AlertSeverity.warning;
-      default: return AlertSeverity.info;
+      case 'CRITICAL':
+        return AlertSeverity.critical;
+      case 'WARNING':
+        return AlertSeverity.warning;
+      default:
+        return AlertSeverity.info;
     }
   }
 }
-

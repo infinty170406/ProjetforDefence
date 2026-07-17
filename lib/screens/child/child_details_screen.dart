@@ -16,34 +16,168 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/services/firestore_service.dart';
+import '../../core/services/child_monitor_service.dart';
+import '../../core/services/storage_service.dart';
+import '../../core/premium/entitlement_service.dart';
+import '../../core/premium/plan_permissions.dart';
 
 const _kKnownApps = [
-  {'pkg': 'com.facebook.katana', 'name': 'Facebook', 'cat': 'Social', 'icon': Icons.facebook},
-  {'pkg': 'com.instagram.android', 'name': 'Instagram', 'cat': 'Social', 'icon': Icons.photo_camera},
-  {'pkg': 'com.snapchat.android', 'name': 'Snapchat', 'cat': 'Social', 'icon': Icons.remove_red_eye},
-  {'pkg': 'com.zhiliaoapp.musically', 'name': 'TikTok', 'cat': 'Social', 'icon': Icons.music_video},
-  {'pkg': 'com.twitter.android', 'name': 'Twitter/X', 'cat': 'Social', 'icon': Icons.alternate_email},
-  {'pkg': 'com.whatsapp', 'name': 'WhatsApp', 'cat': 'Messaging', 'icon': Icons.chat},
-  {'pkg': 'com.discord', 'name': 'Discord', 'cat': 'Messaging', 'icon': Icons.headset},
-  {'pkg': 'com.google.android.youtube', 'name': 'YouTube', 'cat': 'Entertainment', 'icon': Icons.play_circle},
-  {'pkg': 'com.netflix.mediaclient', 'name': 'Netflix', 'cat': 'Entertainment', 'icon': Icons.live_tv},
-  {'pkg': 'com.spotify.music', 'name': 'Spotify', 'cat': 'Entertainment', 'icon': Icons.music_note},
-  {'pkg': 'com.roblox.client', 'name': 'Roblox', 'cat': 'Gaming', 'icon': Icons.games},
-  {'pkg': 'com.mojang.minecraftpe', 'name': 'Minecraft', 'cat': 'Gaming', 'icon': Icons.grid_view},
-  {'pkg': 'com.activision.callofduty.shooter', 'name': 'Call of Duty', 'cat': 'Gaming', 'icon': Icons.sports_esports},
-  {'pkg': 'com.google.android.gm', 'name': 'Gmail', 'cat': 'Productivity', 'icon': Icons.email},
-  {'pkg': 'com.google.android.apps.maps', 'name': 'Maps', 'cat': 'Utility', 'icon': Icons.map},
-  {'pkg': 'com.android.chrome', 'name': 'Chrome', 'cat': 'Browser', 'icon': Icons.language},
-  {'pkg': 'com.pinterest', 'name': 'Pinterest', 'cat': 'Social', 'icon': Icons.push_pin},
-  {'pkg': 'com.facebook.lite', 'name': 'Lite', 'cat': 'Social', 'icon': Icons.facebook},
-  {'pkg': 'com.duolingo', 'name': 'Duolingo', 'cat': 'Education', 'icon': Icons.language},
-  {'pkg': 'com.openai.chatgpt', 'name': 'ChatGPT', 'cat': 'Productivity', 'icon': Icons.chat},
-  {'pkg': 'cn.wps.moffice_eng', 'name': 'WPS Office', 'cat': 'Productivity', 'icon': Icons.description},
-  {'pkg': 'com.radio.fmradio', 'name': 'Radio FM', 'cat': 'Entertainment', 'icon': Icons.radio},
-  {'pkg': 'com.miui.gallery', 'name': 'Galerie', 'cat': 'Utility', 'icon': Icons.photo_library},
-  {'pkg': 'com.sec.android.gallery3d', 'name': 'Galerie', 'cat': 'Utility', 'icon': Icons.photo_library},
-  {'pkg': 'com.miui.securitycenter', 'name': 'Sécurité', 'cat': 'Utility', 'icon': Icons.security},
-  {'pkg': 'com.miui.video', 'name': 'Mi Vidéo', 'cat': 'Entertainment', 'icon': Icons.video_library},
+  {
+    'pkg': 'com.facebook.katana',
+    'name': 'Facebook',
+    'cat': 'Social',
+    'icon': Icons.facebook
+  },
+  {
+    'pkg': 'com.instagram.android',
+    'name': 'Instagram',
+    'cat': 'Social',
+    'icon': Icons.photo_camera
+  },
+  {
+    'pkg': 'com.snapchat.android',
+    'name': 'Snapchat',
+    'cat': 'Social',
+    'icon': Icons.remove_red_eye
+  },
+  {
+    'pkg': 'com.zhiliaoapp.musically',
+    'name': 'TikTok',
+    'cat': 'Social',
+    'icon': Icons.music_video
+  },
+  {
+    'pkg': 'com.twitter.android',
+    'name': 'Twitter/X',
+    'cat': 'Social',
+    'icon': Icons.alternate_email
+  },
+  {
+    'pkg': 'com.whatsapp',
+    'name': 'WhatsApp',
+    'cat': 'Messaging',
+    'icon': Icons.chat
+  },
+  {
+    'pkg': 'com.discord',
+    'name': 'Discord',
+    'cat': 'Messaging',
+    'icon': Icons.headset
+  },
+  {
+    'pkg': 'com.google.android.youtube',
+    'name': 'YouTube',
+    'cat': 'Entertainment',
+    'icon': Icons.play_circle
+  },
+  {
+    'pkg': 'com.netflix.mediaclient',
+    'name': 'Netflix',
+    'cat': 'Entertainment',
+    'icon': Icons.live_tv
+  },
+  {
+    'pkg': 'com.spotify.music',
+    'name': 'Spotify',
+    'cat': 'Entertainment',
+    'icon': Icons.music_note
+  },
+  {
+    'pkg': 'com.roblox.client',
+    'name': 'Roblox',
+    'cat': 'Gaming',
+    'icon': Icons.games
+  },
+  {
+    'pkg': 'com.mojang.minecraftpe',
+    'name': 'Minecraft',
+    'cat': 'Gaming',
+    'icon': Icons.grid_view
+  },
+  {
+    'pkg': 'com.activision.callofduty.shooter',
+    'name': 'Call of Duty',
+    'cat': 'Gaming',
+    'icon': Icons.sports_esports
+  },
+  {
+    'pkg': 'com.google.android.gm',
+    'name': 'Gmail',
+    'cat': 'Productivity',
+    'icon': Icons.email
+  },
+  {
+    'pkg': 'com.google.android.apps.maps',
+    'name': 'Maps',
+    'cat': 'Utility',
+    'icon': Icons.map
+  },
+  {
+    'pkg': 'com.android.chrome',
+    'name': 'Chrome',
+    'cat': 'Browser',
+    'icon': Icons.language
+  },
+  {
+    'pkg': 'com.pinterest',
+    'name': 'Pinterest',
+    'cat': 'Social',
+    'icon': Icons.push_pin
+  },
+  {
+    'pkg': 'com.facebook.lite',
+    'name': 'Lite',
+    'cat': 'Social',
+    'icon': Icons.facebook
+  },
+  {
+    'pkg': 'com.duolingo',
+    'name': 'Duolingo',
+    'cat': 'Education',
+    'icon': Icons.language
+  },
+  {
+    'pkg': 'com.openai.chatgpt',
+    'name': 'ChatGPT',
+    'cat': 'Productivity',
+    'icon': Icons.chat
+  },
+  {
+    'pkg': 'cn.wps.moffice_eng',
+    'name': 'WPS Office',
+    'cat': 'Productivity',
+    'icon': Icons.description
+  },
+  {
+    'pkg': 'com.radio.fmradio',
+    'name': 'Radio FM',
+    'cat': 'Entertainment',
+    'icon': Icons.radio
+  },
+  {
+    'pkg': 'com.miui.gallery',
+    'name': 'Galerie',
+    'cat': 'Utility',
+    'icon': Icons.photo_library
+  },
+  {
+    'pkg': 'com.sec.android.gallery3d',
+    'name': 'Galerie',
+    'cat': 'Utility',
+    'icon': Icons.photo_library
+  },
+  {
+    'pkg': 'com.miui.securitycenter',
+    'name': 'Sécurité',
+    'cat': 'Utility',
+    'icon': Icons.security
+  },
+  {
+    'pkg': 'com.miui.video',
+    'name': 'Mi Vidéo',
+    'cat': 'Entertainment',
+    'icon': Icons.video_library
+  },
 ];
 
 class ChildDetailsScreen extends StatefulWidget {
@@ -60,6 +194,216 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
   DateTime? _lastSync;
   StreamSubscription<Map<String, dynamic>>? _usageSub;
 
+  int _getDaysSinceSignup() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return 1;
+    final signupTime = user.metadata.creationTime ?? DateTime.now();
+    final diff = DateTime.now().difference(signupTime).inDays;
+    return (diff + 1).clamp(1, 99);
+  }
+
+  bool _isFeatureUnlockedByDay(String featureKey) {
+    final activePlan = context.read<EntitlementService>().activePlan;
+    if (activePlan != SubscriptionPlan.free) {
+      return true;
+    }
+
+    final day = _getDaysSinceSignup();
+    switch (featureKey) {
+      case 'location':
+        return day >= 1;
+      case 'alerts':
+        return day >= 2;
+      case 'geofencing':
+        return day >= 3;
+      case 'appControl':
+        return day >= 4;
+      case 'aiReports':
+        return day >= 5;
+      default:
+        return true;
+    }
+  }
+
+  String _getFeatureUnlockDayText(String featureKey) {
+    switch (featureKey) {
+      case 'location':
+        return 'Jour 1';
+      case 'alerts':
+        return 'Jour 2';
+      case 'geofencing':
+        return 'Jour 3';
+      case 'appControl':
+        return 'Jour 4';
+      case 'aiReports':
+        return 'Jour 5';
+      default:
+        return '';
+    }
+  }
+
+  void _showUpsellLockSheet(String featureKey, String title) {
+    final dayText = _getFeatureUnlockDayText(featureKey);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(32),
+            topRight: Radius.circular(32),
+          ),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 48,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const CircleAvatar(
+              radius: 36,
+              backgroundColor: Colors.amberAccent,
+              child: Icon(Icons.workspace_premium,
+                  color: Colors.black87, size: 36),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Débloquez $title immédiatement !',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Cette fonctionnalité fait partie de notre programme de découverte progressive et se débloquera au $dayText.\n\nPassez à une offre Premium pour lever TOUTES les limites et superviser votre famille sans attente !',
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                  height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  context.push('/premium-showcase');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                ),
+                child: const Text('Découvrir les offres Premium',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child:
+                  const Text('Patienter', style: TextStyle(color: Colors.grey)),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showContextualGuideIfNeeded(String featureKey, String title,
+      String description, IconData icon, VoidCallback onConfirm) async {
+    final seen = await StorageService().getFeatureTutorialSeen(featureKey);
+    if (seen) {
+      onConfirm();
+      return;
+    }
+
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(32),
+            topRight: Radius.circular(32),
+          ),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 48,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            CircleAvatar(
+              radius: 36,
+              backgroundColor: AppColors.primary.withOpacity(0.12),
+              child: Icon(icon, color: AppColors.primary, size: 36),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              description,
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                  height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  await StorageService()
+                      .saveFeatureTutorialSeen(featureKey, true);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  onConfirm();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                ),
+                child: const Text('Compris, c\'est parti !',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -71,7 +415,7 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     if (childId.isEmpty) return;
 
     setState(() => _isLoadingUsage = true);
-    
+
     // We listen to the live stream
     _usageSub = context.read<StatsRepository>().watchTodayStats(childId).listen(
       (stats) {
@@ -101,10 +445,11 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     // Left for pull-to-refresh compatibility, though stream auto-updates
     final childId = widget.child?['id'] ?? widget.child?['childId'] ?? '';
     if (childId.isEmpty) return;
-    
+
     setState(() => _isLoadingUsage = true);
     try {
-      final stats = await context.read<StatsRepository>().getTodayStats(childId);
+      final stats =
+          await context.read<StatsRepository>().getTodayStats(childId);
       if (mounted) {
         setState(() {
           _usageStats = stats;
@@ -113,8 +458,9 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.redAccent));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Sync failed: $e'),
+            backgroundColor: Colors.redAccent));
       }
     } finally {
       if (mounted) setState(() => _isLoadingUsage = false);
@@ -129,14 +475,21 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        title: Text('Delete profile', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
-        content: Text('Do you really want to delete this child profile? This action is irreversible.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        title: Text('Delete profile',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+        content: Text(
+            'Do you really want to delete this child profile? This action is irreversible.',
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false), child: const Text('Cancel', style: TextStyle(color: AppColors.primary))),
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel',
+                  style: TextStyle(color: AppColors.primary))),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+            child:
+                const Text('Delete', style: TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),
@@ -155,7 +508,9 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.statusDanger),
+          SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: AppColors.statusDanger),
         );
       }
     }
@@ -164,62 +519,65 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
   Future<void> _showShareDialog() async {
     final displayName = widget.child?['displayName'] ?? 'Child';
     final token = widget.child?['invitationToken'] ?? '---';
-    final shareText = "Hello! To start monitoring $displayName, please install 'The Guardian Child' app and use this pairing link: https://the-guardian.app/child/pair?code=$token\n\nInvitation Code: $token";
-    
+    final shareText =
+        "Hello! To start monitoring $displayName, please install 'The Guardian Child' app and use this pairing link: https://the-guardian.app/child/pair?code=$token\n\nInvitation Code: $token";
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) => Padding(
         padding: EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Share installation link', 
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 20, fontWeight: FontWeight.bold)),
+            Text('Share installation link',
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold)),
             SizedBox(height: 8),
-            Text('Invite your child to install the app via:', 
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16)),
+            Text('Invite your child to install the app via:',
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 16)),
             SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _shareOption(
-                  'WhatsApp', 
-                  Icons.chat_bubble_outline, 
-                  const Color(0xFF25D366),
-                  () async {
-                    final url = "whatsapp://send?text=${Uri.encodeComponent(shareText)}";
-                    if (await canLaunchUrl(Uri.parse(url))) {
-                      await launchUrl(Uri.parse(url));
-                    } else {
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('WhatsApp not installed')));
-                    }
+                _shareOption('WhatsApp', Icons.chat_bubble_outline,
+                    const Color(0xFF25D366), () async {
+                  final url =
+                      "whatsapp://send?text=${Uri.encodeComponent(shareText)}";
+                  if (await canLaunchUrl(Uri.parse(url))) {
+                    await launchUrl(Uri.parse(url));
+                  } else {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('WhatsApp not installed')));
                   }
-                ),
-                _shareOption(
-                  'SMS', 
-                  Icons.sms_outlined, 
-                  Colors.blueAccent,
-                  () async {
-                    final url = "sms:?body=${Uri.encodeComponent(shareText)}";
-                    if (await canLaunchUrl(Uri.parse(url))) {
-                      await launchUrl(Uri.parse(url));
-                    }
+                }),
+                _shareOption('SMS', Icons.sms_outlined, Colors.blueAccent,
+                    () async {
+                  final url = "sms:?body=${Uri.encodeComponent(shareText)}";
+                  if (await canLaunchUrl(Uri.parse(url))) {
+                    await launchUrl(Uri.parse(url));
                   }
-                ),
+                }),
                 _shareOption(
-                  'Copy Link', 
-                  Icons.copy_all, 
-                  Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54),
-                  () {
-                    Clipboard.setData(ClipboardData(text: shareText));
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied to clipboard')));
-                    Navigator.pop(context);
-                  }
-                ),
+                    'Copy Link',
+                    Icons.copy_all,
+                    Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.54), () {
+                  Clipboard.setData(ClipboardData(text: shareText));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Link copied to clipboard')));
+                  Navigator.pop(context);
+                }),
               ],
             ),
             SizedBox(height: 16),
@@ -229,7 +587,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     );
   }
 
-  Widget _shareOption(String label, IconData icon, Color color, VoidCallback onTap) {
+  Widget _shareOption(
+      String label, IconData icon, Color color, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -245,7 +604,10 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
             child: Icon(icon, color: color, size: 28),
           ),
           SizedBox(height: 8),
-          Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12)),
+          Text(label,
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 12)),
         ],
       ),
     );
@@ -283,7 +645,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                   child: ConstrainedBox(
                     constraints: BoxConstraints(maxWidth: isWide ? 1200 : 900),
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: isWide ? 32 : 24, vertical: 16),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: isWide ? 32 : 24, vertical: 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -292,8 +655,16 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                             children: [
                               IconButton(
                                 icon: Icon(Icons.arrow_back_ios_new_rounded,
-                                    color: Theme.of(context).colorScheme.onSurface, size: 20),
-                                onPressed: () => context.pop(),
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                    size: 20),
+                                onPressed: () {
+                                  if (context.canPop()) {
+                                    context.pop();
+                                  } else {
+                                    context.go('/dashboard');
+                                  }
+                                },
                               ),
                               const Spacer(),
                               _buildActionButtons(child),
@@ -302,7 +673,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                           const SizedBox(height: 8),
 
                           // ── Profile hero ──────────────────────────────────
-                          _buildProfileHeader(displayName, age, childId, childRepo),
+                          _buildProfileHeader(
+                              displayName, age, childId, childRepo),
                           const SizedBox(height: 36),
 
                           if (isWide) ...[
@@ -313,26 +685,36 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                 Expanded(
                                   flex: 3,
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       _buildSectionTitle('Monitoring'),
                                       const SizedBox(height: 12),
-                                      LayoutBuilder(builder: (context, constraints) {
-                                        final cols = constraints.maxWidth > 560 ? 3 : 2;
-                                        final ratio = constraints.maxWidth > 560 ? 1.1 : 0.85;
+                                      LayoutBuilder(
+                                          builder: (context, constraints) {
+                                        final cols =
+                                            constraints.maxWidth > 560 ? 3 : 2;
+                                        final ratio = constraints.maxWidth > 560
+                                            ? 1.1
+                                            : 0.85;
                                         return GridView.count(
                                           crossAxisCount: cols,
                                           crossAxisSpacing: 14,
                                           mainAxisSpacing: 14,
                                           shrinkWrap: true,
-                                          physics: const NeverScrollableScrollPhysics(),
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
                                           childAspectRatio: ratio,
                                           children: [
-                                            _buildRulesSummaryCard(childId, child, rulesRepo),
-                                            _buildScreenTimeRemainingCard(childId, child, rulesRepo),
+                                            _buildRulesSummaryCard(
+                                                childId, child, rulesRepo),
+                                            _buildScreenTimeRemainingCard(
+                                                childId, child, rulesRepo),
                                             _buildAppListingCard(childId),
-                                            _buildAlertHistoryCard(childId, alertRepo),
-                                            _buildWebHistoryCard(childId, statsRepo),
+                                            _buildAlertHistoryCard(
+                                                childId, alertRepo),
+                                            _buildWebHistoryCard(
+                                                childId, statsRepo),
                                           ],
                                         );
                                       }),
@@ -344,11 +726,13 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                 Expanded(
                                   flex: 2,
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       _buildSectionTitle('Activity Overview'),
                                       const SizedBox(height: 12),
-                                      _buildOverviewCard(childId, childRepo, alertRepo),
+                                      _buildOverviewCard(
+                                          childId, childRepo, alertRepo),
                                       const SizedBox(height: 28),
                                       _buildConfigButtons(child),
                                     ],
@@ -362,7 +746,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                             const SizedBox(height: 4),
                             LayoutBuilder(builder: (context, constraints) {
                               final cols = constraints.maxWidth > 560 ? 3 : 2;
-                              final ratio = constraints.maxWidth > 560 ? 1.1 : 0.85;
+                              final ratio =
+                                  constraints.maxWidth > 560 ? 1.1 : 0.85;
                               return GridView.count(
                                 crossAxisCount: cols,
                                 crossAxisSpacing: 14,
@@ -371,8 +756,10 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                 physics: const NeverScrollableScrollPhysics(),
                                 childAspectRatio: ratio,
                                 children: [
-                                  _buildRulesSummaryCard(childId, child, rulesRepo),
-                                  _buildScreenTimeRemainingCard(childId, child, rulesRepo),
+                                  _buildRulesSummaryCard(
+                                      childId, child, rulesRepo),
+                                  _buildScreenTimeRemainingCard(
+                                      childId, child, rulesRepo),
                                   _buildAppListingCard(childId),
                                   _buildAlertHistoryCard(childId, alertRepo),
                                   _buildWebHistoryCard(childId, statsRepo),
@@ -409,29 +796,47 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          icon: Icon(Icons.share_outlined, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), size: 20),
+          icon: Icon(Icons.share_outlined,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.70),
+              size: 20),
           tooltip: 'Share Link',
           onPressed: _showShareDialog,
         ),
         IconButton(
-          icon: Icon(Icons.edit_outlined, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), size: 20),
+          icon: Icon(Icons.edit_outlined,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.70),
+              size: 20),
           tooltip: 'Edit Profile',
           onPressed: () => context.push('/child/edit', extra: child),
         ),
         IconButton(
-          icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+          icon: const Icon(Icons.delete_outline,
+              color: Colors.redAccent, size: 20),
           tooltip: 'Delete Profile',
           onPressed: () => _handleDeleteProfile(child),
         ),
         IconButton(
-          icon: Icon(Icons.map_outlined, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), size: 20),
+          icon: Icon(Icons.map_outlined,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.70),
+              size: 20),
           tooltip: 'View on Map',
           onPressed: () => context.push('/map', extra: child),
         ),
         IconButton(
           icon: Icon(
             _isLoadingUsage ? Icons.sync : Icons.refresh,
-            color: _isLoadingUsage ? AppColors.primary : Theme.of(context).colorScheme.onSurface,
+            color: _isLoadingUsage
+                ? AppColors.primary
+                : Theme.of(context).colorScheme.onSurface,
             size: 20,
           ),
           tooltip: 'Refresh Stats',
@@ -441,11 +846,16 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     );
   }
 
-  Widget _buildProfileHeader(String displayName, String age, String childId, ChildRepository childRepo) {
+  Widget _buildProfileHeader(String displayName, String age, String childId,
+      ChildRepository childRepo) {
     final isLight = Theme.of(context).brightness == Brightness.light;
-    final usedMinutes = (_usageStats?['usedMinutes'] ?? _usageStats?['totalMinutes'] ?? 0) as num;
+    final usedMinutes = (_usageStats?['usedMinutes'] ??
+        _usageStats?['totalMinutes'] ??
+        0) as num;
     final rawApps = _usageStats?['apps'];
-    final appsCount = rawApps is Map ? rawApps.length : (rawApps is List ? rawApps.length : 0);
+    final appsCount = rawApps is Map
+        ? rawApps.length
+        : (rawApps is List ? rawApps.length : 0);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -467,7 +877,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6366F1).withValues(alpha: isLight ? 0.1 : 0.2),
+            color:
+                const Color(0xFF6366F1).withValues(alpha: isLight ? 0.1 : 0.2),
             blurRadius: 30,
             offset: const Offset(0, 10),
           ),
@@ -486,7 +897,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFEC4899).withValues(alpha: isLight ? 0.2 : 0.3),
+                    const Color(0xFFEC4899)
+                        .withValues(alpha: isLight ? 0.2 : 0.3),
                     Colors.transparent,
                   ],
                 ),
@@ -503,7 +915,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF8B5CF6).withValues(alpha: isLight ? 0.2 : 0.3),
+                    const Color(0xFF8B5CF6)
+                        .withValues(alpha: isLight ? 0.2 : 0.3),
                     Colors.transparent,
                   ],
                 ),
@@ -536,12 +949,16 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                     ),
                     child: CircleAvatar(
                       radius: 42,
-                      backgroundColor: isLight ? Colors.white : const Color(0xFF0F172A),
+                      backgroundColor:
+                          isLight ? Colors.white : const Color(0xFF0F172A),
                       child: Text(
-                        displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
-                        style: const TextStyle(
-                          color: Color(0xFF6366F1),
-                          fontSize: 38,
+                        widget.child?['avatar']?.toString() ??
+                            (displayName.isNotEmpty
+                                ? displayName[0].toUpperCase()
+                                : '?'),
+                        style: TextStyle(
+                          color: const Color(0xFF6366F1),
+                          fontSize: widget.child?['avatar'] != null ? 38 : 34,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -568,15 +985,21 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                           runSpacing: 8,
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 '$age years old',
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -589,13 +1012,19 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                 final status = snapshot.data ?? 'OFFLINE';
                                 final isOnline = status == 'ONLINE';
                                 return Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: (isOnline ? const Color(0xFF22C55E) : Colors.grey)
-                                        .withValues(alpha: isLight ? 0.15 : 0.25),
+                                    color: (isOnline
+                                            ? const Color(0xFF22C55E)
+                                            : Colors.grey)
+                                        .withValues(
+                                            alpha: isLight ? 0.15 : 0.25),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: (isOnline ? const Color(0xFF22C55E) : Colors.grey)
+                                      color: (isOnline
+                                              ? const Color(0xFF22C55E)
+                                              : Colors.grey)
                                           .withValues(alpha: 0.40),
                                     ),
                                   ),
@@ -606,18 +1035,28 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                         width: 6,
                                         height: 6,
                                         decoration: BoxDecoration(
-                                          color: isOnline ? const Color(0xFF4ADE80) : Colors.grey,
+                                          color: isOnline
+                                              ? const Color(0xFF4ADE80)
+                                              : Colors.grey,
                                           shape: BoxShape.circle,
-                                          boxShadow: isOnline ? [
-                                            const BoxShadow(color: Color(0xFF4ADE80), blurRadius: 4)
-                                          ] : null,
+                                          boxShadow: isOnline
+                                              ? [
+                                                  const BoxShadow(
+                                                      color: Color(0xFF4ADE80),
+                                                      blurRadius: 4)
+                                                ]
+                                              : null,
                                         ),
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
                                         isOnline ? 'ON' : 'OFF',
                                         style: TextStyle(
-                                          color: isOnline ? (isLight ? const Color(0xFF16A34A) : const Color(0xFF4ADE80)) : Colors.grey,
+                                          color: isOnline
+                                              ? (isLight
+                                                  ? const Color(0xFF16A34A)
+                                                  : const Color(0xFF4ADE80))
+                                              : Colors.grey,
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -633,12 +1072,20 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              Icon(Icons.sync, size: 12, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
+                              Icon(Icons.sync,
+                                  size: 12,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant
+                                      .withValues(alpha: 0.6)),
                               const SizedBox(width: 4),
                               Text(
                                 'Synced at ${_lastSync!.hour}:${_lastSync!.minute.toString().padLeft(2, '0')}',
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant
+                                      .withValues(alpha: 0.6),
                                   fontSize: 11,
                                 ),
                               ),
@@ -658,7 +1105,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                     child: _buildQuickStat(
                       icon: Icons.timer_outlined,
                       label: 'Screen time',
-                      value: usedMinutes > 0 ? '${usedMinutes.toInt()} min' : '—',
+                      value:
+                          usedMinutes > 0 ? '${usedMinutes.toInt()} min' : '—',
                       color: const Color(0xFF6366F1),
                       isLight: isLight,
                     ),
@@ -675,7 +1123,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                   ),
                   const SizedBox(width: 12),
                   StreamBuilder<List<Map<String, dynamic>>>(
-                    stream: context.read<AlertRepository>().watchAlerts(childId),
+                    stream:
+                        context.read<AlertRepository>().watchAlerts(childId),
                     builder: (context, snapshot) {
                       final unread = (snapshot.data ?? [])
                           .where((a) => a['read'] != true)
@@ -685,7 +1134,9 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                           icon: Icons.notifications_active_outlined,
                           label: 'Alerts',
                           value: unread == 0 ? 'None' : '$unread',
-                          color: unread > 0 ? const Color(0xFFEC4899) : const Color(0xFF14B8A6),
+                          color: unread > 0
+                              ? const Color(0xFFEC4899)
+                              : const Color(0xFF14B8A6),
                           isLight: isLight,
                         ),
                       );
@@ -763,8 +1214,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     );
   }
 
-
-  Widget _buildOverviewCard(String childId, ChildRepository childRepo, AlertRepository alertRepo) {
+  Widget _buildOverviewCard(
+      String childId, ChildRepository childRepo, AlertRepository alertRepo) {
     return GlassCard(
       padding: EdgeInsets.all(20),
       child: Column(
@@ -778,11 +1229,20 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                 'Device Status',
                 status,
                 Icons.sensors,
-                trailingColor: isOnline ? Colors.greenAccent : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24),
+                trailingColor: isOnline
+                    ? Colors.greenAccent
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.24),
               );
             },
           ),
-          Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10)),
+          Divider(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.10)),
           StreamBuilder<List<Map<String, dynamic>>>(
             stream: alertRepo.watchAlerts(childId),
             builder: (context, snapshot) {
@@ -796,7 +1256,12 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                 'Alerts Today',
                 todayCount.toString(),
                 Icons.notifications_none,
-                trailingColor: todayCount > 0 ? Colors.orange : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24),
+                trailingColor: todayCount > 0
+                    ? Colors.orange
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.24),
               );
             },
           ),
@@ -824,7 +1289,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
               elevation: 2,
               shadowColor: AppColors.primary.withValues(alpha: 0.3),
             ),
@@ -841,7 +1307,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
               foregroundColor: AppColors.primary,
               side: const BorderSide(color: AppColors.primary, width: 1.5),
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
             ),
           ),
         ),
@@ -849,22 +1316,24 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     );
   }
 
-  Widget _buildRulesSummaryCard(String childId, dynamic child, RulesRepository rulesRepo) {
+  Widget _buildRulesSummaryCard(
+      String childId, dynamic child, RulesRepository rulesRepo) {
     return StreamBuilder<Map<String, dynamic>>(
       stream: rulesRepo.watchRules(childId).map((r) => r.toJson()),
       builder: (context, rulesSnap) {
         final rules = rulesSnap.data ?? {};
         final bool blockAdult = rules['blockAdultContent'] == true;
         final bool isConfigured = rules['rulesConfigured'] == true;
-        
+
         return StreamBuilder<List<Map<String, dynamic>>>(
           stream: FirestoreService().watchGeofences(childId),
           builder: (context, geoSnap) {
             final zones = geoSnap.data ?? [];
-            
+
             String? subtitle;
             if (zones.isNotEmpty) {
-              subtitle = '${zones.length} safe zone${zones.length > 1 ? 's' : ''} active';
+              subtitle =
+                  '${zones.length} safe zone${zones.length > 1 ? 's' : ''} active';
             } else if (rules.isNotEmpty && isConfigured) {
               subtitle = 'Content filters active';
             }
@@ -873,12 +1342,19 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
               'Rules',
               Icons.shield_outlined,
               AppColors.primary,
-              () => context.push('/child/rules-summary', extra: {
-                'child': child,
-                'rules': rules,
-              }),
+              () => _showContextualGuideIfNeeded(
+                'geofencing',
+                'Zones de sécurité & Filtres',
+                'Définissez des zones géographiques de sécurité (maison, école) et configurez les filtres de contenu Web pour votre enfant.',
+                Icons.shield_outlined,
+                () => context.push('/child/rules-summary', extra: {
+                  'child': child,
+                  'rules': rules,
+                }),
+              ),
               hasWarning: rules.isNotEmpty && isConfigured && !blockAdult,
               subtitle: subtitle,
+              featureKey: 'geofencing',
             );
           },
         );
@@ -886,7 +1362,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     );
   }
 
-  Widget _buildScreenTimeRemainingCard(String childId, dynamic child, RulesRepository rulesRepo) {
+  Widget _buildScreenTimeRemainingCard(
+      String childId, dynamic child, RulesRepository rulesRepo) {
     return StreamBuilder<Map<String, dynamic>>(
       stream: rulesRepo.watchRules(childId).map((r) => r.toJson()),
       builder: (context, rulesSnap) {
@@ -894,10 +1371,11 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
         final used = (data['usedMinutes'] ?? 0) as num;
         final isLocked = data['isLocked'] == true;
         final limit = (rulesSnap.data?['dailyLimitMinutes'] ?? 120) as num;
-        
+
         final int? remainingFromFs = data['remainingMinutes'] as int?;
-        final int remaining = remainingFromFs ?? (limit - used).toInt().clamp(0, 9999);
-        
+        final int remaining =
+            remainingFromFs ?? (limit - used).toInt().clamp(0, 9999);
+
         final bool lockedUI = isLocked;
         final bool limitReached = remaining <= 0 && !isLocked;
 
@@ -905,14 +1383,37 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
           'Screen Time',
           Icons.timer_outlined,
           AppColors.accentTeal,
-          () => _showScreenTimeDetail(childId, child),
-          customSubtitle: _usageStats == null 
-            ? Text('Sync to update', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24), fontSize: 9))
-            : (lockedUI 
-                ? Text('Téléphone verrouillé', style: TextStyle(color: Colors.redAccent, fontSize: 9, fontWeight: FontWeight.bold))
-                : (limitReached
-                    ? Text('Limite atteinte', style: TextStyle(color: Colors.orangeAccent, fontSize: 9, fontWeight: FontWeight.bold))
-                    : Text('$remaining min left of ${limit.toInt()}m', style: TextStyle(color: AppColors.textGray300, fontSize: 10)))),
+          () => _showContextualGuideIfNeeded(
+            'appControl',
+            'Temps d\'écran & Limites',
+            'Configurez le temps d\'écran quotidien accordé à votre enfant pour l\'aider à garder un équilibre sain.',
+            Icons.timer_outlined,
+            () => _showScreenTimeDetail(childId, child),
+          ),
+          customSubtitle: _usageStats == null
+              ? Text('Sync to update',
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.24),
+                      fontSize: 9))
+              : (lockedUI
+                  ? Text('Téléphone verrouillé',
+                      style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold))
+                  : (limitReached
+                      ? Text('Limite atteinte',
+                          style: TextStyle(
+                              color: Colors.orangeAccent,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold))
+                      : Text('$remaining min left of ${limit.toInt()}m',
+                          style: TextStyle(
+                              color: AppColors.textGray300, fontSize: 10)))),
+          featureKey: 'appControl',
         );
       },
     );
@@ -920,14 +1421,25 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
 
   Widget _buildAppListingCard(String childId) {
     final rawApps = _usageStats?['apps'];
-    final int appsCount = rawApps is Map ? rawApps.length : (rawApps is List ? rawApps.length : 0);
-    
+    final int appsCount = rawApps is Map
+        ? rawApps.length
+        : (rawApps is List ? rawApps.length : 0);
+
     return _buildActionCard(
       'App Usage',
       Icons.apps,
       const Color(0xFF9C6FFF),
-      () => _showAppManager(childId),
-      subtitle: _usageStats == null ? 'Sync required' : '$appsCount apps active today',
+      () => _showContextualGuideIfNeeded(
+        'appControl',
+        'Contrôle des Applications',
+        'Visualisez les applications installées sur le téléphone de votre enfant et bloquez instantanément les applications inappropriées.',
+        Icons.apps,
+        () => _showAppManager(childId),
+      ),
+      subtitle: _usageStats == null
+          ? 'Sync required'
+          : '$appsCount apps active today',
+      featureKey: 'appControl',
     );
   }
 
@@ -942,9 +1454,16 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
           'Alerts',
           Icons.notifications_active_outlined,
           unread > 0 ? Colors.redAccent : Colors.orange,
-          () => context.push('/child/alerts', extra: widget.child),
+          () => _showContextualGuideIfNeeded(
+            'alerts',
+            'Système d\'Alertes de Sécurité',
+            'Recevez des alertes instantanées pour les événements critiques tels que le cyberharcèlement, les tentatives de contournement et les SOS.',
+            Icons.notifications_active_outlined,
+            () => context.push('/child/alerts', extra: widget.child),
+          ),
           badgeCount: unread,
           subtitle: unread > 0 ? '$unread new alerts' : 'No new alerts',
+          featureKey: 'alerts',
         );
       },
     );
@@ -952,32 +1471,56 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
 
   Widget _buildWebHistoryCard(String childId, StatsRepository statsRepo) {
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('parents').doc(FirebaseAuth.instance.currentUser?.uid)
-          .collection('children').doc(childId).collection('inventory').doc('websites').collection('history')
-          .orderBy('timestamp', descending: true).limit(50).snapshots().map((s) => s.docs.map((d) => d.data()).toList()),
+      stream: ChildMonitorService().watchWebHistory(childId),
       builder: (context, snapshot) {
         final history = snapshot.data ?? [];
         return _buildActionCard(
           'Browsing History',
           Icons.language_outlined,
           AppColors.accentTeal,
-          () => _showWebHistoryDetail(childId),
-          subtitle: history.isEmpty ? 'No recent activity' : '${history.length} sites visited',
+          () => _showContextualGuideIfNeeded(
+            'aiReports',
+            'Historique de Navigation & IA',
+            'Suivez les recherches de votre enfant. Notre intelligence artificielle Gemini analyse le contenu web pour détecter les dérives.',
+            Icons.language_outlined,
+            () => _showWebHistoryDetail(childId),
+          ),
+          subtitle: history.isEmpty
+              ? 'No recent activity'
+              : '${history.length} sites visited',
+          featureKey: 'aiReports',
         );
       },
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, {Color? trailingColor}) {
+  Widget _buildStatItem(String label, String value, IconData icon,
+      {Color? trailingColor}) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          Icon(icon, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.60), size: 20),
+          Icon(icon,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.60),
+              size: 20),
           SizedBox(width: 12),
-          Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 14)),
+          Text(label,
+              style: TextStyle(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.70),
+                  fontSize: 14)),
           Spacer(),
-          Text(value, style: TextStyle(color: trailingColor ?? Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 14)),
+          Text(value,
+              style: TextStyle(
+                  color:
+                      trailingColor ?? Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14)),
         ],
       ),
     );
@@ -1033,13 +1576,11 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                 childId,
                 startAfter: lastDoc,
               );
-              final newItems = snap.docs
-                  .map((d) => {'id': d.id, ...d.data()})
-                  .where((item) {
-                    final url = item['url'] as String? ?? '';
-                    return !url.startsWith('browser://');
-                  })
-                  .toList();
+              final newItems =
+                  snap.docs.map((d) => {'id': d.id, ...d.data()}).where((item) {
+                final url = item['url'] as String? ?? '';
+                return !url.startsWith('browser://');
+              }).toList();
               setModalState(() {
                 allHistory.addAll(newItems);
                 lastDoc = snap.docs.isNotEmpty ? snap.docs.last : lastDoc;
@@ -1063,7 +1604,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
             expand: false,
             builder: (_, controller) {
               controller.addListener(() {
-                if (controller.position.pixels >= controller.position.maxScrollExtent - 200) {
+                if (controller.position.pixels >=
+                    controller.position.maxScrollExtent - 200) {
                   loadMore();
                 }
               });
@@ -1082,129 +1624,191 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold)),
                         IconButton(
-                            icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
+                            icon: Icon(Icons.close,
+                                color: Theme.of(context).colorScheme.onSurface),
                             onPressed: () => Navigator.pop(ctx)),
                       ],
                     ),
                     SizedBox(height: 16),
                     Expanded(
                       child: allHistory.isEmpty && !isLoading
-                        ? Center(child: Text('No history found', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54))))
-                        : StreamBuilder<Map<String, dynamic>>(
-                            stream: FirestoreService().rulesStream(childId),
-                            builder: (context, rulesSnap) {
-                              final blockedSites = List<String>.from(rulesSnap.data?['blockedWebsites'] ?? []);
-                              
-                              return ListView.builder(
-                                controller: controller,
-                                itemCount: allHistory.length + (hasMore ? 1 : 0),
-                                itemBuilder: (context, index) {
-                                  if (index == allHistory.length) {
-                                    return Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 20),
-                                      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                                    );
-                                  }
-                                  final item = allHistory[index];
-                                  final url = item['url'] ?? '';
-                                  final rawTitle = item['title'] ?? '';
-                                  final domain = Uri.tryParse(url)?.host ?? url;
-                                  final title = (rawTitle.isNotEmpty && rawTitle != 'Website') ? rawTitle : _formatDomainName(domain);
-                                  final isBlocked = blockedSites.contains(domain);
-                                  
-                                  final rawQuery = item['searchQuery'] as String?;
-                                  String? displayQuery = (rawQuery != null && rawQuery.isNotEmpty) ? rawQuery : null;
-                                  if (displayQuery == null) {
+                          ? Center(
+                              child: Text('No history found',
+                                  style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.54))))
+                          : StreamBuilder<Map<String, dynamic>>(
+                              stream: FirestoreService().rulesStream(childId),
+                              builder: (context, rulesSnap) {
+                                final blockedSites = List<String>.from(
+                                    rulesSnap.data?['blockedWebsites'] ?? []);
+
+                                return ListView.builder(
+                                  controller: controller,
+                                  itemCount:
+                                      allHistory.length + (hasMore ? 1 : 0),
+                                  itemBuilder: (context, index) {
+                                    if (index == allHistory.length) {
+                                      return Padding(
+                                        padding:
+                                            EdgeInsets.symmetric(vertical: 20),
+                                        child: Center(
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2)),
+                                      );
+                                    }
+                                    final item = allHistory[index];
+                                    final url = item['url'] ?? '';
+                                    final rawTitle = item['title'] ?? '';
+                                    final domain =
+                                        Uri.tryParse(url)?.host ?? url;
+                                    final title = (rawTitle.isNotEmpty &&
+                                            rawTitle != 'Website')
+                                        ? rawTitle
+                                        : _formatDomainName(domain);
+                                    final isBlocked =
+                                        blockedSites.contains(domain);
+
+                                    final rawQuery =
+                                        item['searchQuery'] as String?;
+                                    String? displayQuery = (rawQuery != null &&
+                                            rawQuery.isNotEmpty)
+                                        ? rawQuery
+                                        : null;
+                                    if (displayQuery == null) {
                                       final uri = Uri.tryParse(url);
                                       if (uri != null) {
-                                          if (domain.contains('google.com') || domain.contains('bing.com') || domain.contains('duckduckgo.com')) {
-                                              displayQuery = uri.queryParameters['q'];
-                                          } else if (domain.contains('yahoo.com')) {
-                                              displayQuery = uri.queryParameters['p'];
-                                          }
+                                        if (domain.contains('google.com') ||
+                                            domain.contains('bing.com') ||
+                                            domain.contains('duckduckgo.com')) {
+                                          displayQuery =
+                                              uri.queryParameters['q'];
+                                        } else if (domain
+                                            .contains('yahoo.com')) {
+                                          displayQuery =
+                                              uri.queryParameters['p'];
+                                        }
                                       }
-                                  }
-                                  
-                                  return Padding(
-                                    padding: EdgeInsets.only(bottom: 12),
-                                    child: GlassCard(
-                                      padding: EdgeInsets.all(12),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 44,
-                                            height: 44,
-                                            decoration: BoxDecoration(
-                                              color: AppColors.accentTeal.withValues(alpha: 0.1),
-                                              borderRadius: BorderRadius.circular(10),
+                                    }
+
+                                    return Padding(
+                                      padding: EdgeInsets.only(bottom: 12),
+                                      child: GlassCard(
+                                        padding: EdgeInsets.all(12),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 44,
+                                              height: 44,
+                                              decoration: BoxDecoration(
+                                                color: AppColors.accentTeal
+                                                    .withValues(alpha: 0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: Icon(Icons.public,
+                                                  color: AppColors.accentTeal,
+                                                  size: 24),
                                             ),
-                                            child: Icon(Icons.public, color: AppColors.accentTeal, size: 24),
-                                          ),
-                                          SizedBox(width: 14),
-                                           Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                // Title: page title or formatted domain
-                                                Text(
-                                                  title,
-                                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 14),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                                SizedBox(height: 2),
-                                                // Line 2: always show the URL/domain
-                                                Text(
-                                                  domain,
-                                                  style: TextStyle(
-                                                    color: AppColors.textGray300,
-                                                    fontSize: 11,
+                                            SizedBox(width: 14),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  // Title: page title or formatted domain
+                                                  Text(
+                                                    title,
+                                                    style: TextStyle(
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurface,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 14),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                   ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                                // Line 3: show search query if present
-                                                if (displayQuery != null && displayQuery.isNotEmpty) ...[
                                                   SizedBox(height: 2),
-                                                  Row(
-                                                    children: [
-                                                      Icon(Icons.search, size: 11, color: AppColors.accentTeal),
-                                                      SizedBox(width: 3),
-                                                      Expanded(
-                                                        child: Text(
-                                                          displayQuery,
-                                                          style: TextStyle(
-                                                            color: AppColors.accentTeal,
-                                                            fontSize: 11,
-                                                            fontWeight: FontWeight.bold,
-                                                          ),
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow.ellipsis,
-                                                        ),
-                                                      ),
-                                                    ],
+                                                  // Line 2: always show the URL/domain
+                                                  Text(
+                                                    domain,
+                                                    style: TextStyle(
+                                                      color:
+                                                          AppColors.textGray300,
+                                                      fontSize: 11,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                   ),
+                                                  // Line 3: show search query if present
+                                                  if (displayQuery != null &&
+                                                      displayQuery
+                                                          .isNotEmpty) ...[
+                                                    SizedBox(height: 2),
+                                                    Row(
+                                                      children: [
+                                                        Icon(Icons.search,
+                                                            size: 11,
+                                                            color: AppColors
+                                                                .accentTeal),
+                                                        SizedBox(width: 3),
+                                                        Expanded(
+                                                          child: Text(
+                                                            displayQuery,
+                                                            style: TextStyle(
+                                                              color: AppColors
+                                                                  .accentTeal,
+                                                              fontSize: 11,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
                                                 ],
-                                              ],
+                                              ),
                                             ),
-                                          ),
-                                          TextButton(
-                                            onPressed: () => FirestoreService().toggleWebsiteBlock(childId, domain, !isBlocked),
-                                            style: TextButton.styleFrom(
-                                              foregroundColor: isBlocked ? Colors.greenAccent : Colors.redAccent,
-                                              padding: EdgeInsets.symmetric(horizontal: 12),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  FirestoreService()
+                                                      .toggleWebsiteBlock(
+                                                          childId,
+                                                          domain,
+                                                          !isBlocked),
+                                              style: TextButton.styleFrom(
+                                                foregroundColor: isBlocked
+                                                    ? Colors.greenAccent
+                                                    : Colors.redAccent,
+                                                padding: EdgeInsets.symmetric(
+                                                    horizontal: 12),
+                                              ),
+                                              child: Text(
+                                                  isBlocked ? 'ALLOW' : 'BLOCK',
+                                                  style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.bold)),
                                             ),
-                                            child: Text(isBlocked ? 'ALLOW' : 'BLOCK', 
-                                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
                     ),
                   ],
                 ),
@@ -1216,17 +1820,27 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     );
   }
 
-
   Widget _buildActionCard(
       String label, IconData icon, Color color, VoidCallback onTap,
       {String? subtitle,
-       int? badgeCount,
-       Color? badgeColor,
-       bool hasWarning = false,
-       Widget? customSubtitle}) {
+      int? badgeCount,
+      Color? badgeColor,
+      bool hasWarning = false,
+      Widget? customSubtitle,
+      String? featureKey}) {
     final isLight = Theme.of(context).brightness == Brightness.light;
+    final isUnlocked =
+        featureKey == null || _isFeatureUnlockedByDay(featureKey);
+    final VoidCallback activeTap;
+    if (isUnlocked) {
+      activeTap = onTap;
+    } else {
+      activeTap = () => _showUpsellLockSheet(featureKey, label);
+    }
+    final activeColor = isUnlocked ? color : Colors.grey.shade400;
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: activeTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         decoration: BoxDecoration(
@@ -1234,22 +1848,26 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              isLight ? Colors.white.withValues(alpha: 0.96) : const Color(0xFF0D1B2A).withValues(alpha: 0.7),
-              isLight ? color.withValues(alpha: 0.04) : color.withValues(alpha: 0.06),
+              isLight
+                  ? Colors.white.withOpacity(0.96)
+                  : const Color(0xFF0D1B2A).withOpacity(0.7),
+              isLight
+                  ? activeColor.withOpacity(0.04)
+                  : activeColor.withOpacity(0.06),
             ],
           ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isLight
-                ? color.withValues(alpha: 0.20)
-                : color.withValues(alpha: 0.15),
+                ? activeColor.withOpacity(0.20)
+                : activeColor.withOpacity(0.15),
             width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
               color: isLight
-                  ? color.withValues(alpha: 0.10)
-                  : Colors.black.withValues(alpha: 0.15),
+                  ? activeColor.withOpacity(0.10)
+                  : Colors.black.withOpacity(0.15),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -1271,12 +1889,12 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: color.withValues(alpha: isLight ? 0.10 : 0.15),
+                          color: activeColor.withOpacity(isLight ? 0.10 : 0.15),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(icon, color: color, size: 24),
+                        child: Icon(icon, color: activeColor, size: 24),
                       ),
-                      if (badgeCount != null && badgeCount > 0)
+                      if (badgeCount != null && badgeCount > 0 && isUnlocked)
                         Positioned(
                           right: -3,
                           top: -3,
@@ -1286,7 +1904,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                               color: badgeColor ?? Colors.red,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                  color: Theme.of(context).scaffoldBackgroundColor,
+                                  color:
+                                      Theme.of(context).scaffoldBackgroundColor,
                                   width: 1.5),
                             ),
                             child: Text(
@@ -1296,6 +1915,24 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                   fontSize: 8,
                                   fontWeight: FontWeight.bold),
                             ),
+                          ),
+                        ),
+                      if (!isUnlocked)
+                        Positioned(
+                          right: -3,
+                          top: -3,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.amber,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color:
+                                      Theme.of(context).scaffoldBackgroundColor,
+                                  width: 1.5),
+                            ),
+                            child: const Icon(Icons.lock,
+                                color: Colors.black, size: 8),
                           ),
                         ),
                     ],
@@ -1313,7 +1950,17 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                   ),
                   const SizedBox(height: 4),
                   // Subtitle
-                  if (customSubtitle != null)
+                  if (!isUnlocked)
+                    Text(
+                      'Bientôt disponible\n(${_getFeatureUnlockDayText(featureKey)})',
+                      style: const TextStyle(
+                        color: Colors.amber,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    )
+                  else if (customSubtitle != null)
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxHeight: 36),
                       child: ClipRect(child: customSubtitle),
@@ -1335,22 +1982,28 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'View',
+                        isUnlocked ? 'Consulter' : 'Débloquer',
                         style: TextStyle(
-                          color: color,
+                          color: isUnlocked ? color : Colors.amber,
                           fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(width: 2),
-                      Icon(Icons.arrow_forward_ios_rounded, color: color, size: 10),
+                      Icon(
+                        isUnlocked
+                            ? Icons.arrow_forward_ios_rounded
+                            : Icons.workspace_premium,
+                        color: isUnlocked ? color : Colors.amber,
+                        size: 10,
+                      ),
                     ],
                   ),
                 ],
               ),
             ),
             // Warning dot
-            if (hasWarning)
+            if (hasWarning && isUnlocked)
               Positioned(
                 top: 8,
                 right: 8,
@@ -1394,7 +2047,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                         fontSize: 20,
                         fontWeight: FontWeight.bold)),
                 IconButton(
-                    icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(Icons.close,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => Navigator.pop(ctx)),
               ],
             ),
@@ -1411,8 +2065,6 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
 
   // Removed unused _buildAlertCounters
 
-
-
   Widget _buildScreenTimeSection(String childId,
       {Map<dynamic, dynamic>? childData}) {
     return Column(
@@ -1423,7 +2075,10 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
             _buildSectionTitle('Current Status'),
             if (_isLoadingUsage) ...[
               SizedBox(width: 12),
-              SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)),
+              SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2)),
             ],
           ],
         ),
@@ -1431,16 +2086,22 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
         StreamBuilder<Map<String, dynamic>>(
           stream: FirestoreService().rulesStream(childId),
           builder: (context, rulesSnapshot) {
-            final dailyLimit = ((rulesSnapshot.data?['dailyLimitMinutes'] ?? 120) as num).toInt();
-            final startTime = rulesSnapshot.data?['allowedTimeStart'] as String?;
-            final endTime   = rulesSnapshot.data?['allowedTimeEnd'] as String?;
+            final dailyLimit =
+                ((rulesSnapshot.data?['dailyLimitMinutes'] ?? 120) as num)
+                    .toInt();
+            final startTime =
+                rulesSnapshot.data?['allowedTimeStart'] as String?;
+            final endTime = rulesSnapshot.data?['allowedTimeEnd'] as String?;
             final hasSchedule = startTime != null && endTime != null;
 
             // usedMinutes is sourced from the live stats subscription (_usageStats)
             final data = _usageStats ?? {};
-            final usedMinutes = (data['usedMinutes'] ?? data['totalMinutes'] ?? 0) as num;
-            final progress = (usedMinutes / (dailyLimit == 0 ? 1 : dailyLimit)).clamp(0.0, 1.0);
-            final remaining = (dailyLimit - usedMinutes.toInt()).clamp(0, 99999);
+            final usedMinutes =
+                (data['usedMinutes'] ?? data['totalMinutes'] ?? 0) as num;
+            final progress = (usedMinutes / (dailyLimit == 0 ? 1 : dailyLimit))
+                .clamp(0.0, 1.0);
+            final remaining =
+                (dailyLimit - usedMinutes.toInt()).clamp(0, 99999);
             final isOver = dailyLimit > 0 && usedMinutes >= dailyLimit;
 
             return GlassCard(
@@ -1454,21 +2115,30 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Used: ${_fmtMin(usedMinutes.toInt())}',
-                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15)),
+                              style: TextStyle(
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                  fontSize: 15)),
                           Text('Limit: ${_fmtMin(dailyLimit)}',
-                              style: TextStyle(color: AppColors.textGray300, fontSize: 13)),
+                              style: TextStyle(
+                                  color: AppColors.textGray300, fontSize: 13)),
                         ],
                       ),
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: (isOver ? Colors.red : AppColors.primary).withValues(alpha: 0.15),
+                          color: (isOver ? Colors.red : AppColors.primary)
+                              .withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          isOver ? 'Limit reached' : '${_fmtMin(remaining)} left',
+                          isOver
+                              ? 'Limit reached'
+                              : '${_fmtMin(remaining)} left',
                           style: TextStyle(
-                            color: isOver ? Colors.redAccent : AppColors.primary,
+                            color:
+                                isOver ? Colors.redAccent : AppColors.primary,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
@@ -1481,7 +2151,10 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                     borderRadius: BorderRadius.circular(6),
                     child: LinearProgressIndicator(
                       value: progress,
-                      backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
+                      backgroundColor: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.10),
                       valueColor: AlwaysStoppedAnimation<Color>(
                           isOver ? Colors.red : AppColors.primary),
                       minHeight: 8,
@@ -1509,7 +2182,11 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                       ),
                     ],
                   ),
-                  Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10)),
+                  Divider(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.10)),
                   Row(
                     children: [
                       Icon(Icons.schedule,
@@ -1525,7 +2202,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                         ),
                       ),
                       TextButton(
-                        onPressed: () => context.push('/child/config', extra: childData),
+                        onPressed: () =>
+                            context.push('/child/config', extra: childData),
                         child: Text('Edit',
                             style: TextStyle(color: AppColors.primary)),
                       ),
@@ -1579,7 +2257,10 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                 max: 1440,
                 divisions: 96,
                 activeColor: AppColors.primary,
-                inactiveColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
+                inactiveColor: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.10),
                 onChanged: (val) =>
                     setModalState(() => selectedLimit = val.toInt()),
               ),
@@ -1590,7 +2271,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                       child: OutlinedButton(
                           onPressed: () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
-                              foregroundColor: Theme.of(context).colorScheme.onSurface),
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.onSurface),
                           child: Text('Cancel'))),
                   SizedBox(width: 16),
                   Expanded(
@@ -1607,7 +2289,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          foregroundColor: Theme.of(context).colorScheme.onSurface),
+                          foregroundColor:
+                              Theme.of(context).colorScheme.onSurface),
                       child: Text('Save'),
                     ),
                   ),
@@ -1647,21 +2330,21 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
       {'domain': 'facebook.com', 'name': 'Facebook'},
       {'domain': 'google.com', 'name': 'Google'},
     ];
-    
+
     for (var site in knownSites) {
       if (domain.contains(site['domain']!)) {
         return site['name']!;
       }
     }
-    
+
     String cleanDomain = domain.replaceFirst(RegExp(r'^www\.'), '');
     List<String> parts = cleanDomain.split('.');
     if (parts.isNotEmpty) {
-        String name = parts.first;
-        if (name.length > 1) {
-            return name[0].toUpperCase() + name.substring(1);
-        }
-        return name;
+      String name = parts.first;
+      if (name.length > 1) {
+        return name[0].toUpperCase() + name.substring(1);
+      }
+      return name;
     }
     return domain;
   }
@@ -1698,7 +2381,8 @@ class _AppManagerWidgetState extends State<_AppManagerWidget> {
                         fontSize: 24,
                         fontWeight: FontWeight.bold)),
                 IconButton(
-                    icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(Icons.close,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => Navigator.pop(context)),
               ],
             ),
@@ -1707,10 +2391,21 @@ class _AppManagerWidgetState extends State<_AppManagerWidget> {
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: 'Search applications...',
-                hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.30)),
-                prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.30)),
+                hintStyle: TextStyle(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.30)),
+                prefixIcon: Icon(Icons.search,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.30)),
                 filled: true,
-                fillColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
+                fillColor: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.05),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none),
@@ -1725,33 +2420,44 @@ class _AppManagerWidgetState extends State<_AppManagerWidget> {
                 builder: (context, usageSnap) {
                   final rawUsage = usageSnap.data?['apps'];
                   final usageData = rawUsage is Map ? rawUsage : {};
-                  
+
                   return StreamBuilder<List<String>>(
-                    stream: FirestoreService().appInventoryStream(widget.childId),
+                    stream:
+                        FirestoreService().appInventoryStream(widget.childId),
                     builder: (context, invSnap) {
                       return StreamBuilder<List<String>>(
-                        stream:
-                            FirestoreService().blockedAppsStream(widget.childId),
+                        stream: FirestoreService()
+                            .blockedAppsStream(widget.childId),
                         builder: (context, blockSnap) {
                           final inventory = invSnap.data ?? [];
                           final blocked = blockSnap.data ?? [];
-                          
-                          final sortedInventory = List<String>.from(inventory)..sort((a, b) {
-                            final usageA = usageData[a];
-                            final usageB = usageData[b];
-                            // Fallback to 'minutes' if 'totalMinutes' is missing
-                            final minsA = (usageA is Map ? (usageA['totalMinutes'] ?? usageA['minutes'] ?? 0) : 0) as num;
-                            final minsB = (usageB is Map ? (usageB['totalMinutes'] ?? usageB['minutes'] ?? 0) : 0) as num;
-                            return minsB.compareTo(minsA);
-                          });
+
+                          final sortedInventory = List<String>.from(inventory)
+                            ..sort((a, b) {
+                              final usageA = usageData[a];
+                              final usageB = usageData[b];
+                              // Fallback to 'minutes' if 'totalMinutes' is missing
+                              final minsA = (usageA is Map
+                                  ? (usageA['totalMinutes'] ??
+                                      usageA['minutes'] ??
+                                      0)
+                                  : 0) as num;
+                              final minsB = (usageB is Map
+                                  ? (usageB['totalMinutes'] ??
+                                      usageB['minutes'] ??
+                                      0)
+                                  : 0) as num;
+                              return minsB.compareTo(minsA);
+                            });
 
                           final filteredApps = sortedInventory
-                              .where(
-                                  (pkg) => pkg.toLowerCase().contains(_searchQuery))
+                              .where((pkg) =>
+                                  pkg.toLowerCase().contains(_searchQuery))
                               .toList();
 
                           if (inventory.isEmpty &&
-                              invSnap.connectionState == ConnectionState.waiting) {
+                              invSnap.connectionState ==
+                                  ConnectionState.waiting) {
                             return Center(
                                 child: CircularProgressIndicator(
                                     color: AppColors.primary));
@@ -1765,8 +2471,8 @@ class _AppManagerWidgetState extends State<_AppManagerWidget> {
                                       color: AppColors.textGray300, size: 48),
                                   SizedBox(height: 16),
                                   Text('No apps reported by device yet',
-                                      style:
-                                          TextStyle(color: AppColors.textGray300)),
+                                      style: TextStyle(
+                                          color: AppColors.textGray300)),
                                   Text('Make sure the child app is running',
                                       style: TextStyle(
                                           color: AppColors.textGray300,
@@ -1781,13 +2487,17 @@ class _AppManagerWidgetState extends State<_AppManagerWidget> {
                             itemBuilder: (context, index) {
                               final pkg = filteredApps[index];
                               final isBlocked = blocked.contains(pkg);
-                              
-                              final knownApp = _kKnownApps.cast<Map<String, dynamic>?>().firstWhere(
-                                (a) => a?['pkg'] == pkg,
-                                orElse: () => null,
-                              );
-                              final String category = knownApp?['cat'] ?? 'other';
-                              final IconData? fallbackIcon = knownApp?['icon'] as IconData?;
+
+                              final knownApp = _kKnownApps
+                                  .cast<Map<String, dynamic>?>()
+                                  .firstWhere(
+                                    (a) => a?['pkg'] == pkg,
+                                    orElse: () => null,
+                                  );
+                              final String category =
+                                  knownApp?['cat'] ?? 'other';
+                              final IconData? fallbackIcon =
+                                  knownApp?['icon'] as IconData?;
 
                               return AppTileWithDetails(
                                 childId: widget.childId,
@@ -1797,12 +2507,20 @@ class _AppManagerWidgetState extends State<_AppManagerWidget> {
                                 fallbackIcon: fallbackIcon,
                                 trailing: Switch(
                                   value: isBlocked,
-                                  thumbColor: WidgetStateProperty.resolveWith<Color?>(
-                                    (states) => states.contains(WidgetState.selected) ? Colors.redAccent : null,
+                                  thumbColor:
+                                      WidgetStateProperty.resolveWith<Color?>(
+                                    (states) =>
+                                        states.contains(WidgetState.selected)
+                                            ? Colors.redAccent
+                                            : null,
                                   ),
-                                  activeTrackColor: Colors.redAccent.withValues(alpha: 0.3),
+                                  activeTrackColor:
+                                      Colors.redAccent.withValues(alpha: 0.3),
                                   inactiveThumbColor: Colors.grey,
-                                  inactiveTrackColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
+                                  inactiveTrackColor: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.10),
                                   onChanged: (val) {
                                     final newList = List<String>.from(blocked);
                                     if (val) {

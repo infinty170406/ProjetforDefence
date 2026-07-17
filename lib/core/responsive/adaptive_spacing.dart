@@ -32,9 +32,14 @@ class AdaptiveSpacing {
         desktop: 64.0,
       ).value(context);
 
-  static EdgeInsets paddingXs(BuildContext context) => EdgeInsets.all(xs(context));
-  static EdgeInsets paddingSm(BuildContext context) => EdgeInsets.all(sm(context));
-  static EdgeInsets paddingMd(BuildContext context) => EdgeInsets.all(md(context));
-  static EdgeInsets paddingLg(BuildContext context) => EdgeInsets.all(lg(context));
-  static EdgeInsets paddingXl(BuildContext context) => EdgeInsets.all(xl(context));
+  static EdgeInsets paddingXs(BuildContext context) =>
+      EdgeInsets.all(xs(context));
+  static EdgeInsets paddingSm(BuildContext context) =>
+      EdgeInsets.all(sm(context));
+  static EdgeInsets paddingMd(BuildContext context) =>
+      EdgeInsets.all(md(context));
+  static EdgeInsets paddingLg(BuildContext context) =>
+      EdgeInsets.all(lg(context));
+  static EdgeInsets paddingXl(BuildContext context) =>
+      EdgeInsets.all(xl(context));
 }

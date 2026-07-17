@@ -16,9 +16,16 @@ class ApiService extends ChangeNotifier {
   String? _accessToken;
   bool _isOtpVerified = false;
   bool _isKycVerified = false;
+  bool _isKycBypassed = false;
 
   bool get isOtpVerified => _isOtpVerified;
   bool get isKycVerified => _isKycVerified;
+  bool get isKycBypassed => _isKycBypassed;
+
+  void bypassKyc() {
+    _isKycBypassed = true;
+    notifyListeners();
+  }
 
   ApiService._internal() {
     _dio = Dio(BaseOptions(
@@ -89,26 +96,58 @@ class ApiService extends ChangeNotifier {
     StorageService().saveToken(token);
   }
 
-  Future<void> initialize() async {
+  Future<void>? _initFuture;
+
+  Future<void> initialize() {
+    _initFuture ??= _doInitialize();
+    return _initFuture!;
+  }
+
+  Future<void> _doInitialize() async {
     _accessToken = await StorageService().getToken();
     if (_accessToken != null) {
-      try {
-        final profile = await FirestoreService().getMyProfile();
-        _isKycVerified = profile['kycStatus'] == 'VERIFIED';
-        _isOtpVerified = profile['otpVerified'] == true;
-        
-        // TRIGGER INIT: Ensure Firestore folders are created immediately at startup
-        await FirestoreService().getMyChildren();
-      } catch (_) {
-        _isKycVerified = false;
-        _isOtpVerified = false;
-      }
+      _isKycVerified = await StorageService().getKycVerified();
+      _isOtpVerified = await StorageService().getOtpConfigured();
+      notifyListeners();
+
+      // Fetch fresh profile and children data asynchronously in the background
+      unawaited(_fetchFreshData());
     }
   }
 
+  Future<void> _fetchFreshData() async {
+    try {
+      final profile = await FirestoreService().getMyProfile();
+      final freshKyc = profile['kycStatus'] == 'VERIFIED' ||
+          profile['kycStatus'] == 'PENDING';
+      final freshOtp = profile['otpVerified'] == true;
+
+      bool changed = false;
+      if (freshKyc != _isKycVerified) {
+        _isKycVerified = freshKyc;
+        await StorageService().saveKycVerified(freshKyc);
+        changed = true;
+      }
+      if (freshOtp != _isOtpVerified) {
+        _isOtpVerified = freshOtp;
+        await StorageService().saveOtpConfigured(freshOtp);
+        changed = true;
+      }
+
+      if (changed) {
+        notifyListeners();
+      }
+
+      // Pre-fetch children structure
+      await FirestoreService().getMyChildren();
+    } catch (e) {
+      debugPrint('APP_LOG: Background fresh data fetch failed: $e');
+    }
+  }
 
   void clearToken() {
     _accessToken = null;
+    _isKycBypassed = false;
     StorageService().clearAll();
   }
 
@@ -124,6 +163,15 @@ class ApiService extends ChangeNotifier {
     try {
       final response = await _dio.post(path, data: data);
       return response.data;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> get(String path) async {
+    try {
+      final response = await _dio.get(path);
+      return Map<String, dynamic>.from(response.data as Map);
     } catch (e) {
       return _handleError(e);
     }
@@ -188,19 +236,22 @@ class ApiService extends ChangeNotifier {
         final googleProvider = GoogleAuthProvider();
         googleProvider.addScope('email');
         googleProvider.setCustomParameters({'prompt': 'select_account'});
-        userCredential = await FirebaseAuth.instance.signInWithPopup(googleProvider);
+        userCredential =
+            await FirebaseAuth.instance.signInWithPopup(googleProvider);
       } else {
         // Mobile implementation
         final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
         if (googleUser == null) return;
 
-        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final GoogleSignInAuthentication googleAuth =
+            await googleUser.authentication;
         final OAuthCredential credential = GoogleAuthProvider.credential(
           accessToken: googleAuth.accessToken,
           idToken: googleAuth.idToken,
         );
 
-        userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        userCredential =
+            await FirebaseAuth.instance.signInWithCredential(credential);
       }
 
       final idToken = await userCredential.user?.getIdToken();
@@ -267,11 +318,14 @@ class ApiService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
           'parent_id', FirebaseAuth.instance.currentUser?.uid ?? '');
-      
-      _isKycVerified = data['kycStatus'] == 'VERIFIED';
+
+      _isKycVerified =
+          data['kycStatus'] == 'VERIFIED' || data['kycStatus'] == 'PENDING';
       _isOtpVerified = data['otpVerified'] == true;
+      await StorageService().saveKycVerified(_isKycVerified);
+      await StorageService().saveOtpConfigured(_isOtpVerified);
       notifyListeners();
-      
+
       return data;
     } catch (e) {
       return _handleError(e);
@@ -281,7 +335,8 @@ class ApiService extends ChangeNotifier {
   Future<void> updateKycStatus(String status) async {
     try {
       await FirestoreService().updateKycStatus(status);
-      _isKycVerified = status == 'VERIFIED';
+      _isKycVerified = status == 'VERIFIED' || status == 'PENDING';
+      await StorageService().saveKycVerified(_isKycVerified);
       notifyListeners();
     } catch (e) {
       _handleError(e);
@@ -298,7 +353,7 @@ class ApiService extends ChangeNotifier {
 
   Future<void> sendOtp() async {
     try {
-      await FirestoreService().sendOtpCode();
+      await _postWithFirebaseAuth(ApiConfig.sendOtp, const {});
     } catch (e) {
       _handleError(e);
     }
@@ -306,11 +361,33 @@ class ApiService extends ChangeNotifier {
 
   Future<bool> verifyOtp(String code) async {
     try {
-      final success = await FirestoreService().verifyOtpCode(code);
+      final response =
+          await _postWithFirebaseAuth(ApiConfig.verifyOtp, {'code': code});
+      final success = response['verified'] == true;
       if (success) {
         await updateOtpStatus(true);
       }
       return success;
+    } catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> _postWithFirebaseAuth(
+    String path,
+    Map<String, dynamic> data,
+  ) async {
+    final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+    if (token == null) {
+      throw ApiException('Session utilisateur introuvable.', 401);
+    }
+    try {
+      final response = await _dio.post(
+        path,
+        data: data,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return Map<String, dynamic>.from(response.data as Map);
     } catch (e) {
       return _handleError(e);
     }
@@ -328,11 +405,15 @@ class ApiService extends ChangeNotifier {
   Future<Map<String, dynamic>> createChild({
     required String displayName,
     required int age,
+    String? avatar,
+    String? relation,
   }) async {
     try {
       final result = await FirestoreService().createChild(
         displayName: displayName,
         age: age,
+        avatar: avatar,
+        relation: relation,
       );
       notifyListeners();
       return result;
@@ -354,12 +435,16 @@ class ApiService extends ChangeNotifier {
     String childId, {
     required String displayName,
     required int age,
+    String? avatar,
+    String? relation,
   }) async {
     try {
       final result = await FirestoreService().updateChild(
         childId,
         displayName: displayName,
         age: age,
+        avatar: avatar,
+        relation: relation,
       );
       notifyListeners();
       return result;
@@ -485,7 +570,8 @@ class ApiService extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> createGeofence(Map<String, dynamic> data, {String? childId}) async {
+  Future<Map<String, dynamic>> createGeofence(Map<String, dynamic> data,
+      {String? childId}) async {
     try {
       return await FirestoreService().createGeofence(data, childId: childId);
     } catch (e) {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
 import '../../core/widgets/glass_card.dart';
@@ -26,16 +26,22 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
   void initState() {
     super.initState();
     _codeController = TextEditingController(text: widget.initialCode);
-    if (widget.initialCode != null && widget.initialCode!.length == 6) {
+    if (widget.initialCode != null && widget.initialCode!.length >= 32) {
       // Auto-trigger pairing if code is valid
       WidgetsBinding.instance.addPostFrameCallback((_) => _handlePairing());
     }
   }
 
   Future<void> _handlePairing() async {
-    final code = _codeController.text.trim().toUpperCase();
-    if (code.length != 6) {
-      setState(() => _error = 'Please enter a 6-digit code');
+    final code = _codeController.text.trim();
+    if (code.length < 32 || code.length > 128) {
+      setState(() => _error = 'Please open the complete pairing link.');
+      return;
+    }
+
+    if (!await StorageService().getPrivacyAccepted()) {
+      setState(() => _error =
+          'Veuillez accepter la politique de confidentialité avant d’activer la supervision.');
       return;
     }
 
@@ -45,8 +51,6 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
     });
 
     try {
-      final db = FirebaseFirestore.instance;
-
       // ── Step 1: Sign in anonymously ──────────────────────────────────────
       // The child device has no parent Firebase account. We sign in
       // anonymously so Firestore rules (request.auth != null) are satisfied.
@@ -54,48 +58,28 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
       if (FirebaseAuth.instance.currentUser == null) {
         anonCred = await FirebaseAuth.instance.signInAnonymously();
       }
-      final childDeviceUid =
-          anonCred?.user?.uid ?? FirebaseAuth.instance.currentUser?.uid;
-
-      // ── Step 2: Find the child document by invitationToken ───────────────
-      final query = await db
-          .collectionGroup('children')
-          .where('invitationToken', isEqualTo: code)
-          .limit(1)
-          .get();
-
-      if (query.docs.isEmpty) {
-        setState(() => _error = 'Invalid or expired code');
-        return;
+      if (anonCred?.user == null && FirebaseAuth.instance.currentUser == null) {
+        throw StateError('Anonymous authentication failed.');
       }
 
-      final doc = query.docs.first;
-      final data = doc.data();
-      final childId = doc.id;
+      // ── Step 2: consume the one-time token server-side ───────────────────
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('activateChildDevice')
+          .call<Map<String, dynamic>>({'token': code});
+      final data = Map<String, dynamic>.from(result.data);
       final parentId = data['parentId'] as String?;
-
-      if (parentId == null) {
-        setState(() => _error = 'Internal error: parent link missing');
-        return;
+      final childId = data['childId'] as String?;
+      if (parentId == null || childId == null) {
+        throw StateError('Invalid pairing response.');
       }
-
-      // ── Step 3: Mark as linked and store childDeviceUid ──────────────────
-      // childDeviceUid allows the Firestore rules to identify this device
-      // for future authenticated reads without requiring the parent account.
-      await doc.reference.update({
-        'isLinked': true,
-        'deviceStatus': 'ONLINE',
-        'lastHeartbeat': FieldValue.serverTimestamp(),
-        if (childDeviceUid != null) 'childDeviceUid': childDeviceUid,
-      });
 
       // ── Step 4: Save pairing locally ─────────────────────────────────────
       await StorageService().saveChildPairing(parentId, childId);
       await ChildEnforcementService().start();
 
       if (mounted) {
-        // Pass full data + id so ChildDashboardScreen can resolve childId.
-        context.go('/child/dashboard', extra: {...data, 'id': childId});
+        context.go('/child/dashboard',
+            extra: {'id': childId, 'parentId': parentId});
       }
     } catch (e) {
       setState(() => _error = 'Connection error. Please try again.');
@@ -107,7 +91,6 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -118,7 +101,8 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
                   SizedBox(height: 24),
@@ -132,7 +116,7 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'Enter the 6-digit code displayed on your parent\'s dashboard.',
+                    'Open the secure pairing link sent by the parent.',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 16,
@@ -145,7 +129,7 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
                       children: [
                         TextField(
                           controller: _codeController,
-                          maxLength: 6,
+                          maxLength: 128,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: AppColors.primary,
@@ -155,8 +139,12 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
                           ),
                           decoration: InputDecoration(
                             counterText: '',
-                            hintText: '000000',
-                            hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1)),
+                            hintText: 'Pairing token',
+                            hintStyle: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.1)),
                             border: InputBorder.none,
                           ),
                           onChanged: (val) {
@@ -169,7 +157,8 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
                           SizedBox(height: 16),
                           Text(
                             _error!,
-                            style: TextStyle(color: Colors.redAccent, fontSize: 13),
+                            style: TextStyle(
+                                color: Colors.redAccent, fontSize: 13),
                             textAlign: TextAlign.center,
                           ),
                         ],

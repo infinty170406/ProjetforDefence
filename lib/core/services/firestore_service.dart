@@ -1,14 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:math';
-import 'email_service.dart';
 import '../repositories/child_repository.dart';
 import '../repositories/rules_repository.dart';
 import '../repositories/alert_repository.dart';
 import '../repositories/stats_repository.dart';
 import '../models/child_rules.dart';
-import '../constants/app_constants.dart';
 
 /// FirestoreService acts as a facade delegating to specialized repositories.
 /// [DEPRECATED] Use individual repositories directly for new code.
@@ -57,7 +54,7 @@ class FirestoreService {
       'name': user?.displayName ?? '',
       'email': user?.email ?? '',
       'createdAt': FieldValue.serverTimestamp(),
-      'kycStatus': AppConstants.kycPending,
+      'kycStatus': 'NOT_STARTED',
     };
     await _parentDoc.set(data, SetOptions(merge: true));
     return data;
@@ -77,55 +74,12 @@ class FirestoreService {
     }
   }
 
-  // ── OTP (MFA) ────────────────────────────────────────────────────────────
-
-  Future<void> sendOtpCode() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || user.email == null) throw Exception('User has no email');
-
-    final code = (100000 + Random().nextInt(900000)).toString();
-
-    await _parentDoc.collection('verification').doc('otp').set({
-      'code': code,
-      'createdAt': FieldValue.serverTimestamp(),
-      'expiresAt': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 10))),
-      'email': user.email,
-    });
-
-    try {
-      await EmailService().sendOtpEmail(user.email!, code);
-    } catch (e) {
-      throw Exception('Failed to send email: $e');
-    }
-  }
-
-  Future<bool> verifyOtpCode(String code) async {
-    final snap = await _parentDoc.collection('verification').doc('otp').get();
-    if (!snap.exists) return false;
-
-    final data = snap.data()!;
-    final storedCode = data['code'] as String;
-    final expiresAt = data['expiresAt'] as Timestamp;
-
-    if (DateTime.now().isAfter(expiresAt.toDate())) {
-      throw Exception('Code expired');
-    }
-
-    if (storedCode == code) {
-      await _parentDoc.update({
-        'otpVerified': true,
-        'otpVerifiedAt': FieldValue.serverTimestamp(),
-      });
-      return true;
-    }
-    return false;
-  }
-
   // ── Delegation to Repositories ───────────────────────────────────────────
 
   // Children
   Future<List<Map<String, dynamic>>> getMyChildren() async {
-    final snapshot = await _db.collection('parents').doc(uid).collection('children').get();
+    final snapshot =
+        await _db.collection('parents').doc(uid).collection('children').get();
     return snapshot.docs.map((doc) {
       final data = doc.data();
       data['id'] = doc.id;
@@ -133,19 +87,32 @@ class FirestoreService {
     }).toList();
   }
 
-  Future<Map<String, dynamic>> createChild({required String displayName, required int age, bool isMinor = true}) =>
-      _childRepo.createChild(displayName: displayName, age: age, isMinor: isMinor);
+  Future<Map<String, dynamic>> createChild(
+          {required String displayName,
+          required int age,
+          bool isMinor = true,
+          String? avatar,
+          String? relation}) =>
+      _childRepo.createChild(
+          displayName: displayName,
+          age: age,
+          isMinor: isMinor,
+          avatar: avatar,
+          relation: relation);
 
-  Stream<List<Map<String, dynamic>>> childrenStream() => _childRepo.watchChildren();
+  Stream<List<Map<String, dynamic>>> childrenStream() =>
+      _childRepo.watchChildren();
 
   Future<void> deleteChild(String childId) => _childRepo.deleteChild(childId);
 
   Future<void> linkChild(String childId) => _childRepo.linkChild(childId);
 
-  Stream<String> watchDeviceStatus(String childId) => _childRepo.watchDeviceStatus(childId);
+  Stream<String> watchDeviceStatus(String childId) =>
+      _childRepo.watchDeviceStatus(childId);
 
   // Rules
-  Future<void> saveRules(String childId, {
+  Future<void> saveRules(
+    String childId, {
     List<String> blockedApps = const [],
     List<String> blockedWebsites = const [],
     int dailyLimitMinutes = 0,
@@ -203,17 +170,22 @@ class FirestoreService {
   Stream<Map<String, dynamic>?> watchRules(String childId) =>
       _rulesRepo.watchRules(childId).map((rules) => rules.toJson());
 
-  Stream<List<String>> appInventoryStream(String childId) => _rulesRepo.watchInstalledApps(childId);
+  Stream<List<String>> appInventoryStream(String childId) =>
+      _rulesRepo.watchInstalledApps(childId);
 
   // Stats
-  Future<Map<String, dynamic>> getTodayStats(String childId) => _statsRepo.getTodayStats(childId);
+  Future<Map<String, dynamic>> getTodayStats(String childId) =>
+      _statsRepo.getTodayStats(childId);
 
-  Future<Map<String, dynamic>> getUsageStats(String childId) => _statsRepo.getTodayStats(childId);
+  Future<Map<String, dynamic>> getUsageStats(String childId) =>
+      _statsRepo.getTodayStats(childId);
 
   // Alerts
-  Stream<List<Map<String, dynamic>>> watchAlerts(String childId) => _alertRepo.watchAlerts(childId);
+  Stream<List<Map<String, dynamic>>> watchAlerts(String childId) =>
+      _alertRepo.watchAlerts(childId);
 
-  Future<void> markAllAlertsRead(String childId) => _alertRepo.markAllRead(childId);
+  Future<void> markAllAlertsRead(String childId) =>
+      _alertRepo.markAllRead(childId);
 
   Future<void> handleAlertInteraction({
     required String childId,
@@ -221,13 +193,14 @@ class FirestoreService {
     required String action,
     required String actionType,
     required String actionValue,
-  }) => _alertRepo.handleInteraction(
-    childId: childId,
-    alertId: alertId,
-    action: action,
-    actionType: actionType,
-    actionValue: actionValue,
-  );
+  }) =>
+      _alertRepo.handleInteraction(
+        childId: childId,
+        alertId: alertId,
+        action: action,
+        actionType: actionType,
+        actionValue: actionValue,
+      );
 
   Future<void> ensureProfileExists(String name, String email) async {
     final snap = await _parentDoc.get();
@@ -237,7 +210,7 @@ class FirestoreService {
         'name': name,
         'email': email,
         'createdAt': FieldValue.serverTimestamp(),
-        'kycStatus': AppConstants.kycPending,
+        'kycStatus': 'NOT_STARTED',
       }, SetOptions(merge: true));
     }
   }
@@ -246,39 +219,75 @@ class FirestoreService {
     await _parentDoc.update({'kycStatus': status});
   }
 
-  Future<Map<String, dynamic>> updateChild(String childId, {required String displayName, required int age}) async {
+  Future<Map<String, dynamic>> updateChild(String childId,
+      {required String displayName,
+      required int age,
+      String? avatar,
+      String? relation}) async {
     final data = {
       'displayName': displayName,
       'age': age,
+      if (avatar != null) 'avatar': avatar,
+      if (relation != null) 'relation': relation,
       'updatedAt': FieldValue.serverTimestamp(),
     };
-    await _db.collection('parents').doc(uid).collection('children').doc(childId).update(data);
+    await _db
+        .collection('parents')
+        .doc(uid)
+        .collection('children')
+        .doc(childId)
+        .update(data);
     return data;
   }
 
   Future<Map<String, dynamic>> getParentalProfile(String childId) async {
-    final snap = await _db.collection('parents').doc(uid).collection('children').doc(childId).get();
+    final snap = await _db
+        .collection('parents')
+        .doc(uid)
+        .collection('children')
+        .doc(childId)
+        .get();
     return snap.data() ?? {};
   }
 
-  Future<void> updateParentalProfile(String childId, Map<String, dynamic> data) async {
-    await _db.collection('parents').doc(uid).collection('children').doc(childId).update(data);
+  Future<void> updateParentalProfile(
+      String childId, Map<String, dynamic> data) async {
+    await _db
+        .collection('parents')
+        .doc(uid)
+        .collection('children')
+        .doc(childId)
+        .update(data);
   }
 
   Future<void> createSchedule(String childId, Map<String, dynamic> data) async {
     // Legacy support: mapping to rules/active for now or a dedicated subcollection
-    await _db.collection('parents').doc(uid).collection('children').doc(childId)
-        .collection('rules').doc('schedule').set(data, SetOptions(merge: true));
+    await _db
+        .collection('parents')
+        .doc(uid)
+        .collection('children')
+        .doc(childId)
+        .collection('rules')
+        .doc('schedule')
+        .set(data, SetOptions(merge: true));
   }
 
-  Future<void> updateContentRule(String childId, String category, Map<String, dynamic> data) async {
-    await _db.collection('parents').doc(uid).collection('children').doc(childId)
-        .collection('rules').doc('active').set({
+  Future<void> updateContentRule(
+      String childId, String category, Map<String, dynamic> data) async {
+    await _db
+        .collection('parents')
+        .doc(uid)
+        .collection('children')
+        .doc(childId)
+        .collection('rules')
+        .doc('active')
+        .set({
       'contentRules': {category: data}
     }, SetOptions(merge: true));
   }
 
-  Future<Map<String, dynamic>> createGeofence(Map<String, dynamic> data, {String? childId}) async {
+  Future<Map<String, dynamic>> createGeofence(Map<String, dynamic> data,
+      {String? childId}) async {
     final doc = await _parentDoc.collection('geofences').add({
       ...data,
       'createdAt': FieldValue.serverTimestamp(),
@@ -296,27 +305,38 @@ class FirestoreService {
     await _parentDoc.update({'fcmToken': token});
   }
 
-  Future<void> updateChildFcmToken(String parentId, String childId, String token) async {
-    await _db.collection('parents').doc(parentId).collection('children').doc(childId).update({
+  Future<void> updateChildFcmToken(
+      String parentId, String childId, String token) async {
+    await _db
+        .collection('parents')
+        .doc(parentId)
+        .collection('children')
+        .doc(childId)
+        .update({
       'fcmToken': token,
       'lastTokenSync': FieldValue.serverTimestamp(),
     });
   }
 
-  Future<void> updateDailyLimit(String childId, int limit) => _rulesRepo.updateDailyLimit(childId, limit);
+  Future<void> updateDailyLimit(String childId, int limit) =>
+      _rulesRepo.updateDailyLimit(childId, limit);
 
   Future<Map<String, dynamic>> getRules(String childId) async {
     final rules = await _rulesRepo.getRules(childId);
     return rules.toJson();
   }
 
-  Stream<Map<String, dynamic>> rulesStream(String childId) => watchRules(childId).map((e) => e ?? {});
+  Stream<Map<String, dynamic>> rulesStream(String childId) =>
+      watchRules(childId).map((e) => e ?? {});
 
-  Stream<List<String>> blockedAppsStream(String childId) => _rulesRepo.blockedAppsStream(childId);
+  Stream<List<String>> blockedAppsStream(String childId) =>
+      _rulesRepo.blockedAppsStream(childId);
 
-  Future<void> updateBlockedApps(String childId, List<String> blockedApps) => _rulesRepo.updateBlockedApps(childId, blockedApps);
+  Future<void> updateBlockedApps(String childId, List<String> blockedApps) =>
+      _rulesRepo.updateBlockedApps(childId, blockedApps);
 
-  Future<List<Map<String, dynamic>>> getHistory(String childId) => _childRepo.getHistory(childId);
+  Future<List<Map<String, dynamic>>> getHistory(String childId) =>
+      _childRepo.getHistory(childId);
 
   Future<List<Map<String, dynamic>>> getGeofences() async {
     final snap = await _parentDoc.collection('geofences').get();
@@ -335,60 +355,92 @@ class FirestoreService {
         .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList());
   }
 
-  Future<Map<String, dynamic>> getUsageStatsSingle(String childId) => _statsRepo.getTodayStats(childId);
+  Future<Map<String, dynamic>> getUsageStatsSingle(String childId) =>
+      _statsRepo.getTodayStats(childId);
 
-  Stream<Map<String, dynamic>> usageStatsStream(String childId) => 
-      _db.collection('parents').doc(uid).collection('children').doc(childId)
-          .collection('alerts').doc('usage').collection('apps')
-          .doc(DateTime.now().toIso8601String().split('T')[0])
-          .snapshots().map((s) => s.data() ?? {});
+  Stream<Map<String, dynamic>> usageStatsStream(String childId) =>
+      _statsRepo.watchTodayStats(childId);
 
-  Stream<List<Map<String, dynamic>>> watchWebHistory(String childId) => 
-      _db.collection('parents').doc(uid).collection('children').doc(childId)
-          .collection('inventory').doc('websites').collection('history')
-          .orderBy('timestamp', descending: true).limit(50)
-          .snapshots()
-          .map((s) => s.docs
-              .map((d) => {'id': d.id, ...d.data()})
-              .where((item) => !_isGenericBrowserSession(item))
-              .toList());
+  Stream<List<Map<String, dynamic>>> watchWebHistory(String childId) => _db
+      .collection('parents')
+      .doc(uid)
+      .collection('children')
+      .doc(childId)
+      .collection('inventory')
+      .doc('websites')
+      .collection('history')
+      .orderBy('timestamp', descending: true)
+      .limit(50)
+      .snapshots()
+      .map((s) => s.docs
+          .map((d) => {'id': d.id, ...d.data()})
+          .where((item) => !_isGenericBrowserSession(item))
+          .toList());
 
   Future<void> toggleWebsiteBlock(String childId, String domain, bool block) =>
       _rulesRepo.toggleWebsiteBlock(childId, domain, block);
 
-  Stream<Map<String, dynamic>?> appDetailsStream(String childId, String packageName) {
+  Stream<Map<String, dynamic>?> appDetailsStream(
+      String childId, String packageName) {
     if (childId.isEmpty || packageName.isEmpty) return Stream.value(null);
-    return _db.collection('parents').doc(uid).collection('children').doc(childId)
-        .collection('inventory').doc('apps').collection('details').doc(packageName)
-        .snapshots().map((snap) => snap.data());
+    return _db
+        .collection('parents')
+        .doc(uid)
+        .collection('children')
+        .doc(childId)
+        .collection('inventory')
+        .doc('apps')
+        .collection('details')
+        .doc(packageName)
+        .snapshots()
+        .map((snap) => snap.data());
   }
 
   Future<List<Map<String, dynamic>>> getRecentAlerts(String childId) async {
     final snap = await _db
-        .collection('parents').doc(uid)
-        .collection('children').doc(childId)
-        .collection('alerts').doc('notifications').collection('items')
+        .collection('parents')
+        .doc(uid)
+        .collection('children')
+        .doc(childId)
+        .collection('alerts')
+        .doc('notifications')
+        .collection('items')
         .orderBy('timestamp', descending: true)
         .limit(10)
         .get();
     return snap.docs.map((d) => {'id': d.id, ...d.data()}).toList();
   }
 
-  Future<QuerySnapshot<Map<String, dynamic>>> getAlertsPaginated(String childId, {int limit = 20, DocumentSnapshot? startAfter}) async {
+  Future<QuerySnapshot<Map<String, dynamic>>> getAlertsPaginated(String childId,
+      {int limit = 20, DocumentSnapshot? startAfter}) async {
     Query<Map<String, dynamic>> query = _db
-        .collection('parents').doc(uid)
-        .collection('children').doc(childId)
-        .collection('alerts').doc('notifications').collection('items')
+        .collection('parents')
+        .doc(uid)
+        .collection('children')
+        .doc(childId)
+        .collection('alerts')
+        .doc('notifications')
+        .collection('items')
         .orderBy('timestamp', descending: true)
         .limit(limit);
     if (startAfter != null) query = query.startAfterDocument(startAfter);
     return await query.get();
   }
 
-  Future<QuerySnapshot<Map<String, dynamic>>> getWebHistoryPaginated(String childId, {int limit = 20, DocumentSnapshot? startAfter}) async {
-    Query<Map<String, dynamic>> query = _db.collection('parents').doc(uid).collection('children').doc(childId)
-        .collection('inventory').doc('websites').collection('history')
-        .orderBy('timestamp', descending: true).limit(limit);
+  Future<QuerySnapshot<Map<String, dynamic>>> getWebHistoryPaginated(
+      String childId,
+      {int limit = 20,
+      DocumentSnapshot? startAfter}) async {
+    Query<Map<String, dynamic>> query = _db
+        .collection('parents')
+        .doc(uid)
+        .collection('children')
+        .doc(childId)
+        .collection('inventory')
+        .doc('websites')
+        .collection('history')
+        .orderBy('timestamp', descending: true)
+        .limit(limit);
     if (startAfter != null) query = query.startAfterDocument(startAfter);
     return await query.get();
   }
@@ -402,7 +454,7 @@ class FirestoreService {
     final List<Map<String, dynamic>> week = [];
     final now = DateTime.now();
     final demoValues = [45.0, 70.0, 30.0, 110.0, 50.0, 85.0, 60.0];
-    
+
     for (int i = 6; i >= 0; i--) {
       final date = now.subtract(Duration(days: i));
       week.add({
@@ -411,5 +463,26 @@ class FirestoreService {
       });
     }
     return week;
+  }
+
+  Future<void> updateProfile(Map<String, dynamic> data) async {
+    await _parentDoc.set(data, SetOptions(merge: true));
+  }
+
+  Future<void> createFamily(String familyName) async {
+    final familyId = _db.collection('families').doc().id;
+    final familyData = {
+      'id': familyId,
+      'name': familyName,
+      'adminParentId': uid,
+      'parents': [uid],
+      'children': [],
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+    await _db.collection('families').doc(familyId).set(familyData);
+    await _parentDoc.update({
+      'familyId': familyId,
+      'familyName': familyName,
+    });
   }
 }

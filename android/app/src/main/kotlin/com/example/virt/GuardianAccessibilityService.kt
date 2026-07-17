@@ -63,6 +63,25 @@ class GuardianAccessibilityService : AccessibilityService(), SharedPreferences.O
             }
         }
 
+        // 1b. Global Device Lock Enforcement
+        val deviceLocked = prefs.getBoolean("device_locked", false)
+        if (deviceLocked) {
+            val allowedPackages = setOf(
+                "com.example.virt",
+                "com.android.systemui",
+                "com.android.phone",
+                "com.android.server.telecom",
+                "com.android.dialer",
+                "com.google.android.packageinstaller",
+                "com.android.packageinstaller"
+            )
+            if (!allowedPackages.contains(packageName)) {
+                Log.d(TAG, "Blocking app due to global device lock: $packageName")
+                showBlockScreen()
+                return
+            }
+        }
+
         // 2. App Blocking
         if (blockedApps.contains(packageName)) {
             Log.d(TAG, "Blocking app: $packageName")

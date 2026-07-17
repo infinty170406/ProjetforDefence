@@ -1,21 +1,62 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'child_enforcement_service.dart';
-
 class StorageService {
+  static Future<void> Function()? onClearAll;
   static const String _keyUserName = 'user_name';
   static const String _keyToken = 'access_token';
   static const String _keyUserEmail = 'user_email';
   static const String _keyPrivacyAccepted = 'privacy_accepted';
-  static const String _keyPlanSelected = 'plan_selected';
   static const String _keyOtpConfigured = 'otp_configured';
   static const String _keyChildId = 'child_id';
   static const String _keyParentId = 'parent_id';
   static const String _keyDeviceMode = 'device_mode'; // 'parent' or 'child'
+  static const String _keyPlanSelected = 'plan_selected';
+  static const String _keyKycVerified = 'kyc_verified';
+  static const String _keyTutorialCompleted = 'tutorial_completed';
 
   static final StorageService _instance = StorageService._internal();
   factory StorageService() => _instance;
   StorageService._internal();
+
+  Future<void> saveTutorialCompleted(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyTutorialCompleted, value);
+  }
+
+  Future<bool> getTutorialCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyTutorialCompleted) ?? false;
+  }
+
+  Future<void> saveFeatureTutorialSeen(String featureKey, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('${featureKey}_tutorial_seen', value);
+  }
+
+  Future<bool> getFeatureTutorialSeen(String featureKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('${featureKey}_tutorial_seen') ?? false;
+  }
+
+  Future<void> saveKycVerified(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyKycVerified, value);
+  }
+
+  Future<bool> getKycVerified() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyKycVerified) ?? false;
+  }
+
+  Future<void> savePlanSelected(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyPlanSelected, value);
+  }
+
+  Future<bool> getPlanSelected() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyPlanSelected) ?? false;
+  }
 
   Future<void> saveUserName(String name) async {
     final prefs = await SharedPreferences.getInstance();
@@ -61,16 +102,6 @@ class StorageService {
     return prefs.getBool(_keyPrivacyAccepted) ?? false;
   }
 
-  Future<void> savePlanSelected(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyPlanSelected, value);
-  }
-
-  Future<bool> getPlanSelected() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyPlanSelected) ?? false;
-  }
-
   Future<void> saveOtpConfigured(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyOtpConfigured, value);
@@ -105,7 +136,9 @@ class StorageService {
   Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
     final privacyAccepted = prefs.getBool(_keyPrivacyAccepted) ?? false;
-    await ChildEnforcementService().stop();
+    if (onClearAll != null) {
+      await onClearAll!();
+    }
     await prefs.clear();
     await prefs.setBool(_keyPrivacyAccepted, privacyAccepted);
   }

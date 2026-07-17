@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: guardian-secure-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: OTP_HMAC_SECRET
+        generateValue: true
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      - key: EMAILJS_SERVICE_ID
+        sync: false
+      - key: EMAILJS_TEMPLATE_ID
+        sync: false
+      - key: EMAILJS_PUBLIC_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false

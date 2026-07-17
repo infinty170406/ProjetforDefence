@@ -20,7 +20,6 @@ class _NotificationSettingsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -31,7 +30,8 @@ class _NotificationSettingsScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
                   SizedBox(height: 24),
@@ -66,12 +66,16 @@ class _NotificationSettingsScreenState
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(title,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16)),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 16)),
             Switch(
               value: value,
               onChanged: onChanged,
               thumbColor: WidgetStateProperty.resolveWith<Color?>(
-                (states) => states.contains(WidgetState.selected) ? AppColors.primary : null,
+                (states) => states.contains(WidgetState.selected)
+                    ? AppColors.primary
+                    : null,
               ),
             ),
           ],

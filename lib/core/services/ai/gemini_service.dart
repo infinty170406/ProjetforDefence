@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../api_config.dart';
 
 /// GeminiService
@@ -13,20 +12,16 @@ import '../api_config.dart';
 ///   • [generateText]  → réponse en texte libre (chat, analyses rédigées)
 ///   • [generateJson]  → réponse JSON stricte (analyses structurées, recommandations)
 ///
-/// La clé API est lue dans cet ordre de priorité :
-///   1. variable d'environnement `GEMINI_API_KEY` (fichier .env)
-///   2. fallback historique `ApiConfig.geminiApiKey`
+/// Les appels Gemini doivent être relayés par un backend authentifié. Une clé
+/// fournisseur ne doit jamais être distribuée dans l'application cliente.
 class GeminiService {
   static final GeminiService _instance = GeminiService._internal();
   factory GeminiService() => _instance;
   GeminiService._internal();
 
-  /// Clé API Gemini. À définir dans le fichier `.env` (GEMINI_API_KEY=...).
-  static String get _apiKey {
-    final fromEnv = dotenv.env['GEMINI_API_KEY'];
-    if (fromEnv != null && fromEnv.trim().isNotEmpty) return fromEnv.trim();
-    return ApiConfig.geminiApiKey;
-  }
+  /// Temporaire pendant la migration vers le backend : aucun secret n'est lu
+  /// depuis le bundle client.
+  static String get _apiKey => ApiConfig.geminiApiKey;
 
   static const String _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models';
@@ -136,6 +131,9 @@ class GeminiService {
     List<Map<String, String>>? history,
     double temperature = 0.7,
   }) async {
+    if (_apiKey.isEmpty) {
+      throw UnsupportedError('Le service IA doit être configuré côté serveur.');
+    }
     final body = _buildBody(
       prompt: prompt,
       systemPrompt: systemPrompt,
@@ -159,7 +157,8 @@ class GeminiService {
         } else if (res.statusCode == 400 || res.statusCode == 403) {
           // Clé invalide ou requête refusée : inutile d'essayer les autres modèles.
           debugPrint('GeminiService: ${res.statusCode} → ${res.body}');
-          throw Exception('Clé Gemini invalide ou accès refusé (${res.statusCode}).');
+          throw Exception(
+              'Clé Gemini invalide ou accès refusé (${res.statusCode}).');
         } else {
           debugPrint('GeminiService: $model → HTTP ${res.statusCode}');
           lastError = Exception('HTTP ${res.statusCode}');
@@ -169,7 +168,8 @@ class GeminiService {
         lastError = e;
       }
     }
-    throw Exception('Gemini indisponible: ${lastError ?? 'aucun modèle disponible'}');
+    throw Exception(
+        'Gemini indisponible: ${lastError ?? 'aucun modèle disponible'}');
   }
 
   /// Génère une réponse JSON et la parse en [Map].
@@ -181,6 +181,7 @@ class GeminiService {
     String? systemPrompt,
     double temperature = 0.4,
   }) async {
+    if (_apiKey.isEmpty) return null;
     final body = _buildBody(
       prompt: prompt,
       systemPrompt: systemPrompt,
@@ -197,7 +198,8 @@ class GeminiService {
           if (text == null) continue;
           return _safeParseJson(text);
         } else if (res.statusCode == 400 || res.statusCode == 403) {
-          throw Exception('Clé Gemini invalide ou accès refusé (${res.statusCode}).');
+          throw Exception(
+              'Clé Gemini invalide ou accès refusé (${res.statusCode}).');
         }
       } catch (e) {
         debugPrint('GeminiService: generateJson $model → error: $e');
@@ -211,7 +213,10 @@ class GeminiService {
     try {
       var clean = text.trim();
       if (clean.startsWith('```')) {
-        clean = clean.replaceAll(RegExp(r'^```[a-zA-Z]*'), '').replaceAll('```', '').trim();
+        clean = clean
+            .replaceAll(RegExp(r'^```[a-zA-Z]*'), '')
+            .replaceAll('```', '')
+            .trim();
       }
       final decoded = jsonDecode(clean);
       if (decoded is Map<String, dynamic>) return decoded;

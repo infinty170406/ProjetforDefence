@@ -5,6 +5,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/storage_service.dart';
+import 'package:provider/provider.dart';
+import '../../core/premium/entitlement_service.dart';
+import '../../core/premium/feature_flags.dart';
+import '../../features/subscription/widgets/locked_feature_sheet.dart';
 
 class MainShell extends StatefulWidget {
   final Widget child;
@@ -29,10 +33,42 @@ class _MainShellState extends State<MainShell> {
         context.go('/dashboard');
         break;
       case 1:
-        context.go('/map');
+        final entitlement = context.read<EntitlementService>();
+        if (entitlement.isFeatureEnabled(FeatureFlags.realTimeLocation)) {
+          context.go('/map');
+        } else {
+          LockedFeatureSheet.show(
+            context,
+            featureName: "Localisation en temps réel",
+            featureDescription:
+                "Suivez vos enfants en direct et recevez des mises à jour régulières sur leur position géographique.",
+            requiredPlan: "Guardian Plus",
+            benefits: const [
+              "Position GPS actualisée en permanence",
+              "Historique complet des trajets sur 30 jours",
+              "Cartographie interactive multi-enfants",
+            ],
+          );
+        }
         break;
       case 3:
-        context.go('/ai-hub');
+        final entitlement = context.read<EntitlementService>();
+        if (entitlement.isFeatureEnabled(FeatureFlags.aiReports)) {
+          context.go('/ai-hub');
+        } else {
+          LockedFeatureSheet.show(
+            context,
+            featureName: "Rapports & Assistant IA",
+            featureDescription:
+                "L'Orchestrateur IA analyse en continu les activités de vos enfants pour vous fournir des rapports synthétiques et des conseils personnalisés.",
+            requiredPlan: "Guardian Plus",
+            benefits: const [
+              "Synthèse hebdomadaire des usages et alertes",
+              "Recommandations éducatives et de sécurité",
+              "Interface de chat conversationnel IA avec context",
+            ],
+          );
+        }
         break;
       case 4:
         context.go('/settings/general');
@@ -57,7 +93,8 @@ class _MainShellState extends State<MainShell> {
                   color: AppColors.statusDanger.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.logout, color: AppColors.statusDanger, size: 28),
+                child: const Icon(Icons.logout,
+                    color: AppColors.statusDanger, size: 28),
               ),
               const SizedBox(height: 20),
               Text(
@@ -84,11 +121,15 @@ class _MainShellState extends State<MainShell> {
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(ctx, false),
                       style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Theme.of(context).colorScheme.outline),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        side: BorderSide(
+                            color: Theme.of(context).colorScheme.outline),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      child: Text('Cancel', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+                      child: Text('Cancel',
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -98,7 +139,8 @@ class _MainShellState extends State<MainShell> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.statusDanger,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         elevation: 0,
                       ),
@@ -128,7 +170,12 @@ class _MainShellState extends State<MainShell> {
     final width = MediaQuery.sizeOf(context).width;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final bool showBottomNav = ['/dashboard', '/map', '/ai-hub', '/settings/general'].contains(location);
+    final bool showBottomNav = [
+      '/dashboard',
+      '/map',
+      '/ai-hub',
+      '/settings/general'
+    ].contains(location);
 
     if (width < 768) {
       return Scaffold(
@@ -169,7 +216,9 @@ class _MainShellState extends State<MainShell> {
                 decoration: BoxDecoration(
                   border: Border(
                     left: BorderSide(
-                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                      color: isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFE2E8F0),
                       width: 1,
                     ),
                   ),
@@ -191,7 +240,9 @@ class _MainShellState extends State<MainShell> {
                 decoration: BoxDecoration(
                   border: Border(
                     left: BorderSide(
-                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                      color: isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFE2E8F0),
                       width: 1,
                     ),
                   ),
@@ -216,18 +267,16 @@ class _MainShellState extends State<MainShell> {
         width: navWidth,
         height: 72,
         decoration: BoxDecoration(
-          color: isDark 
-              ? const Color(0xFF1E293B).withOpacity(0.7) 
+          color: isDark
+              ? const Color(0xFF1E293B).withOpacity(0.7)
               : Colors.white.withOpacity(0.85),
           borderRadius: BorderRadius.circular(50),
           border: Border.all(
-              color: isDark 
-                  ? AppColors.glassBorder 
-                  : const Color(0xFFE2E8F0)),
+              color: isDark ? AppColors.glassBorder : const Color(0xFFE2E8F0)),
           boxShadow: [
             BoxShadow(
-                color: isDark 
-                    ? Colors.black.withOpacity(0.3) 
+                color: isDark
+                    ? Colors.black.withOpacity(0.3)
                     : const Color(0xFF4F46E5).withOpacity(0.06),
                 blurRadius: 20,
                 spreadRadius: 2)
@@ -269,11 +318,19 @@ class _MainShellState extends State<MainShell> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      Expanded(child: _buildNavBarItem(Icons.dashboard, 0, selectedIndex, context)),
-                      Expanded(child: _buildNavBarItem(Icons.map_outlined, 1, selectedIndex, context)),
+                      Expanded(
+                          child: _buildNavBarItem(
+                              Icons.dashboard, 0, selectedIndex, context)),
+                      Expanded(
+                          child: _buildNavBarItem(
+                              Icons.map_outlined, 1, selectedIndex, context)),
                       const SizedBox(width: 56), // spacer for FAB
-                      Expanded(child: _buildNavBarItem(Icons.chat_bubble_outline, 3, selectedIndex, context)),
-                      Expanded(child: _buildNavBarItem(Icons.settings_outlined, 4, selectedIndex, context)),
+                      Expanded(
+                          child: _buildNavBarItem(Icons.chat_bubble_outline, 3,
+                              selectedIndex, context)),
+                      Expanded(
+                          child: _buildNavBarItem(Icons.settings_outlined, 4,
+                              selectedIndex, context)),
                     ],
                   ),
                 ),
@@ -285,7 +342,8 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  Widget _buildNavBarItem(IconData icon, int index, int selectedIndex, BuildContext context) {
+  Widget _buildNavBarItem(
+      IconData icon, int index, int selectedIndex, BuildContext context) {
     final bool isSelected = selectedIndex == index;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
@@ -296,9 +354,11 @@ class _MainShellState extends State<MainShell> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon,
-                color: isSelected 
-                    ? AppColors.primary 
-                    : (isDark ? AppColors.textGray400 : const Color(0xFF94A3B8)),
+                color: isSelected
+                    ? AppColors.primary
+                    : (isDark
+                        ? AppColors.textGray400
+                        : const Color(0xFF94A3B8)),
                 size: 24)
           ],
         ),
@@ -348,27 +408,35 @@ class _MainShellState extends State<MainShell> {
             ),
           ),
           const SizedBox(height: 40),
-          _buildRailItem(Icons.dashboard, 'Dashboard', 0, selectedIndex, context),
+          _buildRailItem(
+              Icons.dashboard, 'Dashboard', 0, selectedIndex, context),
           const SizedBox(height: 16),
           _buildRailItem(Icons.map_outlined, 'Map', 1, selectedIndex, context),
           const SizedBox(height: 16),
-          _buildRailActionItem(Icons.person_add_outlined, 'Add Child', () => context.push('/child/create'), context),
+          _buildRailActionItem(Icons.person_add_outlined, 'Add Child',
+              () => context.push('/child/create'), context),
           const SizedBox(height: 16),
-          _buildRailItem(Icons.chat_bubble_outline, 'AI Hub', 3, selectedIndex, context),
+          _buildRailItem(
+              Icons.chat_bubble_outline, 'AI Hub', 3, selectedIndex, context),
           const SizedBox(height: 16),
-          _buildRailItem(Icons.settings_outlined, 'Settings', 4, selectedIndex, context),
+          _buildRailItem(
+              Icons.settings_outlined, 'Settings', 4, selectedIndex, context),
           const Spacer(),
-          _buildRailActionItem(Icons.logout, 'Sign out', _handleLogout, context),
+          _buildRailActionItem(
+              Icons.logout, 'Sign out', _handleLogout, context),
           const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  Widget _buildRailItem(IconData icon, String label, int index, int selectedIndex, BuildContext context) {
+  Widget _buildRailItem(IconData icon, String label, int index,
+      int selectedIndex, BuildContext context) {
     final isSelected = selectedIndex == index;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = isSelected ? AppColors.primary : (isDark ? AppColors.textGray400 : const Color(0xFF64748B));
+    final color = isSelected
+        ? AppColors.primary
+        : (isDark ? AppColors.textGray400 : const Color(0xFF64748B));
     return Tooltip(
       message: label,
       child: InkWell(
@@ -379,12 +447,14 @@ class _MainShellState extends State<MainShell> {
           width: 52,
           height: 52,
           decoration: BoxDecoration(
-            color: isSelected 
-                ? AppColors.primary.withOpacity(isDark ? 0.15 : 0.08) 
+            color: isSelected
+                ? AppColors.primary.withOpacity(isDark ? 0.15 : 0.08)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? AppColors.primary.withOpacity(0.3) : Colors.transparent,
+              color: isSelected
+                  ? AppColors.primary.withOpacity(0.3)
+                  : Colors.transparent,
             ),
           ),
           child: Icon(icon, color: color, size: 22),
@@ -393,7 +463,8 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  Widget _buildRailActionItem(IconData icon, String label, VoidCallback onTap, BuildContext context) {
+  Widget _buildRailActionItem(
+      IconData icon, String label, VoidCallback onTap, BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Tooltip(
       message: label,
@@ -407,7 +478,9 @@ class _MainShellState extends State<MainShell> {
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: isDark ? AppColors.textGray400 : const Color(0xFF64748B), size: 22),
+          child: Icon(icon,
+              color: isDark ? AppColors.textGray400 : const Color(0xFF64748B),
+              size: 22),
         ),
       ),
     );
@@ -416,7 +489,8 @@ class _MainShellState extends State<MainShell> {
   Widget _buildFullSidebar(int selectedIndex, BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xFF1E293B);
-    final subtextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final subtextColor =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
     return Container(
       width: 260,
@@ -450,7 +524,6 @@ class _MainShellState extends State<MainShell> {
             ],
           ),
           const SizedBox(height: 36),
-          
           Text(
             "NAVIGATION",
             style: TextStyle(
@@ -461,16 +534,18 @@ class _MainShellState extends State<MainShell> {
             ),
           ),
           const SizedBox(height: 12),
-
-          _buildSidebarItem(Icons.dashboard, 'Dashboard', 0, selectedIndex, context),
+          _buildSidebarItem(
+              Icons.dashboard, 'Dashboard', 0, selectedIndex, context),
           const SizedBox(height: 6),
-          _buildSidebarItem(Icons.map_outlined, 'Real-time Map', 1, selectedIndex, context),
+          _buildSidebarItem(
+              Icons.map_outlined, 'Real-time Map', 1, selectedIndex, context),
           const SizedBox(height: 6),
-          _buildSidebarItem(Icons.chat_bubble_outline, 'AI Orchestrator', 3, selectedIndex, context),
+          _buildSidebarItem(Icons.chat_bubble_outline, 'AI Orchestrator', 3,
+              selectedIndex, context),
           const SizedBox(height: 6),
-          _buildSidebarItem(Icons.settings_outlined, 'Settings', 4, selectedIndex, context),
+          _buildSidebarItem(
+              Icons.settings_outlined, 'Settings', 4, selectedIndex, context),
           const SizedBox(height: 28),
-
           Text(
             "QUICK ACTIONS",
             style: TextStyle(
@@ -481,7 +556,6 @@ class _MainShellState extends State<MainShell> {
             ),
           ),
           const SizedBox(height: 12),
-
           InkWell(
             onTap: () => context.push('/child/create'),
             borderRadius: BorderRadius.circular(12),
@@ -517,9 +591,7 @@ class _MainShellState extends State<MainShell> {
               ),
             ),
           ),
-          
           const Spacer(),
-
           InkWell(
             onTap: _handleLogout,
             borderRadius: BorderRadius.circular(12),
@@ -547,15 +619,16 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  Widget _buildSidebarItem(IconData icon, String label, int index, int selectedIndex, BuildContext context) {
+  Widget _buildSidebarItem(IconData icon, String label, int index,
+      int selectedIndex, BuildContext context) {
     final isSelected = selectedIndex == index;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final activeColor = AppColors.primary;
-    final textColor = isSelected 
-        ? activeColor 
+    final textColor = isSelected
+        ? activeColor
         : (isDark ? Colors.white : const Color(0xFF334155));
-    final iconColor = isSelected 
-        ? activeColor 
+    final iconColor = isSelected
+        ? activeColor
         : (isDark ? AppColors.textGray400 : const Color(0xFF64748B));
 
     return InkWell(
@@ -565,12 +638,13 @@ class _MainShellState extends State<MainShell> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected 
-              ? activeColor.withOpacity(isDark ? 0.12 : 0.06) 
+          color: isSelected
+              ? activeColor.withOpacity(isDark ? 0.12 : 0.06)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? activeColor.withOpacity(0.2) : Colors.transparent,
+            color:
+                isSelected ? activeColor.withOpacity(0.2) : Colors.transparent,
           ),
         ),
         child: Row(

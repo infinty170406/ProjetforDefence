@@ -45,6 +45,19 @@ class NativeBridgeService {
     }
   }
 
+  /// Met à jour l'état de verrouillage global de l'appareil.
+  static Future<void> updateDeviceLock(bool locked) async {
+    try {
+      await _channel.invokeMethod('updateDeviceLock', {
+        'locked': locked,
+      });
+    } on PlatformException catch (e) {
+      debugPrint(
+        'NativeBridgeService: updateDeviceLock error: ${e.message}',
+      );
+    }
+  }
+
   /// Démarre le ForegroundService natif (survie en arrière-plan).
   static Future<void> startForegroundService() async {
     try {

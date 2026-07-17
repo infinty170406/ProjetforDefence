@@ -6,6 +6,10 @@ import '../../core/services/child_monitor_service.dart';
 import '../../core/services/firestore_service.dart';
 import '../../core/widgets/app_tile_with_details.dart';
 import '../../core/services/api_config.dart';
+import 'package:provider/provider.dart';
+import '../../core/premium/entitlement_service.dart';
+import '../../core/premium/feature_flags.dart';
+import 'dart:ui';
 
 class RulesEditorScreen extends StatefulWidget {
   final dynamic child;
@@ -106,7 +110,9 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
             ApiConfig.geminiApiKey = key;
           }
           _monitoredNotificationPackages = List<String>.from(
-              snap['monitoredNotificationPackages'] ?? snap['monitored_notification_packages'] ?? _defaultMonitoredPackages);
+              snap['monitoredNotificationPackages'] ??
+                  snap['monitored_notification_packages'] ??
+                  _defaultMonitoredPackages);
 
           final start = snap['allowedTimeStart'] as String?;
           final end = snap['allowedTimeEnd'] as String?;
@@ -114,8 +120,10 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
             _scheduleEnabled = true;
             final sParts = start.split(':');
             final eParts = end.split(':');
-            _allowedStart = TimeOfDay(hour: int.parse(sParts[0]), minute: int.parse(sParts[1]));
-            _allowedEnd = TimeOfDay(hour: int.parse(eParts[0]), minute: int.parse(eParts[1]));
+            _allowedStart = TimeOfDay(
+                hour: int.parse(sParts[0]), minute: int.parse(sParts[1]));
+            _allowedEnd = TimeOfDay(
+                hour: int.parse(eParts[0]), minute: int.parse(eParts[1]));
           }
         });
       }
@@ -176,8 +184,12 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
         monitorAccountActivity: _monitorAccountActivity,
         locationAlerts: _locationAlerts,
         customKeywords: _customKeywords,
-        blockReason: _blockReasonController.text.trim().isEmpty ? null : _blockReasonController.text.trim(),
-        geminiApiKey: _geminiApiKeyController.text.trim().isEmpty ? null : _geminiApiKeyController.text.trim(),
+        blockReason: _blockReasonController.text.trim().isEmpty
+            ? null
+            : _blockReasonController.text.trim(),
+        geminiApiKey: _geminiApiKeyController.text.trim().isEmpty
+            ? null
+            : _geminiApiKeyController.text.trim(),
         monitoredNotificationPackages: _monitoredNotificationPackages,
       );
       final key = _geminiApiKeyController.text.trim();
@@ -230,7 +242,6 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -242,7 +253,8 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                   child: Row(
                     children: [
                       IconButton(
-                          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                          icon: Icon(Icons.arrow_back,
+                              color: Theme.of(context).colorScheme.onSurface),
                           onPressed: () => context.pop()),
                       Text('Edit Rules',
                           style: TextStyle(
@@ -272,12 +284,16 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                                     fontSize: 32,
                                     fontWeight: FontWeight.bold))),
                         Slider(
-                          value: _dailyLimitMinutes.toDouble().clamp(0.0, 1440.0),
+                          value:
+                              _dailyLimitMinutes.toDouble().clamp(0.0, 1440.0),
                           min: 0,
                           max: 1440,
                           divisions: 96,
                           activeColor: AppColors.primary,
-                          inactiveColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
+                          inactiveColor: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.12),
                           onChanged: (v) =>
                               setState(() => _dailyLimitMinutes = v.round()),
                         ),
@@ -374,11 +390,15 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                         // Safe Zones Section
                         Row(
                           children: [
-                            Icon(Icons.location_on, color: AppColors.primary, size: 20),
+                            Icon(Icons.location_on,
+                                color: AppColors.primary, size: 20),
                             SizedBox(width: 8),
-                            Text('GEOGRAPHIC SECURITY',
+                            Text(
+                              'GEOGRAPHIC SECURITY',
                               style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.2,
@@ -399,10 +419,17 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                           icon: Icon(Icons.map, size: 18),
                           label: Text('Manage Safe Zones'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
-                            foregroundColor: Theme.of(context).colorScheme.onSurface,
-                            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.05),
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onSurface,
+                            side: BorderSide(
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.3)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                             minimumSize: const Size(double.infinity, 48),
                           ),
                         ),
@@ -410,11 +437,15 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                           SizedBox(height: 32),
                           Row(
                             children: [
-                              Icon(Icons.apps, color: AppColors.primary, size: 20),
+                              Icon(Icons.apps,
+                                  color: AppColors.primary, size: 20),
                               SizedBox(width: 8),
-                              Text('APPLICATION CONTROL',
+                              Text(
+                                'APPLICATION CONTROL',
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 1.2,
@@ -422,31 +453,48 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                               ),
                               Spacer(),
                               Text('${_blockedApps.length} blocked',
-                                style: TextStyle(color: Colors.redAccent, fontSize: 11)),
+                                  style: TextStyle(
+                                      color: Colors.redAccent, fontSize: 11)),
                             ],
                           ),
                           SizedBox(height: 16),
                           // Search Box for Apps
                           TextField(
                             controller: _appSearchController,
-                            onChanged: (v) => setState(() => _appSearchQuery = v.trim().toLowerCase()),
-                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+                            onChanged: (v) => setState(
+                                () => _appSearchQuery = v.trim().toLowerCase()),
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: 13),
                             decoration: InputDecoration(
                               hintText: 'Search apps...',
-                              hintStyle: TextStyle(color: Theme.of(context).brightness == Brightness.light ? const Color(0xFF94A3B8) : AppColors.textGray400),
-                              prefixIcon: Icon(Icons.search, color: AppColors.textGray400, size: 18),
+                              hintStyle: TextStyle(
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.light
+                                      ? const Color(0xFF94A3B8)
+                                      : AppColors.textGray400),
+                              prefixIcon: Icon(Icons.search,
+                                  color: AppColors.textGray400, size: 18),
                               filled: true,
-                              fillColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              fillColor: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.05),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none),
                               contentPadding: EdgeInsets.symmetric(vertical: 0),
                             ),
                           ),
                           SizedBox(height: 16),
                           ..._installedApps
-                            .where((pkg) => pkg.toLowerCase().contains(_appSearchQuery))
-                            .map((pkg) {
+                              .where((pkg) =>
+                                  pkg.toLowerCase().contains(_appSearchQuery))
+                              .map((pkg) {
                             final blocked = _blockedApps.contains(pkg);
-                            final childId = widget.child?['id'] ?? widget.child?['childId'] ?? '';
+                            final childId = widget.child?['id'] ??
+                                widget.child?['childId'] ??
+                                '';
                             return Padding(
                               padding: EdgeInsets.only(bottom: 8),
                               child: AppTileWithDetails(
@@ -465,10 +513,14 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                                       }
                                     });
                                   },
-                                  activeTrackColor: Colors.redAccent.withValues(alpha: 0.3),
+                                  activeTrackColor:
+                                      Colors.redAccent.withValues(alpha: 0.3),
                                   activeThumbColor: Colors.redAccent,
                                   inactiveThumbColor: Colors.grey,
-                                  inactiveTrackColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
+                                  inactiveTrackColor: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.10),
                                 ),
                               ),
                             );
@@ -478,11 +530,15 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                         // ── Custom Keywords Section ──────────────────────
                         Row(
                           children: [
-                            Icon(Icons.manage_search, color: AppColors.primary, size: 18),
+                            Icon(Icons.manage_search,
+                                color: AppColors.primary, size: 18),
                             SizedBox(width: 8),
-                            Text('CUSTOM MONITORING',
+                            Text(
+                              'CUSTOM MONITORING',
                               style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.2,
@@ -493,7 +549,13 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                         SizedBox(height: 6),
                         Text(
                           'Add words or topics to monitor. You will be alerted when they are detected on the device.',
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), fontSize: 12, height: 1.4),
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.54),
+                              fontSize: 12,
+                              height: 1.4),
                         ),
                         SizedBox(height: 14),
                         Row(
@@ -501,26 +563,45 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                             Expanded(
                               child: TextField(
                                 controller: _keywordController,
-                                style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                                style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface),
                                 textCapitalization: TextCapitalization.words,
                                 decoration: InputDecoration(
                                   hintText: 'e.g. Fortnite, gambling...',
-                                  hintStyle: TextStyle(color: AppColors.textGray400, fontSize: 13),
+                                  hintStyle: TextStyle(
+                                      color: AppColors.textGray400,
+                                      fontSize: 13),
                                   filled: true,
-                                  fillColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+                                  fillColor: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.06),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12)),
+                                    borderSide: BorderSide(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.12)),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12)),
+                                    borderSide: BorderSide(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.12)),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
+                                    borderSide: BorderSide(
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.6)),
                                   ),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 14),
                                 ),
                                 onSubmitted: (_) => _addEditorKeyword(),
                               ),
@@ -534,7 +615,10 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                                   color: AppColors.primary,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Icon(Icons.add, color: Theme.of(context).colorScheme.onSurface),
+                                child: Icon(Icons.add,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface),
                               ),
                             ),
                           ],
@@ -544,43 +628,84 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: _customKeywords.map((kw) => Container(
-                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.label_outline, color: AppColors.primary, size: 13),
-                                  SizedBox(width: 6),
-                                  Text(kw, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13)),
-                                  SizedBox(width: 8),
-                                  GestureDetector(
-                                    onTap: () => setState(() {
-                                      _customKeywords = _customKeywords.where((k) => k != kw).toList();
-                                    }),
-                                    child: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38), size: 13),
-                                  ),
-                                ],
-                              ),
-                            )).toList(),
+                            children: _customKeywords
+                                .map((kw) => Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                            color: AppColors.primary
+                                                .withValues(alpha: 0.35)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.label_outline,
+                                              color: AppColors.primary,
+                                              size: 13),
+                                          SizedBox(width: 6),
+                                          Text(kw,
+                                              style: TextStyle(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface,
+                                                  fontSize: 13)),
+                                          SizedBox(width: 8),
+                                          GestureDetector(
+                                            onTap: () => setState(() {
+                                              _customKeywords = _customKeywords
+                                                  .where((k) => k != kw)
+                                                  .toList();
+                                            }),
+                                            child: Icon(Icons.close,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface
+                                                    .withValues(alpha: 0.38),
+                                                size: 13),
+                                          ),
+                                        ],
+                                      ),
+                                    ))
+                                .toList(),
                           ),
                         ],
                         SizedBox(height: 24),
                         // ── AI Configuration Section ────────────────────
                         Row(
                           children: [
-                            Icon(Icons.psychology, color: AppColors.primary, size: 20),
+                            Icon(Icons.psychology,
+                                color: AppColors.primary, size: 20),
                             SizedBox(width: 8),
-                            Text('AI SURVEILLANCE & THREAT DETECTION',
+                            Text(
+                              'AI SURVEILLANCE & THREAT DETECTION',
                               style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.amber,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'PREMIUM',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],
@@ -588,180 +713,384 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                         SizedBox(height: 6),
                         Text(
                           'Configure the Gemini AI engine for real-time notification interception and context-aware risk analysis on the child device.',
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), fontSize: 12, height: 1.4),
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.54),
+                              fontSize: 12,
+                              height: 1.4),
                         ),
                         SizedBox(height: 14),
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Gemini API Key',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Required on the child device to perform local AI analysis of notifications.',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                                  fontSize: 11,
-                                ),
-                              ),
-                              SizedBox(height: 12),
-                              TextField(
-                                controller: _geminiApiKeyController,
-                                obscureText: !_showGeminiKey,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                  fontFamily: 'monospace',
-                                  fontSize: 13,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: 'Enter Gemini API Key (AIzaSy...)',
-                                  hintStyle: TextStyle(color: AppColors.textGray400, fontSize: 13),
-                                  filled: true,
-                                  fillColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12)),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12)),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
-                                  ),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _showGeminiKey ? Icons.visibility_off : Icons.visibility,
-                                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                        Builder(
+                          builder: (context) {
+                            final entitlement =
+                                context.read<EntitlementService>();
+                            final isPremiumEnabled =
+                                entitlement.isFeatureEnabled(
+                                    FeatureFlags.cyberbullyingDetection);
+
+                            return Stack(
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.04),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.10)),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Gemini API Key',
+                                            style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Required on the child device to perform local AI analysis of notifications.',
+                                            style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.5),
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          TextField(
+                                            controller: _geminiApiKeyController,
+                                            obscureText: !_showGeminiKey,
+                                            enabled: isPremiumEnabled,
+                                            style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface,
+                                              fontFamily: 'monospace',
+                                              fontSize: 13,
+                                            ),
+                                            decoration: InputDecoration(
+                                              hintText:
+                                                  'Enter Gemini API Key (AIzaSy...)',
+                                              hintStyle: TextStyle(
+                                                  color: AppColors.textGray400,
+                                                  fontSize: 13),
+                                              filled: true,
+                                              fillColor: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.06),
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                borderSide: BorderSide(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurface
+                                                        .withValues(
+                                                            alpha: 0.12)),
+                                              ),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                borderSide: BorderSide(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurface
+                                                        .withValues(
+                                                            alpha: 0.12)),
+                                              ),
+                                              focusedBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                borderSide: BorderSide(
+                                                    color: AppColors.primary
+                                                        .withValues(
+                                                            alpha: 0.6)),
+                                              ),
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 14),
+                                              suffixIcon: IconButton(
+                                                icon: Icon(
+                                                  _showGeminiKey
+                                                      ? Icons.visibility_off
+                                                      : Icons.visibility,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withValues(alpha: 0.5),
+                                                ),
+                                                onPressed: () => setState(() =>
+                                                    _showGeminiKey =
+                                                        !_showGeminiKey),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    onPressed: () => setState(() => _showGeminiKey = !_showGeminiKey),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 20),
-                        Text(
-                          'Monitored Application Notifications',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Select which apps should have their incoming notifications intercepted and analyzed by Gemini.',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                            fontSize: 11,
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        TextField(
-                          controller: _notifAppSearchController,
-                          onChanged: (v) => setState(() => _notifAppSearchQuery = v.trim().toLowerCase()),
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
-                          decoration: InputDecoration(
-                            hintText: 'Search notification apps...',
-                            hintStyle: TextStyle(color: Theme.of(context).brightness == Brightness.light ? const Color(0xFF94A3B8) : AppColors.textGray400),
-                            prefixIcon: Icon(Icons.search, color: AppColors.textGray400, size: 18),
-                            filled: true,
-                            fillColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                            contentPadding: EdgeInsets.symmetric(vertical: 0),
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        if (_installedApps.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 16.0),
-                            child: Center(
-                              child: Text(
-                                'No installed apps detected on child device yet.',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-                                  fontStyle: FontStyle.italic,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          Container(
-                            height: 200,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.02),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08)),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: ListView(
-                                physics: const BouncingScrollPhysics(),
-                                padding: EdgeInsets.all(8),
-                                children: _installedApps
-                                  .where((pkg) => pkg.toLowerCase().contains(_notifAppSearchQuery))
-                                  .map((pkg) {
-                                    final isMonitored = _monitoredNotificationPackages.contains(pkg);
-                                    final childId = widget.child?['id'] ?? widget.child?['childId'] ?? '';
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 4.0),
-                                      child: AppTileWithDetails(
-                                        childId: childId,
-                                        packageName: pkg,
-                                        trailing: Switch(
-                                          value: isMonitored,
-                                          onChanged: (v) {
-                                            setState(() {
-                                              if (v) {
-                                                _monitoredNotificationPackages = [
-                                                  ..._monitoredNotificationPackages,
-                                                  pkg
-                                                ];
-                                              } else {
-                                                _monitoredNotificationPackages =
-                                                    _monitoredNotificationPackages
-                                                        .where((p) => p != pkg)
-                                                        .toList();
-                                              }
-                                            });
-                                          },
-                                          activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
-                                          activeThumbColor: AppColors.primary,
-                                          inactiveThumbColor: Colors.grey,
-                                          inactiveTrackColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
+                                    const SizedBox(height: 20),
+                                    Text(
+                                      'Monitored Application Notifications',
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Select which apps should have their incoming notifications intercepted and analyzed by Gemini.',
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.5),
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextField(
+                                      controller: _notifAppSearchController,
+                                      enabled: isPremiumEnabled,
+                                      onChanged: (v) => setState(() =>
+                                          _notifAppSearchQuery =
+                                              v.trim().toLowerCase()),
+                                      style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
+                                          fontSize: 13),
+                                      decoration: InputDecoration(
+                                        hintText: 'Search notification apps...',
+                                        hintStyle: TextStyle(
+                                            color:
+                                                Theme.of(context).brightness ==
+                                                        Brightness.light
+                                                    ? const Color(0xFF94A3B8)
+                                                    : AppColors.textGray400),
+                                        prefixIcon: Icon(Icons.search,
+                                            color: AppColors.textGray400,
+                                            size: 18),
+                                        filled: true,
+                                        fillColor: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.05),
+                                        border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: BorderSide.none),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                vertical: 0),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    if (_installedApps.isEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 16.0),
+                                        child: Center(
+                                          child: Text(
+                                            'No installed apps detected on child device yet.',
+                                            style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.4),
+                                              fontStyle: FontStyle.italic,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      Container(
+                                        height: 200,
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withValues(alpha: 0.02),
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          border: Border.all(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.08)),
+                                        ),
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          child: ListView(
+                                            physics:
+                                                const BouncingScrollPhysics(),
+                                            padding: const EdgeInsets.all(8),
+                                            children: _installedApps
+                                                .where((pkg) => pkg
+                                                    .toLowerCase()
+                                                    .contains(
+                                                        _notifAppSearchQuery))
+                                                .map((pkg) {
+                                              final isMonitored =
+                                                  _monitoredNotificationPackages
+                                                      .contains(pkg);
+                                              final childId = widget
+                                                      .child?['id'] ??
+                                                  widget.child?['childId'] ??
+                                                  '';
+                                              return Padding(
+                                                padding: const EdgeInsets.only(
+                                                    bottom: 4.0),
+                                                child: AppTileWithDetails(
+                                                  childId: childId,
+                                                  packageName: pkg,
+                                                  trailing: Switch(
+                                                    value: isMonitored,
+                                                    onChanged: isPremiumEnabled
+                                                        ? (v) {
+                                                            setState(() {
+                                                              if (v) {
+                                                                _monitoredNotificationPackages =
+                                                                    [
+                                                                  ..._monitoredNotificationPackages,
+                                                                  pkg
+                                                                ];
+                                                              } else {
+                                                                _monitoredNotificationPackages =
+                                                                    _monitoredNotificationPackages
+                                                                        .where((p) =>
+                                                                            p !=
+                                                                            pkg)
+                                                                        .toList();
+                                                              }
+                                                            });
+                                                          }
+                                                        : null,
+                                                    activeTrackColor: AppColors
+                                                        .primary
+                                                        .withValues(alpha: 0.3),
+                                                    activeThumbColor:
+                                                        AppColors.primary,
+                                                    inactiveThumbColor:
+                                                        Colors.grey,
+                                                    inactiveTrackColor:
+                                                        Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurface
+                                                            .withValues(
+                                                                alpha: 0.10),
+                                                  ),
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
                                         ),
                                       ),
-                                    );
-                                  }).toList(),
-                              ),
-                            ),
-                          ),
+                                  ],
+                                ),
+                                if (!isPremiumEnabled)
+                                  Positioned.fill(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: BackdropFilter(
+                                        filter: ImageFilter.blur(
+                                            sigmaX: 3, sigmaY: 3),
+                                        child: Container(
+                                          color: Colors.black.withOpacity(0.4),
+                                          alignment: Alignment.center,
+                                          padding: const EdgeInsets.all(16),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.lock,
+                                                  color: Colors.amber,
+                                                  size: 36),
+                                              const SizedBox(height: 12),
+                                              const Text(
+                                                'Détectez le Cyberharcèlement avec l\'IA',
+                                                style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 15),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              const SizedBox(height: 6),
+                                              const Text(
+                                                'Cette fonctionnalité requiert l\'abonnement Guardian Premium.',
+                                                style: TextStyle(
+                                                    color: Colors.white70,
+                                                    fontSize: 12),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              const SizedBox(height: 16),
+                                              ElevatedButton(
+                                                onPressed: () => context
+                                                    .push('/premium-showcase'),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      AppColors.primary,
+                                                  foregroundColor: Colors.white,
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              50)),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 24,
+                                                      vertical: 12),
+                                                ),
+                                                child: const Text(
+                                                    'Découvrir Premium',
+                                                    style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold)),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
                         SizedBox(height: 24),
                         Row(
                           children: [
-                            Icon(Icons.message, color: AppColors.primary, size: 18),
+                            Icon(Icons.message,
+                                color: AppColors.primary, size: 18),
                             SizedBox(width: 8),
-                            Text('CUSTOM BLOCK MESSAGE',
+                            Text(
+                              'CUSTOM BLOCK MESSAGE',
                               style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.2,
@@ -772,31 +1101,54 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                         SizedBox(height: 6),
                         Text(
                           'Message displayed on the child\'s device when an app or website is blocked.',
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54), fontSize: 12, height: 1.4),
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.54),
+                              fontSize: 12,
+                              height: 1.4),
                         ),
                         SizedBox(height: 14),
                         TextField(
                           controller: _blockReasonController,
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface),
                           textCapitalization: TextCapitalization.sentences,
                           decoration: InputDecoration(
-                            hintText: 'e.g. It\'s time to sleep, put your phone down.',
-                            hintStyle: TextStyle(color: AppColors.textGray400, fontSize: 13),
+                            hintText:
+                                'e.g. It\'s time to sleep, put your phone down.',
+                            hintStyle: TextStyle(
+                                color: AppColors.textGray400, fontSize: 13),
                             filled: true,
-                            fillColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+                            fillColor: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.06),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12)),
+                              borderSide: BorderSide(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.12)),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12)),
+                              borderSide: BorderSide(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.12)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
+                              borderSide: BorderSide(
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.6)),
                             ),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
                           ),
                         ),
                         SizedBox(height: 80),
@@ -812,7 +1164,8 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                       onPressed: _isSaving ? null : _save,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: Theme.of(context).colorScheme.onSurface,
+                        foregroundColor:
+                            Theme.of(context).colorScheme.onSurface,
                         padding: EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
@@ -822,7 +1175,9 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Theme.of(context).colorScheme.onSurface))
+                                  strokeWidth: 2,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface))
                           : Text('Apply Rules',
                               style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
@@ -839,28 +1194,44 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
   Widget _toggleRow(
       String label, IconData icon, bool value, void Function(bool) onChanged,
       {bool isDanger = false}) {
-    final activeCol = isDanger ? AppColors.statusDanger : Theme.of(context).colorScheme.onSurface;
+    final activeCol = isDanger
+        ? AppColors.statusDanger
+        : Theme.of(context).colorScheme.onSurface;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10)),
+        border: Border.all(
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.10)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), size: 20),
+          Icon(icon,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.70),
+              size: 20),
           SizedBox(width: 12),
           Expanded(
-              child:
-                  Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70)))),
+              child: Text(label,
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.70)))),
           Switch(
             value: value,
             onChanged: onChanged,
             activeThumbColor: activeCol,
             activeTrackColor: activeCol.withValues(alpha: 0.3),
             inactiveThumbColor: Colors.grey[400],
-            inactiveTrackColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+            inactiveTrackColor:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
           ),
         ],
       ),
@@ -878,13 +1249,16 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+          color:
+              Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
         ),
         child: Column(children: [
           Text(label,
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 11)),
           SizedBox(height: 4),
           Text(time.format(context),
               style: TextStyle(

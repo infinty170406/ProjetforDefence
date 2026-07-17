@@ -16,7 +16,6 @@ class AiThinkingTransitionScreen extends StatelessWidget {
     });
 
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -40,9 +39,12 @@ class AiThinkingTransitionScreen extends StatelessWidget {
                   width: 200,
                   height: 2,
                   child: LinearProgressIndicator(
-                    backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
-                    valueColor:
-                        const AlwaysStoppedAnimation<Color>(AppColors.accentTeal),
+                    backgroundColor: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.1),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                        AppColors.accentTeal),
                   ),
                 ),
               ],

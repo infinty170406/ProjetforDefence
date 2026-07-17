@@ -17,7 +17,7 @@ import '../../models/agent/agent_models.dart';
 ///   3. Appliquer automatiquement les règles         → [appliquerRecommandation]
 ///   4. Enrichir les alertes (analyse IA)            → [enrichirAlerte]
 ///   5. Répondre aux questions du parent (chat IA)   → [repondreQuestion]
-///   6. Générer des recommandations intelligentes    → [genererRecommandations] 
+///   6. Générer des recommandations intelligentes    → [genererRecommandations]
 ///   7. Générer des rapports d'activité              → [genererRapportHebdomadaire]
 ///   8. Détecter des comportements inhabituels       → [detecterComportementsInhabituels]
 ///   9. Observer en lecture seule                    → conception (aucun contrôle d'UI)
@@ -26,7 +26,8 @@ import '../../models/agent/agent_models.dart';
 /// alertes marquées `ai_processed == false` (écrites par l'app enfant), les
 /// enrichit, les journalise dans l'historique et notifie le parent.
 class GuardianAgentService {
-  static final GuardianAgentService _instance = GuardianAgentService._internal();
+  static final GuardianAgentService _instance =
+      GuardianAgentService._internal();
   factory GuardianAgentService() => _instance;
   GuardianAgentService._internal();
 
@@ -76,12 +77,14 @@ class GuardianAgentService {
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || user.isAnonymous) {
-      if (kDebugMode) print('GUARDIAN_AGENT: pas de parent authentifié — démarrage différé.');
+      if (kDebugMode)
+        print('GUARDIAN_AGENT: pas de parent authentifié — démarrage différé.');
       return;
     }
 
     _isRunning = true;
-    final childrenCol = _db.collection('parents').doc(user.uid).collection('children');
+    final childrenCol =
+        _db.collection('parents').doc(user.uid).collection('children');
 
     // Suit dynamiquement l'ajout/suppression d'enfants.
     _childrenSub = childrenCol.snapshots().listen((snap) {
@@ -106,9 +109,11 @@ class GuardianAgentService {
 
     // §8 — Balayage périodique des comportements inhabituels (toutes les 30 min).
     _behaviorTimer?.cancel();
-    _behaviorTimer = Timer.periodic(const Duration(minutes: 30), (_) => _scanAllChildrenBehavior());
+    _behaviorTimer = Timer.periodic(
+        const Duration(minutes: 30), (_) => _scanAllChildrenBehavior());
 
-    if (kDebugMode) print('GUARDIAN_AGENT: démarré pour le parent ${user.uid}.');
+    if (kDebugMode)
+      print('GUARDIAN_AGENT: démarré pour le parent ${user.uid}.');
   }
 
   /// Arrête l'agent et libère toutes les ressources.
@@ -146,7 +151,8 @@ class GuardianAgentService {
           }
         }
       },
-      onError: (e) => debugPrint('GUARDIAN_AGENT: erreur alertes ($childId): $e'),
+      onError: (e) =>
+          debugPrint('GUARDIAN_AGENT: erreur alertes ($childId): $e'),
     );
 
     _alertSubs[childId] = sub;
@@ -165,7 +171,8 @@ class GuardianAgentService {
   ) async {
     try {
       // 1 + 2. Analyse + niveau de risque (avec fréquence calculée sur l'historique).
-      final analysis = await enrichirAlerte(childId: childId, childData: childData, alert: alert);
+      final analysis = await enrichirAlerte(
+          childId: childId, childData: childData, alert: alert);
 
       final alertRef = _db
           .collection('parents')
@@ -203,7 +210,8 @@ class GuardianAgentService {
       });
 
       if (kDebugMode) {
-        print('GUARDIAN_AGENT: alerte $alertId enrichie (risque=${analysis.risk.label}).');
+        print(
+            'GUARDIAN_AGENT: alerte $alertId enrichie (risque=${analysis.risk.label}).');
       }
     } catch (e) {
       debugPrint('GUARDIAN_AGENT: _processAlert error: $e');
@@ -239,7 +247,8 @@ class GuardianAgentService {
     final name = childData['displayName'] ?? 'l\'enfant';
     final age = childData['age'] ?? 'inconnu';
     final type = alert['type'] ?? 'OTHER';
-    final detail = alert['detail'] ?? alert['description'] ?? alert['message'] ?? '';
+    final detail =
+        alert['detail'] ?? alert['description'] ?? alert['message'] ?? '';
 
     // Fréquence : nombre d'alertes de même type sur les 7 derniers jours.
     final frequency = await _computeFrequency(childId, type);
@@ -294,8 +303,12 @@ class GuardianAgentService {
       risk: risk,
       frequency: '$frequency fois sur les 7 derniers jours',
       context: detail,
-      comment: 'Événement « $type » détecté. Analyse automatique (IA indisponible).',
-      recommendedActions: const ['Consulter le détail', 'Ajuster les règles si nécessaire'],
+      comment:
+          'Événement « $type » détecté. Analyse automatique (IA indisponible).',
+      recommendedActions: const [
+        'Consulter le détail',
+        'Ajuster les règles si nécessaire'
+      ],
     );
   }
 
@@ -332,7 +345,8 @@ class GuardianAgentService {
 
   /// Répond à une question du parent en s'appuyant sur le contexte temps réel
   /// (usage, règles, alertes) passé via [childContext].
-  Future<String> repondreQuestion(String message, {Map<String, dynamic>? childContext}) async {
+  Future<String> repondreQuestion(String message,
+      {Map<String, dynamic>? childContext}) async {
     String fullMessage = message;
 
     if (childContext != null) {
@@ -342,7 +356,10 @@ class GuardianAgentService {
 
       final alertsStr = alerts.isEmpty
           ? 'Aucune alerte récente'
-          : alerts.map((a) => '- ${a['type']}: ${a['detail'] ?? a['description'] ?? ''}').join('\n');
+          : alerts
+              .map((a) =>
+                  '- ${a['type']}: ${a['detail'] ?? a['description'] ?? ''}')
+              .join('\n');
       final rulesStr =
           'Limite quotidienne: ${rules['dailyLimitMinutes'] ?? 'non définie'} min. '
           'Plage: ${rules['allowedTimeStart'] ?? 'N/A'} - ${rules['allowedTimeEnd'] ?? 'N/A'}';
@@ -388,7 +405,11 @@ class GuardianAgentService {
   }) async {
     final alertsText = alerts.isEmpty
         ? 'Aucune alerte récente'
-        : alerts.take(5).map((a) => '• ${a['type'] ?? 'INFO'}: ${a['detail'] ?? a['message'] ?? 'N/A'}').join('\n');
+        : alerts
+            .take(5)
+            .map((a) =>
+                '• ${a['type'] ?? 'INFO'}: ${a['detail'] ?? a['message'] ?? 'N/A'}')
+            .join('\n');
 
     final prompt =
         'Analyse le profil de cet enfant et fournis 3 recommandations concrètes, '
@@ -427,7 +448,9 @@ class GuardianAgentService {
       final json = await _gemini.generateJson(prompt, systemPrompt: _persona);
       final items = json?['items'] as List?;
       if (items != null) {
-        return items.map((e) => Recommendation.fromJson(Map<String, dynamic>.from(e))).toList();
+        return items
+            .map((e) => Recommendation.fromJson(Map<String, dynamic>.from(e)))
+            .toList();
       }
     } catch (e) {
       debugPrint('GUARDIAN_AGENT: genererRecommandations error: $e');
@@ -439,7 +462,8 @@ class GuardianAgentService {
       recs.add(Recommendation(
         type: 'REDUCE_LIMIT',
         title: 'Réduire le temps d\'écran',
-        description: 'Le temps d\'écran approche ou dépasse la limite. Envisagez de la réduire.',
+        description:
+            'Le temps d\'écran approche ou dépasse la limite. Envisagez de la réduire.',
         params: {'minutes': (limitMinutes * 0.75).round()},
       ));
     }
@@ -447,7 +471,8 @@ class GuardianAgentService {
       recs.add(const Recommendation(
         type: 'ADJUST_HOURS',
         title: 'Renforcer les horaires nocturnes',
-        description: 'Un usage nocturne a été détecté. Ajustez la plage horaire autorisée.',
+        description:
+            'Un usage nocturne a été détecté. Ajustez la plage horaire autorisée.',
         params: {'start': '07:00', 'end': '21:00'},
       ));
     }
@@ -468,7 +493,8 @@ class GuardianAgentService {
   /// Applique une recommandation en écrivant la règle correspondante.
   /// Conformément au §9 (observation en lecture seule), cette action de
   /// contrôle est explicite et déclenchée par le parent, jamais silencieuse.
-  Future<void> appliquerRecommandation(String childId, Recommendation rec) async {
+  Future<void> appliquerRecommandation(
+      String childId, Recommendation rec) async {
     switch (rec.type) {
       case 'REDUCE_LIMIT':
         final minutes = (rec.params['minutes'] as num?)?.toInt() ?? 90;
@@ -485,7 +511,8 @@ class GuardianAgentService {
         break;
       case 'DIGITAL_BREAK':
         // Pause numérique = réduction temporaire forte de la limite.
-        await _rulesWriter.setDailyLimit(childId, (rec.params['minutes'] as num?)?.toInt() ?? 30);
+        await _rulesWriter.setDailyLimit(
+            childId, (rec.params['minutes'] as num?)?.toInt() ?? 30);
         break;
       default:
         // Type informatif : aucune action de contrôle.
@@ -515,30 +542,34 @@ class GuardianAgentService {
         .collection('apps');
 
     final snap = await usageCol.get();
-    final sortedDocs = snap.docs.toList()
-      ..sort((a, b) => b.id.compareTo(a.id));
+    final sortedDocs = snap.docs.toList()..sort((a, b) => b.id.compareTo(a.id));
     final recentDocs = sortedDocs.take(7);
 
     int total = 0;
     final Map<String, int> appTotals = {};
     for (final doc in recentDocs) {
       final data = doc.data();
-      total += ((data['usedMinutes'] ?? data['totalMinutes'] ?? 0) as num).toInt();
+      total +=
+          ((data['usedMinutes'] ?? data['totalMinutes'] ?? 0) as num).toInt();
       final apps = data['apps'] as Map<String, dynamic>? ?? {};
       apps.forEach((pkg, info) {
         final m = ((info is Map ? info['minutes'] : 0) as num?)?.toInt() ?? 0;
-        final label = (info is Map ? (info['label'] ?? info['appName'] ?? pkg) : pkg).toString();
+        final label =
+            (info is Map ? (info['label'] ?? info['appName'] ?? pkg) : pkg)
+                .toString();
         appTotals[label] = (appTotals[label] ?? 0) + m;
       });
     }
 
-    final topApps = appTotals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final topApps = appTotals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
     final topList = topApps.take(5).toList();
 
     // Nombre d'alertes sur 7 jours.
     int alertsCount = 0;
     try {
-      final since = Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 7)));
+      final since =
+          Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 7)));
       final aSnap = await _db
           .collection('parents')
           .doc(_uid)
@@ -568,7 +599,8 @@ class GuardianAgentService {
       final json = await _gemini.generateJson(prompt, systemPrompt: _persona);
       if (json != null) {
         evolution = json['evolution'] as String? ?? evolution;
-        advice = (json['advice'] as List?)?.map((e) => e.toString()).toList() ?? const [];
+        advice = (json['advice'] as List?)?.map((e) => e.toString()).toList() ??
+            const [];
       }
     } catch (e) {
       debugPrint('GUARDIAN_AGENT: genererRapportHebdomadaire IA error: $e');
@@ -590,7 +622,8 @@ class GuardianAgentService {
 
   /// Analyse les signaux du jour pour détecter des comportements inhabituels :
   /// usage nocturne excessif, usage intensif d'apps addictives, sortie de zone.
-  Future<List<BehaviorAnomaly>> detecterComportementsInhabituels(String childId) async {
+  Future<List<BehaviorAnomaly>> detecterComportementsInhabituels(
+      String childId) async {
     final anomalies = <BehaviorAnomaly>[];
     try {
       final today = _dateStr(DateTime.now());
@@ -612,7 +645,8 @@ class GuardianAgentService {
         anomalies.add(BehaviorAnomaly(
           type: 'NIGHT_USAGE',
           title: 'Usage nocturne excessif',
-          description: '$night minutes d\'utilisation détectées entre 22h et 6h.',
+          description:
+              '$night minutes d\'utilisation détectées entre 22h et 6h.',
           risk: night >= 60 ? RiskLevel.critical : RiskLevel.moderate,
         ));
       }
@@ -625,7 +659,8 @@ class GuardianAgentService {
         anomalies.add(BehaviorAnomaly(
           type: 'ADDICTIVE_APP',
           title: 'Réseaux sociaux intensifs',
-          description: '$social minutes passées sur les réseaux sociaux aujourd\'hui.',
+          description:
+              '$social minutes passées sur les réseaux sociaux aujourd\'hui.',
           risk: RiskLevel.moderate,
         ));
       }
@@ -647,7 +682,11 @@ class GuardianAgentService {
   /// génère une alerte de synthèse pour chaque anomalie critique non encore signalée.
   Future<void> _scanAllChildrenBehavior() async {
     try {
-      final children = await _db.collection('parents').doc(_uid).collection('children').get();
+      final children = await _db
+          .collection('parents')
+          .doc(_uid)
+          .collection('children')
+          .get();
       for (final child in children.docs) {
         final anomalies = await detecterComportementsInhabituels(child.id);
         for (final a in anomalies.where((x) => x.risk == RiskLevel.critical)) {
@@ -661,7 +700,8 @@ class GuardianAgentService {
 
   /// Écrit une alerte « comportement inhabituel » lisible par le tableau de bord parent.
   /// Anti-doublon : une seule alerte par type d'anomalie et par jour.
-  Future<void> _emitBehaviorAlert(String childId, BehaviorAnomaly anomaly) async {
+  Future<void> _emitBehaviorAlert(
+      String childId, BehaviorAnomaly anomaly) async {
     final today = _dateStr(DateTime.now());
     final col = _db
         .collection('parents')

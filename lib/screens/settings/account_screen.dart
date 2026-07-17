@@ -58,7 +58,6 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -72,7 +71,8 @@ class _AccountScreenState extends State<AccountScreen> {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                        icon: Icon(Icons.arrow_back,
+                            color: Theme.of(context).colorScheme.onSurface),
                         onPressed: () => context.pop(),
                       ),
                       SizedBox(width: 8),
@@ -107,13 +107,16 @@ class _AccountScreenState extends State<AccountScreen> {
                                         shape: BoxShape.circle,
                                         gradient: LinearGradient(
                                           colors: [
-                                            AppColors.primary.withValues(alpha: 0.8),
-                                            AppColors.primary.withValues(alpha: 0.3),
+                                            AppColors.primary
+                                                .withValues(alpha: 0.8),
+                                            AppColors.primary
+                                                .withValues(alpha: 0.3),
                                           ],
                                         ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: AppColors.primary.withValues(alpha: 0.4),
+                                            color: AppColors.primary
+                                                .withValues(alpha: 0.4),
                                             blurRadius: 20,
                                             spreadRadius: 4,
                                           ),
@@ -121,9 +124,13 @@ class _AccountScreenState extends State<AccountScreen> {
                                       ),
                                       child: Center(
                                         child: Text(
-                                          _name.isNotEmpty ? _name[0].toUpperCase() : 'U',
+                                          _name.isNotEmpty
+                                              ? _name[0].toUpperCase()
+                                              : 'U',
                                           style: TextStyle(
-                                            color: Theme.of(context).colorScheme.onSurface,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
                                             fontSize: 44,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -134,7 +141,9 @@ class _AccountScreenState extends State<AccountScreen> {
                                     Text(
                                       _name.toUpperCase(),
                                       style: TextStyle(
-                                        color: Theme.of(context).colorScheme.onSurface,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
                                         fontSize: 24,
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: 1.2,
@@ -152,20 +161,28 @@ class _AccountScreenState extends State<AccountScreen> {
                                     SizedBox(height: 16),
                                     // Badge
                                     Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 6),
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(alpha: 0.15),
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+                                        border: Border.all(
+                                            color: AppColors.primary
+                                                .withValues(alpha: 0.4)),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.verified_user, color: AppColors.primary, size: 16),
+                                          Icon(Icons.verified_user,
+                                              color: AppColors.primary,
+                                              size: 16),
                                           SizedBox(width: 6),
                                           Text(
                                             'Verified Parent',
-                                            style: TextStyle(color: AppColors.primary, fontSize: 13),
+                                            style: TextStyle(
+                                                color: AppColors.primary,
+                                                fontSize: 13),
                                           ),
                                         ],
                                       ),
@@ -186,13 +203,21 @@ class _AccountScreenState extends State<AccountScreen> {
                                       label: 'Full name',
                                       value: _name.isNotEmpty ? _name : '—',
                                     ),
-                                    Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10)),
+                                    Divider(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.10)),
                                     _buildInfoTile(
                                       icon: Icons.email_outlined,
                                       label: 'Email address',
                                       value: _email.isNotEmpty ? _email : '—',
                                     ),
-                                    Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10)),
+                                    Divider(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.10)),
                                     _buildInfoTile(
                                       icon: Icons.shield_outlined,
                                       label: 'Account type',
@@ -208,7 +233,8 @@ class _AccountScreenState extends State<AccountScreen> {
                               GlassCard(
                                 padding: EdgeInsets.zero,
                                 child: ListTile(
-                                  leading: Icon(Icons.logout, color: Colors.redAccent),
+                                  leading: Icon(Icons.logout,
+                                      color: Colors.redAccent),
                                   title: Text(
                                     'Log out',
                                     style: TextStyle(color: Colors.redAccent),
@@ -231,7 +257,8 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
-  Widget _buildInfoTile({required IconData icon, required String label, required String value}) {
+  Widget _buildInfoTile(
+      {required IconData icon, required String label, required String value}) {
     return ListTile(
       leading: Container(
         padding: EdgeInsets.all(8),
@@ -241,10 +268,16 @@ class _AccountScreenState extends State<AccountScreen> {
         ),
         child: Icon(icon, color: AppColors.primary, size: 20),
       ),
-      title: Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+      title: Text(label,
+          style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 12)),
       subtitle: Text(
         value,
-        style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.w500),
+        style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
+            fontSize: 16,
+            fontWeight: FontWeight.w500),
       ),
     );
   }

@@ -18,8 +18,8 @@ class ChatMessage {
       id: json['id'] ?? DateTime.now().toIso8601String(),
       text: json['text'] ?? '',
       isUser: json['isUser'] ?? false,
-      timestamp: json['timestamp'] != null 
-          ? DateTime.parse(json['timestamp']) 
+      timestamp: json['timestamp'] != null
+          ? DateTime.parse(json['timestamp'])
           : DateTime.now(),
       actionType: json['actionType'],
     );

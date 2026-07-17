@@ -39,7 +39,10 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
   }
 
   Future<void> _generate() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       // Résolution de l'enfant cible (param ou premier enfant du parent).
       dynamic child = widget.child;
@@ -49,7 +52,10 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       }
 
       if (child == null) {
-        setState(() { _error = 'Aucun enfant associé.'; _loading = false; });
+        setState(() {
+          _error = 'Aucun enfant associé.';
+          _loading = false;
+        });
         return;
       }
 
@@ -62,9 +68,17 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
         name: _childName,
         age: age,
       );
-      if (mounted) setState(() { _report = report; _loading = false; });
+      if (mounted)
+        setState(() {
+          _report = report;
+          _loading = false;
+        });
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
     }
   }
 
@@ -74,7 +88,8 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          if (Theme.of(context).brightness == Brightness.dark) const LiquidBackground(),
+          if (Theme.of(context).brightness == Brightness.dark)
+            const LiquidBackground(),
           SafeArea(
             child: Column(
               children: [
@@ -94,7 +109,8 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+            icon: Icon(Icons.arrow_back,
+                color: Theme.of(context).colorScheme.onSurface),
             onPressed: () => context.pop(),
           ),
           const SizedBox(width: 4),
@@ -103,9 +119,14 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Rapport hebdomadaire',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 20, fontWeight: FontWeight.bold)),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold)),
                 Text(_childName,
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 13)),
               ],
             ),
           ),
@@ -128,7 +149,8 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
             CircularProgressIndicator(color: AppColors.primary),
             const SizedBox(height: 16),
             Text('Génération du rapport par Guardian IA...',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ],
         ),
       );
@@ -140,10 +162,13 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, color: AppColors.statusDanger, size: 56),
+              Icon(Icons.error_outline,
+                  color: AppColors.statusDanger, size: 56),
               const SizedBox(height: 16),
-              Text(_error!, textAlign: TextAlign.center,
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              Text(_error!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
             ],
           ),
         ),
@@ -156,11 +181,14 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
 
     final statsRow = Row(
       children: [
-        _statCard('Temps total', '${r.totalMinutes} min', Icons.schedule, AppColors.primary),
+        _statCard('Temps total', '${r.totalMinutes} min', Icons.schedule,
+            AppColors.primary),
         const SizedBox(width: 10),
-        _statCard('Moyenne/jour', '${r.dailyAverage} min', Icons.trending_up, AppColors.accentTeal),
+        _statCard('Moyenne/jour', '${r.dailyAverage} min', Icons.trending_up,
+            AppColors.accentTeal),
         const SizedBox(width: 10),
-        _statCard('Alertes', '${r.alertsCount}', Icons.notifications_active, AppColors.statusWarning),
+        _statCard('Alertes', '${r.alertsCount}', Icons.notifications_active,
+            AppColors.statusWarning),
       ],
     );
 
@@ -168,13 +196,17 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Applications les plus utilisées',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15, fontWeight: FontWeight.bold)),
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 15,
+                fontWeight: FontWeight.bold)),
         const SizedBox(height: 10),
         GlassCard(
           padding: const EdgeInsets.all(16),
           child: r.topApps.isEmpty
               ? Text('Aucune donnée d\'usage sur la semaine.',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant))
               : Column(
                   children: r.topApps.map((e) {
                     final max = r.topApps.first.value;
@@ -191,10 +223,18 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                                 child: Text(e.key,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13)),
+                                    style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
+                                        fontSize: 13)),
                               ),
                               Text('${e.value} min',
-                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+                                  style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                      fontSize: 12)),
                             ],
                           ),
                           const SizedBox(height: 4),
@@ -202,8 +242,12 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
                               value: ratio,
-                              backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
-                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                              backgroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.08),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.primary),
                               minHeight: 6,
                             ),
                           ),
@@ -220,7 +264,10 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
       icon: Icons.auto_awesome,
       title: 'Évolution des comportements',
       child: Text(r.evolution,
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14, height: 1.5)),
+          style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontSize: 14,
+              height: 1.5)),
     );
 
     final adviceSection = r.advice.isEmpty
@@ -230,20 +277,28 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
             title: 'Conseils personnalisés',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: r.advice.map((a) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.check_circle_outline, size: 16, color: AppColors.accentTeal),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(a,
-                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13.5, height: 1.4)),
+              children: r.advice
+                  .map((a) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.check_circle_outline,
+                                size: 16, color: AppColors.accentTeal),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(a,
+                                  style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface,
+                                      fontSize: 13.5,
+                                      height: 1.4)),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  )).toList(),
+                      ))
+                  .toList(),
             ),
           );
 
@@ -318,18 +373,22 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
             Icon(icon, color: color, size: 22),
             const SizedBox(height: 6),
             Text(value,
-                style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: color, fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 2),
             Text(label,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 10)),
           ],
         ),
       ),
     );
   }
 
-  Widget _sectionCard({required IconData icon, required String title, required Widget child}) {
+  Widget _sectionCard(
+      {required IconData icon, required String title, required Widget child}) {
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -340,7 +399,10 @@ class _WeeklyReportScreenState extends State<WeeklyReportScreen> {
               Icon(icon, color: AppColors.accentTeal, size: 18),
               const SizedBox(width: 8),
               Text(title,
-                  style: TextStyle(color: AppColors.accentTeal, fontSize: 14, fontWeight: FontWeight.bold)),
+                  style: TextStyle(
+                      color: AppColors.accentTeal,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 12),

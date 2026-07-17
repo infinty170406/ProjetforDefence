@@ -21,13 +21,12 @@ class RealTimeMapScreen extends StatefulWidget {
   State<RealTimeMapScreen> createState() => _RealTimeMapScreenState();
 }
 
-class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTickerProviderStateMixin {
+class _RealTimeMapScreenState extends State<RealTimeMapScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
 
   GoogleMapController? _mapController;
   final LocationService _locationService = LocationService();
-
 
   LatLng _currentLocation = const LatLng(48.8566, 2.3522);
   bool _isLoading = true;
@@ -47,15 +46,13 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.5).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeOut),
-    );
 
     // Initial focus if child passed
     if (widget.initialChild != null) {
-      _selectedChild = Child.fromJson(widget.initialChild is Map<String, dynamic> 
-        ? widget.initialChild 
-        : (widget.initialChild as Child).toJson());
+      _selectedChild = Child.fromJson(
+          widget.initialChild is Map<String, dynamic>
+              ? widget.initialChild
+              : (widget.initialChild as Child).toJson());
       _parentId = widget.initialChild?['parentId'] as String?;
       if (_selectedChild?.lastLocation != null) {
         _currentLocation = _selectedChild!.lastLocation!;
@@ -74,6 +71,7 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
   }
 
   void _startRealTimeTracking() {
+    _childrenSubscription?.cancel();
     if (_isChildMode && _selectedChild != null) {
       // Child mode: only track the current child
       _childrenSubscription = ChildMonitorService()
@@ -97,9 +95,11 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
       return;
     }
 
-    _childrenSubscription = FirestoreService().childrenStream().listen((childrenData) {
-      final List<Child> children = childrenData.map((json) => Child.fromJson(json)).toList();
-      
+    _childrenSubscription =
+        FirestoreService().childrenStream().listen((childrenData) {
+      final List<Child> children =
+          childrenData.map((json) => Child.fromJson(json)).toList();
+
       if (mounted) {
         setState(() {
           _children = children;
@@ -116,14 +116,18 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
 
             if (_selectedChild?.lastLocation != null) {
               final newLocation = _selectedChild!.lastLocation!;
-              
+
               // Force focus on first load or if auto-follow is ON
-              if (_isFirstLoad || (_autoFollow && (newLocation.latitude != _currentLocation.latitude || newLocation.longitude != _currentLocation.longitude))) {
-                 _currentLocation = newLocation;
-                 _updateMapCamera();
-                 _isFirstLoad = false;
+              if (_isFirstLoad ||
+                  (_autoFollow &&
+                      (newLocation.latitude != _currentLocation.latitude ||
+                          newLocation.longitude !=
+                              _currentLocation.longitude))) {
+                _currentLocation = newLocation;
+                _updateMapCamera();
+                _isFirstLoad = false;
               } else {
-                 _currentLocation = newLocation;
+                _currentLocation = newLocation;
               }
             }
           }
@@ -141,7 +145,7 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
 
       // 1. Init Location with timeout
       await _initLocation();
-      
+
       // 2. Start tracking and load zones in parallel
       _startRealTimeTracking();
       await _loadAllSafeZones();
@@ -154,7 +158,8 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
 
   void _updateMapCamera() {
     if (_mapController != null && _selectedChild?.lastLocation != null) {
-      _mapController!.animateCamera(CameraUpdate.newLatLngZoom(_currentLocation, 14.0));
+      _mapController!
+          .animateCamera(CameraUpdate.newLatLngZoom(_currentLocation, 14.0));
     }
   }
 
@@ -164,12 +169,16 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
       if (!hasService) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Veuillez activer la localisation pour actualiser votre position.')),
+          const SnackBar(
+              content: Text(
+                  'Veuillez activer la localisation pour actualiser votre position.')),
         );
         return;
       }
-      
-      final position = await _locationService.getCurrentLocation().timeout(const Duration(seconds: 5));
+
+      final position = await _locationService
+          .getCurrentLocation()
+          .timeout(const Duration(seconds: 5));
       if (mounted && position != null) {
         setState(() {
           _currentLocation = LatLng(position.latitude, position.longitude);
@@ -223,32 +232,38 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
         onAdd: (zone) async {
           debugPrint('DEBUG: Starting onAdd for zone: ${zone.name}');
           try {
-            await ApiService().createGeofence(zone.toJson()).timeout(const Duration(seconds: 15));
+            await ApiService()
+                .createGeofence(zone.toJson())
+                .timeout(const Duration(seconds: 15));
             debugPrint('DEBUG: Geofence created successfully');
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Zone de sécurité enregistrée ✓'), backgroundColor: Colors.green),
+              const SnackBar(
+                  content: Text('Zone de sécurité enregistrée ✓'),
+                  backgroundColor: Colors.green),
             );
             await _loadAllSafeZones();
           } catch (e) {
             debugPrint('DEBUG: Error in onAdd: $e');
             String errorMsg = 'Erreur lors de l\'ajout';
-            if (e.toString().contains('UNAVAILABLE') || e.toString().contains('host')) {
+            if (e.toString().contains('UNAVAILABLE') ||
+                e.toString().contains('host')) {
               errorMsg = 'Connexion impossible. Vérifiez votre accès internet.';
             } else {
               errorMsg = 'Erreur: $e';
             }
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(errorMsg), backgroundColor: AppColors.statusDanger),
+              SnackBar(
+                  content: Text(errorMsg),
+                  backgroundColor: AppColors.statusDanger),
             );
-            rethrow; 
+            rethrow;
           }
         },
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -275,7 +290,8 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
               zoomControlsEnabled: false,
               mapToolbarEnabled: false,
               compassEnabled: false,
-              markers: _children.where((c) => c.lastLocation != null).map((child) {
+              markers:
+                  _children.where((c) => c.lastLocation != null).map((child) {
                 return Marker(
                   markerId: MarkerId(child.id),
                   position: child.lastLocation!,
@@ -283,7 +299,12 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
                   onTap: () => _onChildSwitched(child),
                 );
               }).toSet(),
-              circles: _safeZones.where((z) => _selectedChild == null || z.childId == null || z.childId == _selectedChild!.id).map((zone) {
+              circles: _safeZones
+                  .where((z) =>
+                      _selectedChild == null ||
+                      z.childId == null ||
+                      z.childId == _selectedChild!.id)
+                  .map((zone) {
                 return Circle(
                   circleId: CircleId(zone.id ?? zone.name),
                   center: zone.center,
@@ -318,7 +339,8 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
                             padding: EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).scaffoldBackgroundColor
+                              color: Theme.of(context)
+                                  .scaffoldBackgroundColor
                                   .withValues(alpha: 0.85),
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(
@@ -341,7 +363,9 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
                                 SizedBox(width: 8),
                                 Text(_selectedChild!.displayName,
                                     style: TextStyle(
-                                        color: Theme.of(context).colorScheme.onSurface,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600)),
                                 SizedBox(width: 4),
@@ -359,10 +383,16 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
                           _buildHeaderButton(
                             _autoFollow ? Icons.gps_fixed : Icons.gps_not_fixed,
                             () => setState(() => _autoFollow = !_autoFollow),
-                            color: _autoFollow ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.60),
+                            color: _autoFollow
+                                ? AppColors.primary
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.60),
                           ),
                           SizedBox(width: 8),
-                          _buildHeaderButton(Icons.refresh, () => _startRealTimeTracking()),
+                          _buildHeaderButton(
+                              Icons.refresh, () => _startRealTimeTracking()),
                         ],
                       ),
                     ],
@@ -386,7 +416,8 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
           : FloatingActionButton(
               onPressed: _showAddZoneModal,
               backgroundColor: AppColors.primary,
-              child: Icon(Icons.add_location_alt_outlined, color: Theme.of(context).colorScheme.onSurface),
+              child: Icon(Icons.add_location_alt_outlined,
+                  color: Theme.of(context).colorScheme.onSurface),
             ),
     );
   }
@@ -398,7 +429,8 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
       child: Container(
         padding: EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.8),
+          color:
+              Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.8),
           shape: BoxShape.circle,
           border: Border.all(color: AppColors.glassBorder),
         ),
@@ -418,12 +450,13 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen> with SingleTicker
             child: GestureDetector(
               onTap: () => _onChildSwitched(child),
               child: Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppColors.primary
-                      : Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.8),
+                      : Theme.of(context)
+                          .scaffoldBackgroundColor
+                          .withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                       color: isSelected

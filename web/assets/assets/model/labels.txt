@@ -1,2 +1,0 @@
-0 PASSPORT
-1 CNI

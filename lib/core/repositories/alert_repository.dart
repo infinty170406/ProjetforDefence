@@ -9,26 +9,33 @@ class AlertRepository {
 
   CollectionReference _notificationsCol(String childId) {
     if (_uid == null) throw Exception('User not authenticated');
-    return _db.collection('parents').doc(_uid).collection('children').doc(childId).collection('alerts').doc('notifications').collection('items');
+    return _db
+        .collection('parents')
+        .doc(_uid)
+        .collection('children')
+        .doc(childId)
+        .collection('alerts')
+        .doc('notifications')
+        .collection('items');
   }
 
-  /// Observe les alertes en temps réel
+  /// Source de vérité Firestore pour les alertes de l'enfant.
   Stream<List<Map<String, dynamic>>> watchAlerts(String childId) {
-    if (_uid == null || childId.isEmpty) return Stream.value([]);
     return _notificationsCol(childId)
         .orderBy('timestamp', descending: true)
-        .limit(50)
         .snapshots()
-        .map((snap) => snap.docs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              data['id'] = doc.id;
-              return data;
-            }).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => <String, dynamic>{
+                  ...(doc.data() as Map<String, dynamic>),
+                  'id': doc.id,
+                })
+            .toList());
   }
 
   /// Marquer toutes les alertes comme lues
   Future<void> markAllRead(String childId) async {
-    final snap = await _notificationsCol(childId).where('read', isEqualTo: false).get();
+    final snap =
+        await _notificationsCol(childId).where('read', isEqualTo: false).get();
     final batch = _db.batch();
     for (final doc in snap.docs) {
       batch.update(doc.reference, {'read': true});
@@ -53,7 +60,13 @@ class AlertRepository {
     });
 
     if (action == 'ALLOW') {
-      final rulesRef = _db.collection('parents').doc(_uid).collection('children').doc(childId).collection('rules').doc('active');
+      final rulesRef = _db
+          .collection('parents')
+          .doc(_uid)
+          .collection('children')
+          .doc(childId)
+          .collection('rules')
+          .doc('active');
 
       if (actionType == 'WEB_SEARCH') {
         await rulesRef.update({
@@ -69,16 +82,19 @@ class AlertRepository {
 
   /// Récupère le décompte des alertes par période
   Future<Map<String, int>> getAlertCounts(String childId) async {
-    if (_uid == null || childId.isEmpty) return {'day': 0, 'week': 0, 'month': 0};
+    if (_uid == null || childId.isEmpty) {
+      return {'day': 0, 'week': 0, 'month': 0};
+    }
     try {
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day);
-      
+
       final snap = await _notificationsCol(childId).get();
       int day = 0, week = 0, month = 0;
-      
+
       for (final doc in snap.docs) {
-        final ts = (doc.data() as Map<String, dynamic>)['timestamp'] as Timestamp?;
+        final ts =
+            (doc.data() as Map<String, dynamic>)['timestamp'] as Timestamp?;
         if (ts == null) continue;
         final date = ts.toDate();
         if (date.isAfter(startOfDay)) day++;

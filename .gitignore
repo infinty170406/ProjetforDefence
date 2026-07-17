@@ -32,6 +32,19 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+.env
+functions/node_modules/
+*.zip
+backend/
+SharePay.pdf
+
+# Flutter web build output (keep web/index.html, manifest and icons as source).
+/web/assets/
+/web/canvaskit/
+/web/main.dart.js
+/web/flutter_bootstrap.js
+/web/flutter_service_worker.js
+/web/version.json
 
 # Symbolication related
 app.*.symbols

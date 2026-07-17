@@ -34,6 +34,11 @@ class MainActivity : FlutterActivity() {
                         updateCustomKeywords(keywords)
                         result.success(null)
                     }
+                    "updateDeviceLock" -> {
+                        val locked = call.argument<Boolean>("locked") ?: false
+                        updateDeviceLock(locked)
+                        result.success(null)
+                    }
                     "startForegroundService" -> {
                         startGuardianForegroundService()
                         result.success(null)
@@ -57,6 +62,12 @@ class MainActivity : FlutterActivity() {
 
     private fun guardianPrefs() =
         getSharedPreferences("GuardianPrefs", Context.MODE_PRIVATE)
+
+    private fun updateDeviceLock(locked: Boolean) {
+        guardianPrefs().edit()
+            .putBoolean("device_locked", locked)
+            .apply()
+    }
 
     private fun updateBlockedApps(apps: List<String>) {
         guardianPrefs().edit()

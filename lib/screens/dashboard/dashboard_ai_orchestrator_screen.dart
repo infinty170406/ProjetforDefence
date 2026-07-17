@@ -13,8 +13,8 @@ class _ChildAnalysis {
   final Map<String, dynamic> stats;
   final List<Map<String, dynamic>> alerts;
   final Map<String, dynamic> rules;
-  String aiResponse;
-  bool isLoading;
+  String aiResponse = '';
+  bool isLoading = false;
   String? error;
 
   _ChildAnalysis({
@@ -22,18 +22,17 @@ class _ChildAnalysis {
     required this.stats,
     required this.alerts,
     required this.rules,
-    this.aiResponse = '',
-    this.isLoading = false,
-    this.error,
   });
 
   String get childId => child['id'] as String? ?? '';
   String get name => child['displayName'] as String? ?? 'Enfant';
   int get age => child['age'] as int? ?? 12;
   String get deviceStatus => child['deviceStatus'] as String? ?? 'OFFLINE';
-  int get usedMinutes => stats['usedMinutes'] as int? ?? stats['totalMinutes'] as int? ?? 0;
+  int get usedMinutes =>
+      stats['usedMinutes'] as int? ?? stats['totalMinutes'] as int? ?? 0;
   int get limitMinutes => rules['dailyLimitMinutes'] as int? ?? 120;
-  double get usageRatio => limitMinutes > 0 ? (usedMinutes / limitMinutes).clamp(0, 1) : 0;
+  double get usageRatio =>
+      limitMinutes > 0 ? (usedMinutes / limitMinutes).clamp(0, 1) : 0;
   int get alertCount => alerts.length;
 
   Color get riskColor {
@@ -73,8 +72,9 @@ class _State extends State<DashboardAiOrchestratorScreen>
   @override
   void initState() {
     super.initState();
-    _glowCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 3))
-      ..repeat(reverse: true);
+    _glowCtrl =
+        AnimationController(vsync: this, duration: const Duration(seconds: 3))
+          ..repeat(reverse: true);
     _glowAnim = Tween<double>(begin: 0.4, end: 1.0).animate(
       CurvedAnimation(parent: _glowCtrl, curve: Curves.easeInOut),
     );
@@ -90,7 +90,11 @@ class _State extends State<DashboardAiOrchestratorScreen>
   // ── Load all children + their data ──────────────────────────────────────────
   Future<void> _loadAll() async {
     if (!mounted) return;
-    setState(() { _initialLoading = true; _loadError = null; _analyses = []; });
+    setState(() {
+      _initialLoading = true;
+      _loadError = null;
+      _analyses = [];
+    });
     try {
       final children = await _fs.getMyChildren();
       if (children.isEmpty) {
@@ -128,14 +132,21 @@ class _State extends State<DashboardAiOrchestratorScreen>
 
       final list = await Future.wait(futures);
       if (!mounted) return;
-      setState(() { _analyses = list; _initialLoading = false; });
+      setState(() {
+        _analyses = list;
+        _initialLoading = false;
+      });
 
       // Now request AI analysis per child (non-blocking)
       for (final a in _analyses) {
         _analyzeChild(a);
       }
     } catch (e) {
-      if (mounted) setState(() { _loadError = e.toString(); _initialLoading = false; });
+      if (mounted)
+        setState(() {
+          _loadError = e.toString();
+          _initialLoading = false;
+        });
     }
   }
 
@@ -155,10 +166,16 @@ class _State extends State<DashboardAiOrchestratorScreen>
         alerts: a.alerts,
       );
       if (!mounted) return;
-      setState(() { a.aiResponse = resp; a.isLoading = false; });
+      setState(() {
+        a.aiResponse = resp;
+        a.isLoading = false;
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() { a.error = 'Erreur IA: $e'; a.isLoading = false; });
+      setState(() {
+        a.error = 'Erreur IA: $e';
+        a.isLoading = false;
+      });
     }
   }
 
@@ -208,7 +225,8 @@ class _State extends State<DashboardAiOrchestratorScreen>
           SafeArea(
             child: Center(
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: isWide ? 1200 : double.infinity),
+                constraints:
+                    BoxConstraints(maxWidth: isWide ? 1200 : double.infinity),
                 child: Column(
                   children: [
                     _buildHeader(),
@@ -229,8 +247,15 @@ class _State extends State<DashboardAiOrchestratorScreen>
       child: Row(
         children: [
           IconButton(
-            icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
-            onPressed: () => context.pop(),
+            icon: Icon(Icons.arrow_back,
+                color: Theme.of(context).colorScheme.onSurface),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/dashboard');
+              }
+            },
           ),
           const SizedBox(width: 4),
           AnimatedBuilder(
@@ -239,7 +264,8 @@ class _State extends State<DashboardAiOrchestratorScreen>
               shaderCallback: (r) => LinearGradient(
                 colors: [AppColors.primary, AppColors.accentTeal],
               ).createShader(r),
-              child: Icon(Icons.auto_awesome, color: Theme.of(context).colorScheme.onSurface, size: 28),
+              child: Icon(Icons.auto_awesome,
+                  color: Theme.of(context).colorScheme.onSurface, size: 28),
             ),
           ),
           const SizedBox(width: 12),
@@ -248,9 +274,14 @@ class _State extends State<DashboardAiOrchestratorScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Orchestrateur IA',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 20, fontWeight: FontWeight.bold)),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold)),
                 Text('Analyse intelligente en temps réel',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12)),
               ],
             ),
           ),
@@ -325,17 +356,21 @@ class _State extends State<DashboardAiOrchestratorScreen>
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: _glowAnim.value * 0.6),
+                    color: AppColors.primary
+                        .withValues(alpha: _glowAnim.value * 0.6),
                     blurRadius: 30,
                     spreadRadius: 5,
                   ),
                 ],
               ),
-              child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 3),
+              child: CircularProgressIndicator(
+                  color: AppColors.primary, strokeWidth: 3),
             ),
           ),
           SizedBox(height: 20),
-          Text('Chargement des données...', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          Text('Chargement des données...',
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ],
       ),
     );
@@ -351,16 +386,23 @@ class _State extends State<DashboardAiOrchestratorScreen>
             Icon(Icons.error_outline, color: AppColors.statusDanger, size: 60),
             SizedBox(height: 16),
             Text('Impossible de charger les données',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
             SizedBox(height: 8),
-            Text(_loadError ?? '', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
+            Text(_loadError ?? '',
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13),
                 textAlign: TextAlign.center),
             SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _loadAll,
               icon: Icon(Icons.refresh),
               label: Text('Réessayer'),
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              style:
+                  ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             ),
           ],
         ),
@@ -375,10 +417,14 @@ class _State extends State<DashboardAiOrchestratorScreen>
         children: [
           Icon(Icons.child_care, color: AppColors.textGray500, size: 72),
           SizedBox(height: 16),
-          Text('Aucun enfant associé', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 18)),
+          Text('Aucun enfant associé',
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 18)),
           SizedBox(height: 8),
           Text('Ajoutez un enfant depuis le tableau de bord.',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ],
       ),
     );
@@ -386,14 +432,17 @@ class _State extends State<DashboardAiOrchestratorScreen>
 
   Widget _buildSummaryRow() {
     final totalAlerts = _analyses.fold(0, (s, a) => s + a.alertCount);
-    final highRisk = _analyses.where((a) => a.riskColor == AppColors.statusDanger).length;
+    final highRisk =
+        _analyses.where((a) => a.riskColor == AppColors.statusDanger).length;
     final online = _analyses.where((a) => a.deviceStatus == 'ONLINE').length;
 
     return Row(
       children: [
-        _summaryChip(Icons.notifications_active, '$totalAlerts', 'Alertes', AppColors.statusDanger),
+        _summaryChip(Icons.notifications_active, '$totalAlerts', 'Alertes',
+            AppColors.statusDanger),
         SizedBox(width: 10),
-        _summaryChip(Icons.warning_amber_rounded, '$highRisk', 'Risque élevé', AppColors.statusWarning),
+        _summaryChip(Icons.warning_amber_rounded, '$highRisk', 'Risque élevé',
+            AppColors.statusWarning),
         SizedBox(width: 10),
         _summaryChip(Icons.wifi, '$online', 'En ligne', AppColors.statusSafe),
       ],
@@ -417,8 +466,15 @@ class _State extends State<DashboardAiOrchestratorScreen>
               children: [
                 Icon(icon, color: color, size: 22),
                 SizedBox(height: 4),
-                Text(value, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
-                Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 10)),
+                Text(value,
+                    style: TextStyle(
+                        color: color,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold)),
+                Text(label,
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 10)),
               ],
             ),
           ),
@@ -453,7 +509,9 @@ class _State extends State<DashboardAiOrchestratorScreen>
                   end: Alignment.bottomRight,
                   colors: [
                     a.riskColor.withValues(alpha: 0.08),
-                    Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.8),
+                    Theme.of(context)
+                        .scaffoldBackgroundColor
+                        .withValues(alpha: 0.8),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(20),
@@ -484,7 +542,10 @@ class _State extends State<DashboardAiOrchestratorScreen>
             radius: 22,
             backgroundColor: a.riskColor.withValues(alpha: 0.2),
             child: Text(a.name[0].toUpperCase(),
-                style: TextStyle(color: a.riskColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: a.riskColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
           ),
           SizedBox(width: 12),
           Expanded(
@@ -492,9 +553,15 @@ class _State extends State<DashboardAiOrchestratorScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(a.name,
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.bold)),
-                Text('${a.age} ans • ${a.alertCount} alerte${a.alertCount != 1 ? 's' : ''}',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold)),
+                Text(
+                    '${a.age} ans • ${a.alertCount} alerte${a.alertCount != 1 ? 's' : ''}',
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12)),
               ],
             ),
           ),
@@ -511,11 +578,15 @@ class _State extends State<DashboardAiOrchestratorScreen>
                 Container(
                   width: 6,
                   height: 6,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: a.riskColor),
+                  decoration:
+                      BoxDecoration(shape: BoxShape.circle, color: a.riskColor),
                 ),
                 SizedBox(width: 5),
                 Text(a.riskLabel,
-                    style: TextStyle(color: a.riskColor, fontSize: 10, fontWeight: FontWeight.w700)),
+                    style: TextStyle(
+                        color: a.riskColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700)),
               ],
             ),
           ),
@@ -534,9 +605,16 @@ class _State extends State<DashboardAiOrchestratorScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Temps écran: ${a.usedMinutes} min',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 12)),
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.70),
+                      fontSize: 12)),
               Text('/ ${a.limitMinutes} min',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 12)),
             ],
           ),
           SizedBox(height: 6),
@@ -544,7 +622,10 @@ class _State extends State<DashboardAiOrchestratorScreen>
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: a.usageRatio,
-              backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
+              backgroundColor: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.10),
               valueColor: AlwaysStoppedAnimation<Color>(a.riskColor),
               minHeight: 6,
             ),
@@ -566,15 +647,21 @@ class _State extends State<DashboardAiOrchestratorScreen>
                 shaderCallback: (r) => const LinearGradient(
                   colors: [AppColors.primary, AppColors.accentTeal],
                 ).createShader(r),
-                child: Icon(Icons.auto_awesome, color: Theme.of(context).colorScheme.onSurface, size: 16),
+                child: Icon(Icons.auto_awesome,
+                    color: Theme.of(context).colorScheme.onSurface, size: 16),
               ),
               SizedBox(width: 6),
-              Text('Analyse IA', style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600)),
+              Text('Analyse IA',
+                  style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600)),
               Spacer(),
               if (!a.isLoading)
                 GestureDetector(
                   onTap: () => _analyzeChild(a),
-                  child: Icon(Icons.refresh_rounded, color: AppColors.textGray400, size: 16),
+                  child: Icon(Icons.refresh_rounded,
+                      color: AppColors.textGray400, size: 16),
                 ),
             ],
           ),
@@ -582,9 +669,13 @@ class _State extends State<DashboardAiOrchestratorScreen>
           if (a.isLoading)
             _buildAiLoadingShimmer()
           else if (a.error != null)
-            Text(a.error!, style: TextStyle(color: AppColors.statusDanger, fontSize: 12))
+            Text(a.error!,
+                style: TextStyle(color: AppColors.statusDanger, fontSize: 12))
           else if (a.aiResponse.isEmpty)
-            Text('Analyse en attente...', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13))
+            Text('Analyse en attente...',
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13))
           else
             _buildFormattedAiText(a.aiResponse),
         ],
@@ -609,9 +700,18 @@ class _State extends State<DashboardAiOrchestratorScreen>
                   borderRadius: BorderRadius.circular(6),
                   gradient: LinearGradient(
                     colors: [
-                      Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
-                      Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12 * _glowAnim.value),
-                      Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
+                      Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.05),
+                      Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.12 * _glowAnim.value),
+                      Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.05),
                     ],
                   ),
                 ),
@@ -636,7 +736,12 @@ class _State extends State<DashboardAiOrchestratorScreen>
           child: Text(
             cleaned,
             style: TextStyle(
-              color: isBold ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70),
+              color: isBold
+                  ? Theme.of(context).colorScheme.onSurface
+                  : Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.70),
               fontSize: 13,
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
               height: 1.4,
@@ -658,10 +763,18 @@ class _State extends State<DashboardAiOrchestratorScreen>
               icon: Icon(Icons.visibility_outlined, size: 15),
               label: Text('Détails', style: TextStyle(fontSize: 12)),
               style: OutlinedButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70),
-                side: BorderSide(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12)),
+                foregroundColor: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.70),
+                side: BorderSide(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.12)),
                 padding: EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ),
@@ -673,9 +786,11 @@ class _State extends State<DashboardAiOrchestratorScreen>
               label: Text('Règles', style: TextStyle(fontSize: 12)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
-                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+                side:
+                    BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
                 padding: EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ),
@@ -690,7 +805,8 @@ class _State extends State<DashboardAiOrchestratorScreen>
                   backgroundColor: AppColors.statusDanger,
                   foregroundColor: Theme.of(context).colorScheme.onSurface,
                   padding: EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
               ),
             ),

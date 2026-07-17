@@ -2,8 +2,19 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class ApiConfig {
+  static const String _configuredBaseUrl =
+      String.fromEnvironment('API_BASE_URL');
+
   /// URL de base de l'API
   static String get baseUrl {
+    if (_configuredBaseUrl.isNotEmpty) {
+      return _configuredBaseUrl.replaceFirst(RegExp(r'/$'), '');
+    }
+    if (kReleaseMode) {
+      throw StateError(
+        'API_BASE_URL est obligatoire pour une version de production.',
+      );
+    }
     if (kIsWeb) {
       return 'http://localhost:8080';
     }
@@ -18,6 +29,12 @@ class ApiConfig {
   }
 
   static String get wsUrl {
+    final base = baseUrl;
+    if (base.startsWith('https://')) {
+      return base.replaceFirst('https://', 'wss://');
+    } else if (base.startsWith('http://')) {
+      return base.replaceFirst('http://', 'ws://');
+    }
     return 'wss://guardian-backend-10zk.onrender.com';
   }
 
@@ -26,6 +43,10 @@ class ApiConfig {
   static const String sendOtp = '/api/v1/auth/otp/send';
   static const String verifyOtp = '/api/v1/auth/otp/verify';
   static const String verifyKyc = '/api/v1/auth/kyc/verify';
+  static const String billingCheckout = '/api/v1/billing/checkout';
+  static const String billingCharge = '/api/v1/billing/charge';
+  static String billingPaymentStatus(String reference) =>
+      '/api/v1/billing/payments/$reference';
 
   // ==================== PARENT ====================
   static const String myChildren = '/api/v1/parents/me/children';

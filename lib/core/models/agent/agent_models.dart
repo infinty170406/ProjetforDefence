@@ -95,11 +95,14 @@ class AgentAnalysis {
 
   factory AgentAnalysis.fromJson(Map<String, dynamic> json) {
     return AgentAnalysis(
-      risk: RiskLevelX.parse(json['risk'] as String? ?? json['severity'] as String?),
+      risk: RiskLevelX.parse(
+          json['risk'] as String? ?? json['severity'] as String?),
       frequency: json['frequency'] as String? ?? 'Non déterminée',
       context: json['context'] as String? ?? '',
       comment: json['comment'] as String? ?? '',
-      recommendedActions: (json['actions'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      recommendedActions:
+          (json['actions'] as List?)?.map((e) => e.toString()).toList() ??
+              const [],
     );
   }
 

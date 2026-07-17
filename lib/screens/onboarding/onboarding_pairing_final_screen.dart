@@ -10,7 +10,6 @@ class OnboardingPairingFinalScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -34,8 +33,9 @@ class OnboardingPairingFinalScreen extends StatelessWidget {
                   Text(
                     'Pairing is complete. You can now supervise the device.',
                     textAlign: TextAlign.center,
-                    style:
-                        TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 18),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 18),
                   ),
                   Spacer(),
                   CustomButton(

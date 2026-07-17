@@ -11,7 +11,6 @@ class ProductPageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -22,7 +21,8 @@ class ProductPageScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(Icons.close,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
                   Center(
@@ -43,7 +43,8 @@ class ProductPageScreen extends StatelessWidget {
                           'The ultimate protection for your family.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 18,
                           ),
                         ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
@@ -39,7 +40,7 @@ class _SplashWelcomeScreenState extends State<SplashWelcomeScreen>
   Future<void> _checkSession() async {
     try {
       // ── STEP 1: Fast startup delay ─────────────────────────────────────
-      await Future.delayed(const Duration(milliseconds: 800));
+      await Future.delayed(const Duration(milliseconds: 400));
       if (!mounted) return;
 
       // ── STEP 2: Privacy dialog on first launch ─────────────────────────
@@ -59,14 +60,14 @@ class _SplashWelcomeScreenState extends State<SplashWelcomeScreen>
         // Restore anonymous Firebase Auth session if lost (e.g. after reinstall).
         // Firebase normally persists anonymous sessions, but this is a safety net.
         if (FirebaseAuth.instance.currentUser == null) {
-          try {
-            await FirebaseAuth.instance.signInAnonymously();
-          } catch (_) {
-            // Non-critical: Firestore reads may fail until next pairing.
-          }
+          unawaited(() async {
+            try {
+              await FirebaseAuth.instance.signInAnonymously();
+            } catch (_) {}
+          }());
         }
         if (mounted) {
-          await ChildEnforcementService().start();
+          unawaited(ChildEnforcementService().start());
           context.go('/child/dashboard');
         }
         return;
@@ -130,7 +131,9 @@ class _SplashWelcomeScreenState extends State<SplashWelcomeScreen>
                   '• You can delete your data at any time from Settings\n\n'
                   'By continuing, you agree to our Terms of Service and Privacy Policy.',
                   style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, height: 1.6),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                      height: 1.6),
                   textAlign: TextAlign.left,
                 ),
               ),
@@ -150,7 +153,8 @@ class _SplashWelcomeScreenState extends State<SplashWelcomeScreen>
                         borderRadius: BorderRadius.circular(50)),
                   ),
                   child: const Text('I Understand & Accept',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.white)),
                 ),
               ),
             ],
@@ -164,7 +168,6 @@ class _SplashWelcomeScreenState extends State<SplashWelcomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),

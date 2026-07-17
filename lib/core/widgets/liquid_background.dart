@@ -38,7 +38,8 @@ class _LiquidBackgroundState extends State<LiquidBackground>
     final blobOpacity3 = isLight ? 0.08 : 0.20;
 
     // En mode clair, utilise la couleur de fond comme base (pas transparent sur du blanc)
-    final bgColor = isLight ? AppColors.backgroundLight : AppColors.backgroundDark;
+    final bgColor =
+        isLight ? AppColors.backgroundLight : AppColors.backgroundDark;
 
     return Container(
       color: bgColor,

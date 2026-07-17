@@ -73,21 +73,26 @@ class _SmartphoneAppMockupState extends State<SmartphoneAppMockup> {
                     children: [
                       Text(
                         "12:${(_ticks % 60).toString().padLeft(2, '0')}",
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold),
                       ),
                       Container(
                         width: 70,
                         height: 18,
                         decoration: const BoxDecoration(
                           color: Colors.black,
-                          borderRadius: BorderRadius.vertical(bottom: Radius.circular(10)),
+                          borderRadius: BorderRadius.vertical(
+                              bottom: Radius.circular(10)),
                         ),
                       ),
                       const Row(
                         children: [
                           Icon(Icons.wifi, color: Colors.white, size: 10),
                           SizedBox(width: 4),
-                          Icon(Icons.battery_full, color: Colors.white, size: 10),
+                          Icon(Icons.battery_full,
+                              color: Colors.white, size: 10),
                         ],
                       ),
                     ],
@@ -104,7 +109,8 @@ class _SmartphoneAppMockupState extends State<SmartphoneAppMockup> {
                         end: Alignment.bottomCenter,
                       ),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     child: SingleChildScrollView(
                       physics: const NeverScrollableScrollPhysics(),
                       child: Column(
@@ -114,8 +120,12 @@ class _SmartphoneAppMockupState extends State<SmartphoneAppMockup> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Icon(Icons.arrow_back, color: Colors.white.withValues(alpha: 0.8), size: 18),
-                              Icon(Icons.settings_outlined, color: Colors.white.withValues(alpha: 0.8), size: 18),
+                              Icon(Icons.arrow_back,
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  size: 18),
+                              Icon(Icons.settings_outlined,
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  size: 18),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -144,19 +154,27 @@ class _SmartphoneAppMockupState extends State<SmartphoneAppMockup> {
                               const SizedBox(width: 6),
                               const Text(
                                 "Offline",
-                                style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 "•",
-                                style: TextStyle(color: Colors.white.withValues(alpha: 0.2)),
+                                style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.2)),
                               ),
                               const SizedBox(width: 8),
-                              Icon(Icons.sync, color: Colors.white.withValues(alpha: 0.2), size: 11),
+                              Icon(Icons.sync,
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  size: 11),
                               const SizedBox(width: 4),
                               Text(
                                 "Last sync: 2m ago",
-                                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+                                style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.5),
+                                    fontSize: 11),
                               ),
                             ],
                           ),
@@ -166,20 +184,27 @@ class _SmartphoneAppMockupState extends State<SmartphoneAppMockup> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E293B).withValues(alpha: 0.4),
+                              color: const Color(0xFF1E293B)
+                                  .withValues(alpha: 0.4),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFF334155).withValues(alpha: 0.5)),
+                              border: Border.all(
+                                  color: const Color(0xFF334155)
+                                      .withValues(alpha: 0.5)),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Row(
                                   children: [
-                                    Icon(Icons.timer_outlined, color: Color(0xFF4F46E5), size: 16),
+                                    Icon(Icons.timer_outlined,
+                                        color: Color(0xFF4F46E5), size: 16),
                                     SizedBox(width: 6),
                                     Text(
                                       "Screen Time Today",
-                                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
@@ -189,16 +214,26 @@ class _SmartphoneAppMockupState extends State<SmartphoneAppMockup> {
                                   child: const LinearProgressIndicator(
                                     value: 0.38,
                                     backgroundColor: Color(0xFF0F172A),
-                                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4F46E5)),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Color(0xFF4F46E5)),
                                     minHeight: 6,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Text("1h 15min", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                                    Text("of 2h", style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
+                                    const Text("1h 15min",
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold)),
+                                    Text("of 2h",
+                                        style: TextStyle(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.5),
+                                            fontSize: 11)),
                                   ],
                                 ),
                               ],
@@ -210,30 +245,44 @@ class _SmartphoneAppMockupState extends State<SmartphoneAppMockup> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E293B).withValues(alpha: 0.4),
+                              color: const Color(0xFF1E293B)
+                                  .withValues(alpha: 0.4),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFF334155).withValues(alpha: 0.5)),
+                              border: Border.all(
+                                  color: const Color(0xFF334155)
+                                      .withValues(alpha: 0.5)),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.location_on_outlined, color: Color(0xFF14B8A6), size: 20),
+                                const Icon(Icons.location_on_outlined,
+                                    color: Color(0xFF14B8A6), size: 20),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const Text(
                                         "Last Location",
-                                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold),
                                       ),
                                       Text(
                                         "4.5709, -74.2973",
-                                        style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10),
+                                        style: TextStyle(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.5),
+                                            fontSize: 10),
                                       ),
                                     ],
                                   ),
                                 ),
-                                Icon(Icons.map_outlined, color: const Color(0xFF4F46E5).withValues(alpha: 0.8), size: 18),
+                                Icon(Icons.map_outlined,
+                                    color: const Color(0xFF4F46E5)
+                                        .withValues(alpha: 0.8),
+                                    size: 18),
                               ],
                             ),
                           ),
@@ -242,21 +291,29 @@ class _SmartphoneAppMockupState extends State<SmartphoneAppMockup> {
                           // Quick Actions Row
                           const Text(
                             "Quick Actions",
-                            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 8),
                           Row(
                             children: [
                               Expanded(
-                                child: _quickAction(Icons.block_flipped, "Block Apps", Colors.redAccent),
+                                child: _quickAction(Icons.block_flipped,
+                                    "Block Apps", Colors.redAccent),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
-                                child: _quickAction(Icons.bar_chart, "Stats", const Color(0xFF14B8A6)),
+                                child: _quickAction(Icons.bar_chart, "Stats",
+                                    const Color(0xFF14B8A6)),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
-                                child: _quickAction(Icons.notifications_active_outlined, "Alerts", Colors.purpleAccent),
+                                child: _quickAction(
+                                    Icons.notifications_active_outlined,
+                                    "Alerts",
+                                    Colors.purpleAccent),
                               ),
                             ],
                           ),
@@ -265,25 +322,35 @@ class _SmartphoneAppMockupState extends State<SmartphoneAppMockup> {
                           // Recent Alerts
                           const Text(
                             "Recent Alerts",
-                            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 8),
 
                           // SOS Tile
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
                             decoration: BoxDecoration(
                               color: Colors.red.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                  color: Colors.red.withValues(alpha: 0.3)),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.sos, color: Colors.red, size: 18),
+                                const Icon(Icons.sos,
+                                    color: Colors.red, size: 18),
                                 const SizedBox(width: 10),
                                 Text(
                                   "SOS",
-                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.8),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -331,7 +398,8 @@ class _SmartphoneAppMockupState extends State<SmartphoneAppMockup> {
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                color: color, fontSize: 9, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
         ],

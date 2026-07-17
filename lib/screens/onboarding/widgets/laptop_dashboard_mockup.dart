@@ -46,7 +46,8 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                     Container(
                       width: 180,
                       color: const Color(0xFF0B1329),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -58,11 +59,15 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                                 height: 28,
                                 decoration: BoxDecoration(
                                   gradient: const LinearGradient(
-                                    colors: [Color(0xFF4F46E5), Color(0xFF14B8A6)],
+                                    colors: [
+                                      Color(0xFF4F46E5),
+                                      Color(0xFF14B8A6)
+                                    ],
                                   ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Icon(Icons.shield, color: Colors.white, size: 16),
+                                child: const Icon(Icons.shield,
+                                    color: Colors.white, size: 16),
                               ),
                               const SizedBox(width: 8),
                               const Text(
@@ -78,13 +83,17 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                             ],
                           ),
                           const SizedBox(height: 32),
-                          
+
                           // Sidebar Navigation Items
-                          _buildSidebarItem(Icons.dashboard_outlined, "Dashboard", true),
-                          _buildSidebarItem(Icons.map_outlined, "Real-time Map", false),
-                          _buildSidebarItem(Icons.chat_bubble_outline, "AI Orchestrator", false),
-                          _buildSidebarItem(Icons.settings_outlined, "Settings", false),
-                          
+                          _buildSidebarItem(
+                              Icons.dashboard_outlined, "Dashboard", true),
+                          _buildSidebarItem(
+                              Icons.map_outlined, "Real-time Map", false),
+                          _buildSidebarItem(Icons.chat_bubble_outline,
+                              "AI Orchestrator", false),
+                          _buildSidebarItem(
+                              Icons.settings_outlined, "Settings", false),
+
                           const Spacer(),
 
                           // Quick Action: Add Child Profile
@@ -101,7 +110,8 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.add, color: Colors.white, size: 16),
+                                  Icon(Icons.add,
+                                      color: Colors.white, size: 16),
                                   SizedBox(width: 4),
                                   Text(
                                     "Add Child Profile",
@@ -117,11 +127,12 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          
+
                           // Sign Out
                           Row(
                             children: [
-                              const Icon(Icons.logout, color: Colors.redAccent, size: 16),
+                              const Icon(Icons.logout,
+                                  color: Colors.redAccent, size: 16),
                               const SizedBox(width: 10),
                               Text(
                                 "Sign out",
@@ -165,7 +176,8 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                                     Text(
                                       "/  Dashboard",
                                       style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.5),
+                                        color:
+                                            Colors.white.withValues(alpha: 0.5),
                                         fontSize: 10,
                                       ),
                                     ),
@@ -176,9 +188,11 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF1E293B),
                                     shape: BoxShape.circle,
-                                    border: Border.all(color: const Color(0xFF334155)),
+                                    border: Border.all(
+                                        color: const Color(0xFF334155)),
                                   ),
-                                  child: const Icon(Icons.notifications_none, color: Colors.white, size: 16),
+                                  child: const Icon(Icons.notifications_none,
+                                      color: Colors.white, size: 16),
                                 ),
                               ],
                             ),
@@ -213,10 +227,12 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                                   Expanded(
                                     flex: 11,
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
                                           children: [
                                             const Text(
                                               "Family Overview",
@@ -229,7 +245,8 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                                             Text(
                                               "View Map >",
                                               style: TextStyle(
-                                                color: const Color(0xFF14B8A6).withValues(alpha: 0.8),
+                                                color: const Color(0xFF14B8A6)
+                                                    .withValues(alpha: 0.8),
                                                 fontSize: 10,
                                                 fontWeight: FontWeight.bold,
                                               ),
@@ -237,14 +254,16 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                                           ],
                                         ),
                                         const SizedBox(height: 12),
-                                        
+
                                         // Child Card: colombie
                                         Container(
                                           padding: const EdgeInsets.all(14),
                                           decoration: BoxDecoration(
                                             color: const Color(0xFF0F172A),
-                                            borderRadius: BorderRadius.circular(16),
-                                            border: Border.all(color: const Color(0xFF1E293B)),
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            border: Border.all(
+                                                color: const Color(0xFF1E293B)),
                                           ),
                                           child: Row(
                                             children: [
@@ -261,24 +280,27 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                                                     "C",
                                                     style: TextStyle(
                                                       color: Colors.white,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       fontSize: 16,
                                                     ),
                                                   ),
                                                 ),
                                               ),
                                               const SizedBox(width: 12),
-                                              
+
                                               // Child Name & limit
                                               Expanded(
                                                 child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
                                                     const Text(
                                                       "colombie",
                                                       style: TextStyle(
                                                         color: Colors.white,
-                                                        fontWeight: FontWeight.bold,
+                                                        fontWeight:
+                                                            FontWeight.bold,
                                                         fontSize: 13,
                                                       ),
                                                     ),
@@ -286,20 +308,27 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                                                     Text(
                                                       "6 yrs · 17h left of 1020m",
                                                       style: TextStyle(
-                                                        color: Colors.white.withValues(alpha: 0.5),
+                                                        color: Colors.white
+                                                            .withValues(
+                                                                alpha: 0.5),
                                                         fontSize: 10,
                                                       ),
                                                     ),
                                                   ],
                                                 ),
                                               ),
-                                              
+
                                               // Offline Badge
                                               Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.grey.withValues(alpha: 0.15),
-                                                  borderRadius: BorderRadius.circular(12),
+                                                  color: Colors.grey
+                                                      .withValues(alpha: 0.15),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
                                                 ),
                                                 child: const Text(
                                                   "Offline",
@@ -317,7 +346,7 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                                     ),
                                   ),
                                   const SizedBox(width: 20),
-                                  
+
                                   // Right Column: AI Orchestrator Card
                                   Expanded(
                                     flex: 9,
@@ -325,14 +354,18 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                                       height: 180,
                                       decoration: BoxDecoration(
                                         gradient: const LinearGradient(
-                                          colors: [Color(0xFF4F46E5), Color(0xFF14B8A6)],
+                                          colors: [
+                                            Color(0xFF4F46E5),
+                                            Color(0xFF14B8A6)
+                                          ],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
                                         ),
                                         borderRadius: BorderRadius.circular(20),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: const Color(0xFF4F46E5).withValues(alpha: 0.3),
+                                            color: const Color(0xFF4F46E5)
+                                                .withValues(alpha: 0.3),
                                             blurRadius: 15,
                                             offset: const Offset(0, 8),
                                           ),
@@ -340,17 +373,26 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                                       ),
                                       padding: const EdgeInsets.all(16),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
                                             children: [
-                                              const Icon(Icons.auto_awesome, color: Colors.white, size: 24),
+                                              const Icon(Icons.auto_awesome,
+                                                  color: Colors.white,
+                                                  size: 24),
                                               Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.white.withValues(alpha: 0.2),
-                                                  borderRadius: BorderRadius.circular(10),
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.2),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
                                                 ),
                                                 child: const Text(
                                                   "ACTIVE AI",
@@ -377,7 +419,8 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
                                           Text(
                                             "Analyse intelligente • Recommandations personnalisées de sécurité pour colombie.",
                                             style: TextStyle(
-                                              color: Colors.white.withValues(alpha: 0.8),
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.8),
                                               fontSize: 10,
                                               height: 1.4,
                                             ),
@@ -424,12 +467,15 @@ class _LaptopDashboardMockupState extends State<LaptopDashboardMockup> {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: active ? const Color(0xFF4F46E5).withValues(alpha: 0.15) : Colors.transparent,
+        color: active
+            ? const Color(0xFF4F46E5).withValues(alpha: 0.15)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
-          Icon(icon, color: active ? const Color(0xFF818CF8) : Colors.grey, size: 16),
+          Icon(icon,
+              color: active ? const Color(0xFF818CF8) : Colors.grey, size: 16),
           const SizedBox(width: 10),
           Text(
             label,

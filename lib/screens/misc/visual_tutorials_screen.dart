@@ -10,7 +10,6 @@ class VisualTutorialsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -21,7 +20,8 @@ class VisualTutorialsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
                   SizedBox(height: 24),
@@ -36,9 +36,11 @@ class VisualTutorialsScreen extends StatelessWidget {
                   Expanded(
                     child: ListView(
                       children: [
-                        _buildTutorialItem(context, 'Set up a safe zone', '2 min'),
+                        _buildTutorialItem(
+                            context, 'Set up a safe zone', '2 min'),
                         _buildTutorialItem(context, 'Read AI reports', '3 min'),
-                        _buildTutorialItem(context, 'Manage screen time', '4 min'),
+                        _buildTutorialItem(
+                            context, 'Manage screen time', '4 min'),
                       ],
                     ),
                   ),
@@ -51,7 +53,8 @@ class VisualTutorialsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTutorialItem(BuildContext context, String title, String duration) {
+  Widget _buildTutorialItem(
+      BuildContext context, String title, String duration) {
     return Container(
       margin: EdgeInsets.only(bottom: 16),
       child: GlassCard(
@@ -71,7 +74,8 @@ class VisualTutorialsScreen extends StatelessWidget {
                           fontWeight: FontWeight.bold)),
                   Text(duration,
                       style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 14)),
                 ],
               ),
             ),

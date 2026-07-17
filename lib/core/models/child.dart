@@ -32,8 +32,8 @@ class Child {
       age: json['age'] as int? ?? 0,
       deviceStatus: json['deviceStatus'] as String?,
       lastLocation: location,
-      batteryLevel: json['batteryLevel'] != null 
-          ? (json['batteryLevel'] as num).toDouble() 
+      batteryLevel: json['batteryLevel'] != null
+          ? (json['batteryLevel'] as num).toDouble()
           : null,
     );
   }

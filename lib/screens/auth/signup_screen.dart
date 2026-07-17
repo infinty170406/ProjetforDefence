@@ -12,8 +12,7 @@ class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() =>
-      _SignupScreenState();
+  State<SignupScreen> createState() => _SignupScreenState();
 }
 
 class _PasswordRule {
@@ -24,8 +23,7 @@ class _PasswordRule {
   static String _currentPassword = '';
 }
 
-class _SignupScreenState
-    extends State<SignupScreen> {
+class _SignupScreenState extends State<SignupScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -97,7 +95,7 @@ class _SignupScreenState
       );
       // SYNC PUSH TOKEN
       await NotificationService().syncToken();
-      
+
       if (mounted) context.go('/otp-setup');
     } catch (e) {
       if (mounted) {
@@ -117,7 +115,7 @@ class _SignupScreenState
       await ApiService().signInWithGoogle();
       // SYNC PUSH TOKEN
       await NotificationService().syncToken();
-      
+
       if (mounted) context.go('/dashboard');
     } catch (e) {
       if (mounted) {
@@ -152,7 +150,8 @@ class _SignupScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           IconButton(
-            icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+            icon: Icon(Icons.arrow_back,
+                color: Theme.of(context).colorScheme.onSurface),
             onPressed: () => context.pop(),
           ),
           const SizedBox(height: 16),
@@ -164,7 +163,8 @@ class _SignupScreenState
           const SizedBox(height: 6),
           Text('Protect your children with The Guardian.',
               style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 14)),
           const SizedBox(height: 28),
 
           // Google Sign-Up
@@ -193,9 +193,8 @@ class _SignupScreenState
             hint: 'Password',
             prefixIcon: Icons.lock_outline,
             obscureText: _obscurePassword,
-            suffixIcon: _obscurePassword
-                ? Icons.visibility_off
-                : Icons.visibility,
+            suffixIcon:
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
             onSuffixTap: () =>
                 setState(() => _obscurePassword = !_obscurePassword),
             errorText: _passwordError,
@@ -217,7 +216,10 @@ class _SignupScreenState
                                   : Icons.radio_button_unchecked,
                               color: r.met
                                   ? Colors.greenAccent
-                                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.38),
                               size: 16,
                             ),
                             const SizedBox(width: 8),
@@ -225,7 +227,10 @@ class _SignupScreenState
                                 style: TextStyle(
                                   color: r.met
                                       ? Colors.greenAccent
-                                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54),
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.54),
                                   fontSize: 12,
                                 )),
                           ],
@@ -245,8 +250,12 @@ class _SignupScreenState
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text('Already have an account? ',
-                    style:
-                        TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 14)),
+                    style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.70),
+                        fontSize: 14)),
                 GestureDetector(
                   onTap: () => context.go('/login'),
                   child: const Text('Login',
@@ -295,10 +304,25 @@ class _SignupScreenState
         width: double.infinity,
         padding: EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: isLight ? Colors.white.withValues(alpha: 0.92) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+          color: isLight
+              ? Colors.white.withValues(alpha: 0.92)
+              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isLight ? const Color(0xFFCBD5E1) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15)),
-          boxShadow: isLight ? [BoxShadow(color: const Color(0xFF4F46E5).withValues(alpha: 0.08), blurRadius: 8, offset: Offset(0, 2))] : [],
+          border: Border.all(
+              color: isLight
+                  ? const Color(0xFFCBD5E1)
+                  : Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.15)),
+          boxShadow: isLight
+              ? [
+                  BoxShadow(
+                      color: const Color(0xFF4F46E5).withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: Offset(0, 2))
+                ]
+              : [],
         ),
         child: _isGoogleLoading
             ? Center(
@@ -306,7 +330,8 @@ class _SignupScreenState
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Theme.of(context).colorScheme.onSurface)))
+                        strokeWidth: 2,
+                        color: Theme.of(context).colorScheme.onSurface)))
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -326,13 +351,25 @@ class _SignupScreenState
   Widget _buildDivider() {
     return Row(
       children: [
-        Expanded(child: Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12))),
+        Expanded(
+            child: Divider(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.12))),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Text('or',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 13)),
         ),
-        Expanded(child: Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12))),
+        Expanded(
+            child: Divider(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.12))),
       ],
     );
   }

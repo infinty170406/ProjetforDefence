@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
 import '../../core/services/storage_service.dart';
+import '../../features/subscription/services/subscription_service.dart';
+import '../../features/subscription/domain/subscription_model.dart';
+import '../../core/premium/plan_permissions.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -16,20 +19,74 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   String _premiumDuration = 'monthly';
 
   final List<Map<String, dynamic>> _premiumOptions = [
-    {'label': '1 Month', 'key': 'monthly', 'price': '3 250 FCFA/mo', 'badge': null},
-    {'label': '6 Months', 'key': 'biannual', 'price': '2 600 FCFA/mo', 'badge': 'Save 20%'},
-    {'label': '1 Year', 'key': 'annual', 'price': '1 950 FCFA/mo', 'badge': 'Best Value'},
+    {
+      'label': '1 Month',
+      'key': 'monthly',
+      'price': '3 250 FCFA/mo',
+      'badge': null
+    },
+    {
+      'label': '6 Months',
+      'key': 'biannual',
+      'price': '2 600 FCFA/mo',
+      'badge': 'Save 20%'
+    },
+    {
+      'label': '1 Year',
+      'key': 'annual',
+      'price': '1 950 FCFA/mo',
+      'badge': 'Best Value'
+    },
   ];
 
   Future<void> _confirmPlan() async {
-    await StorageService().savePlanSelected(true);
-    if (mounted) context.go('/dashboard');
+    try {
+      final now = DateTime.now();
+      final duration = _selectedPlan == 'free'
+          ? const Duration(days: 14) // 14-day free trial
+          : _premiumDuration == 'monthly'
+              ? const Duration(days: 30)
+              : _premiumDuration == 'biannual'
+                  ? const Duration(days: 180)
+                  : const Duration(days: 365);
+
+      final endDate = now.add(duration);
+      final activePlan = _selectedPlan == 'free'
+          ? SubscriptionPlan.free
+          : SubscriptionPlan.premium;
+      final limit = activePlan == SubscriptionPlan.free ? 1 : 999;
+
+      final updatedSub = SubscriptionModel(
+        plan: activePlan.name,
+        status: _selectedPlan == 'free' ? 'trialing' : 'active',
+        billingCycle: _premiumDuration,
+        startDate: now,
+        endDate: endDate,
+        trialUsed: _selectedPlan != 'free',
+        childrenLimit: limit,
+        devicesLimit: limit,
+        features: PlanPermissions.plans[activePlan]!.features,
+      );
+
+      await SubscriptionService().updateSubscription(updatedSub);
+      await StorageService().savePlanSelected(true);
+
+      if (mounted) context.go('/dashboard');
+    } catch (e) {
+      debugPrint('Error confirming plan: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Erreur lors de la configuration du plan : $e'),
+              backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -64,7 +121,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         Text(
                           'Protect your children with The Guardian',
                           style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              fontSize: 14),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -95,7 +155,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       onPressed: _confirmPlan,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: Theme.of(context).colorScheme.onSurface,
+                        foregroundColor:
+                            Theme.of(context).colorScheme.onSurface,
                         padding: EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(50)),
@@ -117,7 +178,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           ? 'No payment needed. Upgrade anytime.'
                           : 'Secure payment. Cancel anytime.',
                       style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 12),
                     ),
                   ),
                   SizedBox(height: 24),
@@ -152,7 +214,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? color : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+            color: isSelected
+                ? color
+                : Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.1),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -190,7 +257,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                   fontWeight: FontWeight.bold)),
                           Text(priceNote,
                               style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11)),
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                  fontSize: 11)),
                         ],
                       ),
                     ],
@@ -198,7 +268,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   SizedBox(height: 4),
                   Text(subtitle,
                       style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 13)),
                   SizedBox(height: 12),
                   ...features.map((f) => Padding(
                         padding: EdgeInsets.only(bottom: 6),
@@ -209,7 +280,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             SizedBox(width: 8),
                             Text(f,
                                 style: TextStyle(
-                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 13)),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.70),
+                                    fontSize: 13)),
                           ],
                         ),
                       )),
@@ -237,7 +312,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           border: Border.all(
             color: isSelected
                 ? AppColors.primary
-                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+                : Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.1),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -266,7 +344,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             fontWeight: FontWeight.bold)),
                     Text('Full protection, unlimited features',
                         style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 13)),
                   ],
                 ),
               ],
@@ -284,17 +364,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     child: Container(
                       margin: EdgeInsets.only(
                           right: opt['key'] != 'annual' ? 8 : 0),
-                      padding: EdgeInsets.symmetric(
-                          vertical: 10, horizontal: 6),
+                      padding:
+                          EdgeInsets.symmetric(vertical: 10, horizontal: 6),
                       decoration: BoxDecoration(
                         color: isActive
                             ? AppColors.primary
-                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+                            : Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isActive
                               ? AppColors.primary
-                              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.1),
                         ),
                       ),
                       child: Column(
@@ -316,8 +402,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             ),
                           Text(opt['label'],
                               style: TextStyle(
-                                  color:
-                                      isActive ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.60),
+                                  color: isActive
+                                      ? Theme.of(context).colorScheme.onSurface
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.60),
                                   fontSize: 12,
                                   fontWeight: isActive
                                       ? FontWeight.bold
@@ -355,7 +445,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       SizedBox(width: 8),
                       Text(f,
                           style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70), fontSize: 13)),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.70),
+                              fontSize: 13)),
                     ],
                   ),
                 )),

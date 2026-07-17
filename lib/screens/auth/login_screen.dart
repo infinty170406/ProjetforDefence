@@ -61,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       // SYNC PUSH TOKEN
       await NotificationService().syncToken();
-      
+
       if (mounted) {
         context.go(widget.isAdmin ? '/admin' : '/dashboard');
       }
@@ -83,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await ApiService().signInWithGoogle();
       // SYNC PUSH TOKEN
       await NotificationService().syncToken();
-      
+
       if (mounted) {
         context.go(widget.isAdmin ? '/admin' : '/dashboard');
       }
@@ -126,7 +126,8 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 8),
           Text('Happy to see you again.',
               style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 18)),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 18)),
           const SizedBox(height: 40),
           _buildGoogleButton(),
           const SizedBox(height: 20),
@@ -145,9 +146,8 @@ class _LoginScreenState extends State<LoginScreen> {
             hint: 'Password',
             prefixIcon: Icons.lock_outline,
             obscureText: _obscurePassword,
-            suffixIcon: _obscurePassword
-                ? Icons.visibility_off
-                : Icons.visibility,
+            suffixIcon:
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
             onSuffixTap: () =>
                 setState(() => _obscurePassword = !_obscurePassword),
             errorText: _passwordError,
@@ -171,27 +171,20 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text("Don't have an account? ",
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70))),
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.70))),
               GestureDetector(
                 onTap: () => context.push('/signup'),
                 child: const Text('Sign Up',
                     style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold)),
+                        color: AppColors.primary, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
           const SizedBox(height: 24),
-          Center(
-            child: TextButton.icon(
-              icon: const Icon(Icons.phonelink_setup, size: 16),
-              label: const Text('Setup child device'),
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.60),
-              ),
-              onPressed: () => context.push('/child/pair'),
-            ),
-          ),
         ],
       ),
     );
@@ -229,10 +222,25 @@ class _LoginScreenState extends State<LoginScreen> {
         width: double.infinity,
         padding: EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: isLight ? Colors.white.withValues(alpha: 0.92) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
+          color: isLight
+              ? Colors.white.withValues(alpha: 0.92)
+              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isLight ? const Color(0xFFCBD5E1) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15)),
-          boxShadow: isLight ? [BoxShadow(color: const Color(0xFF4F46E5).withValues(alpha: 0.08), blurRadius: 8, offset: Offset(0, 2))] : [],
+          border: Border.all(
+              color: isLight
+                  ? const Color(0xFFCBD5E1)
+                  : Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.15)),
+          boxShadow: isLight
+              ? [
+                  BoxShadow(
+                      color: const Color(0xFF4F46E5).withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: Offset(0, 2))
+                ]
+              : [],
         ),
         child: _isGoogleLoading
             ? Center(
@@ -240,7 +248,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Theme.of(context).colorScheme.onSurface)))
+                        strokeWidth: 2,
+                        color: Theme.of(context).colorScheme.onSurface)))
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -260,13 +269,25 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildDivider() {
     return Row(
       children: [
-        Expanded(child: Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12))),
+        Expanded(
+            child: Divider(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.12))),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Text('or',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13)),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 13)),
         ),
-        Expanded(child: Divider(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12))),
+        Expanded(
+            child: Divider(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.12))),
       ],
     );
   }

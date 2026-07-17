@@ -28,13 +28,13 @@ class GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
     // Mode clair : fond blanc élégant et très lisible
-    final defaultBgStart = isLight 
-        ? Colors.white.withValues(alpha: 0.92) 
+    final defaultBgStart = isLight
+        ? Colors.white.withValues(alpha: 0.92)
         : const Color(0xFF0A0A0A).withValues(alpha: 0.6);
-    final defaultBgEnd = isLight 
-        ? Colors.white.withValues(alpha: 0.75) 
+    final defaultBgEnd = isLight
+        ? Colors.white.withValues(alpha: 0.75)
         : const Color(0xFF0A0A0A).withValues(alpha: 0.4);
-    final defaultBorder = isLight 
+    final defaultBorder = isLight
         ? const Color(0xFFDDE3F5) // Ardoise bleuâtre léger
         : AppColors.glassBorder;
 

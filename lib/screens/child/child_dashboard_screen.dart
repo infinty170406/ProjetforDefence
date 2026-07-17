@@ -78,7 +78,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
     }
   }
 
-
   Future<void> _loadStats() async {
     final child = _childData ?? widget.child;
     final childId = child?['id'] ?? child?['childId'] ?? '';
@@ -136,7 +135,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
     final name = child['displayName'] ?? 'Child';
 
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -152,38 +150,69 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
                   children: [
                     Row(
                       children: [
-                        IconButton(icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface), onPressed: () => context.pop()),
+                        IconButton(
+                            icon: Icon(Icons.arrow_back,
+                                color: Theme.of(context).colorScheme.onSurface),
+                            onPressed: () => context.pop()),
                         Spacer(),
                         if (!_isChildMode)
                           IconButton(
-                            icon: Icon(Icons.settings_outlined, color: Theme.of(context).colorScheme.onSurface),
-                            onPressed: () => context.push('/child/config', extra: child),
+                            icon: Icon(Icons.settings_outlined,
+                                color: Theme.of(context).colorScheme.onSurface),
+                            onPressed: () =>
+                                context.push('/child/config', extra: child),
                           ),
                       ],
                     ),
                     SizedBox(height: 8),
-                    Text(name, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 28, fontWeight: FontWeight.bold)),
+                    Text(name,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold)),
                     SizedBox(height: 4),
                     StreamBuilder<String>(
-                      stream: ChildMonitorService().watchDeviceStatus(childId, parentId: _parentId),
+                      stream: ChildMonitorService()
+                          .watchDeviceStatus(childId, parentId: _parentId),
                       builder: (_, s) {
                         final online = (s.data ?? 'OFFLINE') == 'ONLINE';
                         final lastSync = _usageStats?['lastSync'];
-                        
+
                         return Row(
                           children: [
-                            Container(width: 8, height: 8, decoration: BoxDecoration(
-                              color: online ? Colors.green : Colors.red, shape: BoxShape.circle)),
+                            Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                    color: online ? Colors.green : Colors.red,
+                                    shape: BoxShape.circle)),
                             SizedBox(width: 6),
-                            Text(online ? 'Online' : 'Offline', style: TextStyle(color: online ? Colors.green : Colors.red, fontSize: 13)),
+                            Text(online ? 'Online' : 'Offline',
+                                style: TextStyle(
+                                    color: online ? Colors.green : Colors.red,
+                                    fontSize: 13)),
                             SizedBox(width: 12),
-                            Text('•', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24))),
+                            Text('•',
+                                style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.24))),
                             SizedBox(width: 12),
-                            Icon(Icons.sync, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.24), size: 12),
+                            Icon(Icons.sync,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.24),
+                                size: 12),
                             SizedBox(width: 4),
                             Text(
                               'Last sync: ${_timeAgo(lastSync)}',
-                              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                  fontSize: 13),
                             ),
                           ],
                         );
@@ -194,73 +223,114 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
                     // Screen Time
                     GlassCard(
                       padding: EdgeInsets.all(20),
-                      child: _isLoading 
-                        ? Center(child: CircularProgressIndicator(color: AppColors.primary))
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.timer_outlined, color: AppColors.primary, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('Screen Time Today', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                              SizedBox(height: 16),
-                              Builder(builder: (context) {
-                                final used = _usageStats?['totalMinutes'] ?? 0;
-                                final limit = child['dailyLimitMinutes'] ?? 120;
-                                final progress = (used / limit).clamp(0.0, 1.0);
-                                return Column(
+                      child: _isLoading
+                          ? Center(
+                              child: CircularProgressIndicator(
+                                  color: AppColors.primary))
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
                                   children: [
-                                    LinearProgressIndicator(
-                                      value: progress,
-                                      backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.10),
-                                      valueColor: AlwaysStoppedAnimation(progress >= 1.0 ? Colors.red : AppColors.primary),
-                                      minHeight: 8,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    SizedBox(height: 8),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(_fmtMin(used), style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
-                                        Text('of ${_fmtMin(limit)}', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                                      ],
-                                    ),
+                                    Icon(Icons.timer_outlined,
+                                        color: AppColors.primary, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('Screen Time Today',
+                                        style: TextStyle(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
+                                            fontWeight: FontWeight.bold)),
                                   ],
-                                );
-                              }),
-                            ],
-                          ),
+                                ),
+                                SizedBox(height: 16),
+                                Builder(builder: (context) {
+                                  final used =
+                                      _usageStats?['totalMinutes'] ?? 0;
+                                  final limit =
+                                      child['dailyLimitMinutes'] ?? 120;
+                                  final progress =
+                                      (used / limit).clamp(0.0, 1.0);
+                                  return Column(
+                                    children: [
+                                      LinearProgressIndicator(
+                                        value: progress,
+                                        backgroundColor: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.10),
+                                        valueColor: AlwaysStoppedAnimation(
+                                            progress >= 1.0
+                                                ? Colors.red
+                                                : AppColors.primary),
+                                        minHeight: 8,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(_fmtMin(used),
+                                              style: TextStyle(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface,
+                                                  fontWeight: FontWeight.bold)),
+                                          Text('of ${_fmtMin(limit)}',
+                                              style: TextStyle(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant)),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                }),
+                              ],
+                            ),
                     ),
                     SizedBox(height: 16),
 
                     // Last Location
                     StreamBuilder<Map<String, dynamic>?>(
-                      stream: ChildMonitorService().watchLocation(childId, parentId: _parentId),
+                      stream: ChildMonitorService()
+                          .watchLocation(childId, parentId: _parentId),
                       builder: (_, snap) {
                         final loc = snap.data;
                         return GlassCard(
                           padding: EdgeInsets.all(20),
                           child: Row(
                             children: [
-                              Icon(Icons.location_on_outlined, color: AppColors.accentTeal, size: 24),
+                              Icon(Icons.location_on_outlined,
+                                  color: AppColors.accentTeal, size: 24),
                               SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Last Location', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
+                                    Text('Last Location',
+                                        style: TextStyle(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
+                                            fontWeight: FontWeight.bold)),
                                     Text(
-                                      loc == null ? 'No location data' : '${loc['lat']?.toStringAsFixed(4)}, ${loc['lng']?.toStringAsFixed(4)}',
-                                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
+                                      loc == null
+                                          ? 'No location data'
+                                          : '${loc['lat']?.toStringAsFixed(4)}, ${loc['lng']?.toStringAsFixed(4)}',
+                                      style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                          fontSize: 13),
                                     ),
                                   ],
                                 ),
                               ),
                               IconButton(
-                                icon: Icon(Icons.map_outlined, color: AppColors.primary),
+                                icon: Icon(Icons.map_outlined,
+                                    color: AppColors.primary),
                                 onPressed: () => context.push('/map'),
                               ),
                             ],
@@ -271,7 +341,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
                     SizedBox(height: 24),
 
                     // Quick Actions
-                    Text('Quick Actions', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text('Quick Actions',
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
                     SizedBox(height: 12),
                     Row(
                       children: [
@@ -281,7 +355,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
                               icon: Icons.block_flipped,
                               label: 'Block Apps',
                               color: Colors.redAccent,
-                              onTap: () => context.push('/child/rules', extra: child),
+                              onTap: () =>
+                                  context.push('/child/rules', extra: child),
                             ),
                           ),
                           SizedBox(width: 12),
@@ -291,7 +366,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
                               icon: Icons.gavel_outlined,
                               label: 'Rules',
                               color: Colors.orangeAccent,
-                              onTap: () => context.push('/child/rules-summary', extra: {'child': child, 'rules': null}),
+                              onTap: () => context.push('/child/rules-summary',
+                                  extra: {'child': child, 'rules': null}),
                             ),
                           ),
                           SizedBox(width: 12),
@@ -301,7 +377,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
                             icon: Icons.bar_chart,
                             label: 'Stats',
                             color: AppColors.accentTeal,
-                            onTap: () => context.push('/child/stats', extra: child),
+                            onTap: () =>
+                                context.push('/child/stats', extra: child),
                           ),
                         ),
                         SizedBox(width: 12),
@@ -310,7 +387,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
                             icon: Icons.notifications_active_outlined,
                             label: 'Alerts',
                             color: Colors.purpleAccent,
-                            onTap: () => context.push('/child/alerts', extra: child),
+                            onTap: () =>
+                                context.push('/child/alerts', extra: child),
                           ),
                         ),
                       ],
@@ -318,13 +396,23 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
                     SizedBox(height: 24),
 
                     // Recent Alerts
-                    Text('Recent Alerts', style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text('Recent Alerts',
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
                     SizedBox(height: 10),
                     StreamBuilder<List<Map<String, dynamic>>>(
-                      stream: ChildMonitorService().watchAlerts(childId, parentId: _parentId),
+                      stream: ChildMonitorService()
+                          .watchAlerts(childId, parentId: _parentId),
                       builder: (_, snap) {
                         final alerts = snap.data?.take(3).toList() ?? [];
-                        if (alerts.isEmpty) return Text('No recent alerts', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant));
+                        if (alerts.isEmpty)
+                          return Text('No recent alerts',
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant));
                         return Column(
                           children: alerts.map((a) => _alertTile(a)).toList(),
                         );
@@ -362,7 +450,8 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
             SizedBox(height: 8),
             Text(
               label,
-              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: color, fontSize: 11, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -382,14 +471,22 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
       decoration: BoxDecoration(
         color: (isSos ? Colors.red : AppColors.primary).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: (isSos ? Colors.red : AppColors.primary).withValues(alpha: 0.3)),
+        border: Border.all(
+            color: (isSos ? Colors.red : AppColors.primary)
+                .withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Icon(isSos ? Icons.sos : Icons.notifications_outlined,
               color: isSos ? Colors.red : AppColors.primary, size: 18),
           SizedBox(width: 10),
-          Expanded(child: Text(type, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70)))),
+          Expanded(
+              child: Text(type,
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.70)))),
         ],
       ),
     );

@@ -20,7 +20,6 @@ class ChildInstallLinkScreen extends StatelessWidget {
     final link = 'https://the-guardian.app/child/pair?code=$token';
 
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -31,7 +30,8 @@ class ChildInstallLinkScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
                   SizedBox(height: 24),
@@ -59,7 +59,10 @@ class ChildInstallLinkScreen extends StatelessWidget {
                         Text(
                           'Invitation code',
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.70),
                             fontSize: 14,
                           ),
                         ),
@@ -78,7 +81,10 @@ class ChildInstallLinkScreen extends StatelessWidget {
                         Text(
                           'Direct link:',
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.70),
                             fontSize: 14,
                           ),
                         ),
@@ -99,8 +105,7 @@ class ChildInstallLinkScreen extends StatelessWidget {
                             Clipboard.setData(ClipboardData(text: link));
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text(
-                                    'Link copied to clipboard'),
+                                content: Text('Link copied to clipboard'),
                                 backgroundColor: AppColors.primary,
                               ),
                             );

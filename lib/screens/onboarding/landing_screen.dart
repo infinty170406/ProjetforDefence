@@ -21,27 +21,32 @@ class _LandingScreenState extends State<LandingScreen> {
   final List<Map<String, dynamic>> _features = [
     {
       'title': "Orchestrateur IA",
-      'description': "Analyse en temps réel les comportements numériques pour détecter les risques sans espionner. Il génère des bilans bienveillants et des alertes contextuelles pour guider vos enfants.",
+      'description':
+          "Analyse en temps réel les comportements numériques pour détecter les risques sans espionner. Il génère des bilans bienveillants et des alertes contextuelles pour guider vos enfants.",
       'icon': Icons.psychology,
     },
     {
       'title': "Géolocalisation & Zones Scolaires",
-      'description': "Suivez la position géographique de vos enfants et configurez des zones de sécurité géographiques (école, maison) avec alertes automatiques d'arrivée et de départ.",
+      'description':
+          "Suivez la position géographique de vos enfants et configurez des zones de sécurité géographiques (école, maison) avec alertes automatiques d'arrivée et de départ.",
       'icon': Icons.map,
     },
     {
       'title': "Limites de Temps d'Écran",
-      'description': "Définissez des limites quotidiennes de temps d'écran globales ou par catégories d'applications (Réseaux Sociaux, Jeux). L'appareil se verrouille automatiquement dès que le quota est atteint.",
+      'description':
+          "Définissez des limites quotidiennes de temps d'écran globales ou par catégories d'applications (Réseaux Sociaux, Jeux). L'appareil se verrouille automatiquement dès que le quota est atteint.",
       'icon': Icons.access_time_filled,
     },
     {
       'title': "Blocage de Contenu Dynamique",
-      'description': "Intercepte instantanément l'accès aux sites ou applications non autorisés (catégories sensibles comme les jeux d'argent, violence ou pornographie) grâce au moteur d'analyse réseau.",
+      'description':
+          "Intercepte instantanément l'accès aux sites ou applications non autorisés (catégories sensibles comme les jeux d'argent, violence ou pornographie) grâce au moteur d'analyse réseau.",
       'icon': Icons.lock,
     },
     {
       'title': "Protection Native Inviolable",
-      'description': "Intègre en profondeur les services système Android (AccessibilityService & DeviceAdmin) pour résister à toute désinstallation non autorisée, fermeture forcée ou contournement par VPN.",
+      'description':
+          "Intègre en profondeur les services système Android (AccessibilityService & DeviceAdmin) pour résister à toute désinstallation non autorisée, fermeture forcée ou contournement par VPN.",
       'icon': Icons.shield,
     },
   ];
@@ -50,21 +55,24 @@ class _LandingScreenState extends State<LandingScreen> {
     {
       'name': "Valérie M.",
       'role': "Maman de Lucas (15 ans)",
-      'comment': "Depuis que nous avons installé Guardian, les disputes à propos du temps d'écran ont totalement disparu. Lucas sait exactement de combien de temps il dispose, et l'Orchestrateur IA m'alerte s'il y a un réel problème.",
+      'comment':
+          "Depuis que nous avons installé Guardian, les disputes à propos du temps d'écran ont totalement disparu. Lucas sait exactement de combien de temps il dispose, et l'Orchestrateur IA m'alerte s'il y a un réel problème.",
       'avatar': "V",
       'color': const Color(0xFF6366F1),
     },
     {
       'name': "Stéphane T.",
       'role': "Papa de Emma (12 ans)",
-      'comment': "La fonction 'Zone Scolaire' est rassurante. Je reçois une notification discrète à son arrivée au collège. Le fait que l'application soit inviolable sur Android évite qu'elle ne la désactive par accident.",
+      'comment':
+          "La fonction 'Zone Scolaire' est rassurante. Je reçois une notification discrète à son arrivée au collège. Le fait que l'application soit inviolable sur Android évite qu'elle ne la désactive par accident.",
       'avatar': "S",
       'color': const Color(0xFF0EA5E9),
     },
     {
       'name': "Isabelle D.",
       'role': "Maman de Léa (14 ans) et Théo (9 ans)",
-      'comment': "J'apprécie l'Orchestrateur IA qui n'est pas un bête outil d'espionnage mais propose une supervision intelligente. C'est parfait pour accompagner mes enfants vers l'autonomie en toute sécurité.",
+      'comment':
+          "J'apprécie l'Orchestrateur IA qui n'est pas un bête outil d'espionnage mais propose une supervision intelligente. C'est parfait pour accompagner mes enfants vers l'autonomie en toute sécurité.",
       'avatar': "I",
       'color': const Color(0xFF10B981),
     },
@@ -73,23 +81,28 @@ class _LandingScreenState extends State<LandingScreen> {
   final List<Map<String, String>> _faqs = [
     {
       'q': "Comment fonctionne l'Orchestrateur IA ?",
-      'a': "L'Orchestrateur IA analyse en arrière-plan l'activité des applications et la sécurité globale de l'appareil de votre enfant. Plutôt que de simplement bloquer et fliquer de manière aveugle, il détecte les anomalies ou les usages abusifs, et envoie des alertes claires ainsi que des conseils d'accompagnement sur le dashboard parent."
+      'a':
+          "L'Orchestrateur IA analyse en arrière-plan l'activité des applications et la sécurité globale de l'appareil de votre enfant. Plutôt que de simplement bloquer et fliquer de manière aveugle, il détecte les anomalies ou les usages abusifs, et envoie des alertes claires ainsi que des conseils d'accompagnement sur le dashboard parent."
     },
     {
       'q': "Mon enfant peut-il désinstaller ou contourner l'application ?",
-      'a': "Non. Grâce à l'utilisation des APIs natives du système Android (telles que le gestionnaire d'administration de l'appareil 'DeviceAdmin' et le service d'accessibilité 'AccessibilityService'), Guardian se verrouille au cœur du système. Toute tentative de désinstallation, de modification du GPS ou de contournement nécessite le mot de passe parental."
+      'a':
+          "Non. Grâce à l'utilisation des APIs natives du système Android (telles que le gestionnaire d'administration de l'appareil 'DeviceAdmin' et le service d'accessibilité 'AccessibilityService'), Guardian se verrouille au cœur du système. Toute tentative de désinstallation, de modification du GPS ou de contournement nécessite le mot de passe parental."
     },
     {
       'q': "Quelles sont les fonctionnalités de blocage disponibles ?",
-      'a': "Guardian propose le blocage dynamique par catégories de sites web (par exemple, les jeux d'argent, le contenu adulte, ou la violence), la restriction d'applications spécifiques, et le blocage complet de l'appareil selon des tranches horaires (mode école, heure du coucher) ou suite à un dépassement du temps autorisé."
+      'a':
+          "Guardian propose le blocage dynamique par catégories de sites web (par exemple, les jeux d'argent, le contenu adulte, ou la violence), la restriction d'applications spécifiques, et le blocage complet de l'appareil selon des tranches horaires (mode école, heure du coucher) ou suite à un dépassement du temps autorisé."
     },
     {
       'q': "La géolocalisation fonctionne-t-elle en arrière-plan ?",
-      'a': "Oui, la géolocalisation suit en temps réel la position de l'appareil de manière optimisée pour préserver la batterie. Vous pouvez définir des zones géographiques de confiance (par exemple 'École' ou 'Maison') et être notifié automatiquement dès que votre enfant y pénètre ou en sort."
+      'a':
+          "Oui, la géolocalisation suit en temps réel la position de l'appareil de manière optimisée pour préserver la batterie. Vous pouvez définir des zones géographiques de confiance (par exemple 'École' ou 'Maison') et être notifié automatiquement dès que votre enfant y pénètre ou en sort."
     },
     {
       'q': "Quels types d'appareils sont supportés ?",
-      'a': "Notre application est optimisée pour les smartphones et tablettes des enfants sous Android (avec intégration native poussée) et propose une console de gestion web (Orchestrateur Dashboard) accessible aux parents depuis n'importe quel ordinateur ou smartphone."
+      'a':
+          "Notre application est optimisée pour les smartphones et tablettes des enfants sous Android (avec intégration native poussée) et propose une console de gestion web (Orchestrateur Dashboard) accessible aux parents depuis n'importe quel ordinateur ou smartphone."
     }
   ];
 
@@ -134,7 +147,8 @@ class _LandingScreenState extends State<LandingScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF020617) : const Color(0xFFF4F6FF),
+      backgroundColor:
+          isDark ? const Color(0xFF020617) : const Color(0xFFF4F6FF),
       body: Stack(
         children: [
           Positioned(
@@ -161,7 +175,6 @@ class _LandingScreenState extends State<LandingScreen> {
               ),
             ),
           ),
-
           SingleChildScrollView(
             controller: _scrollController,
             child: Column(
@@ -179,7 +192,6 @@ class _LandingScreenState extends State<LandingScreen> {
               ],
             ),
           ),
-
           Positioned(
             top: 0,
             left: 0,
@@ -194,19 +206,25 @@ class _LandingScreenState extends State<LandingScreen> {
   Widget _buildNavBar(bool isMobile) {
     final stateManager = context.watch<AppStateManager>();
     final isDark = stateManager.themeMode == ThemeMode.dark ||
-        (stateManager.themeMode == ThemeMode.system && Theme.of(context).brightness == Brightness.dark);
+        (stateManager.themeMode == ThemeMode.system &&
+            Theme.of(context).brightness == Brightness.dark);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: _scrolled ? 16 : 24),
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 12 : 32, vertical: _scrolled ? 16 : 24),
       decoration: BoxDecoration(
         color: _scrolled
-            ? (isDark ? const Color(0xFF020617).withValues(alpha: 0.85) : Colors.white.withValues(alpha: 0.85))
+            ? (isDark
+                ? const Color(0xFF020617).withValues(alpha: 0.85)
+                : Colors.white.withValues(alpha: 0.85))
             : Colors.transparent,
         border: Border(
           bottom: BorderSide(
             color: _scrolled
-                ? (isDark ? const Color(0xFF1E293B).withValues(alpha: 0.4) : const Color(0xFFE2E8F0).withValues(alpha: 0.4))
+                ? (isDark
+                    ? const Color(0xFF1E293B).withValues(alpha: 0.4)
+                    : const Color(0xFFE2E8F0).withValues(alpha: 0.4))
                 : Colors.transparent,
           ),
         ),
@@ -242,7 +260,8 @@ class _LandingScreenState extends State<LandingScreen> {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: const Color(0xFF4F46E5).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
@@ -259,28 +278,35 @@ class _LandingScreenState extends State<LandingScreen> {
                   ],
                 ),
               ),
-
               if (!isMobile)
                 Row(
                   children: [
-                    _buildNavLink("Fonctionnalités", () => _scrollToSection(800), isDark),
-                    _buildNavLink("Pourquoi Nous", () => _scrollToSection(1700), isDark),
-                    _buildNavLink("Témoignages", () => _scrollToSection(2400), isDark),
-                    _buildNavLink("Tarifs", () => _scrollToSection(3100), isDark),
+                    _buildNavLink(
+                        "Fonctionnalités", () => _scrollToSection(800), isDark),
+                    _buildNavLink(
+                        "Pourquoi Nous", () => _scrollToSection(1700), isDark),
+                    _buildNavLink(
+                        "Témoignages", () => _scrollToSection(2400), isDark),
+                    _buildNavLink(
+                        "Tarifs", () => _scrollToSection(3100), isDark),
                     _buildNavLink("FAQ", () => _scrollToSection(3900), isDark),
                   ],
                 ),
-
               Row(
                 children: [
                   IconButton(
                     icon: Icon(
-                      isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                      isDark
+                          ? Icons.light_mode_outlined
+                          : Icons.dark_mode_outlined,
                       color: isDark ? Colors.amber : const Color(0xFF475569),
                     ),
-                    tooltip: isDark ? "Activer le mode clair" : "Activer le mode sombre",
+                    tooltip: isDark
+                        ? "Activer le mode clair"
+                        : "Activer le mode sombre",
                     onPressed: () {
-                      stateManager.setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
+                      stateManager.setThemeMode(
+                          isDark ? ThemeMode.light : ThemeMode.dark);
                     },
                   ),
                   const SizedBox(width: 8),
@@ -289,13 +315,18 @@ class _LandingScreenState extends State<LandingScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4F46E5),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30)),
                       elevation: 0,
                     ),
                     child: const Text(
                       "Espace Parent",
-                      style: TextStyle(fontFamily: 'Outfit', fontWeight: FontWeight.bold, fontSize: 12),
+                      style: TextStyle(
+                          fontFamily: 'Outfit',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12),
                     ),
                   ),
                 ],
@@ -330,13 +361,16 @@ class _LandingScreenState extends State<LandingScreen> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1280),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 40),
+          padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 12 : 32, vertical: 40),
           child: Column(
             children: [
               if (isMobile) ...[
                 FadeInUp(child: _buildHeroText(isMobile)),
                 const SizedBox(height: 40),
-                FadeInUp(delay: const Duration(milliseconds: 200), child: _buildInteractiveMockupArea()),
+                FadeInUp(
+                    delay: const Duration(milliseconds: 200),
+                    child: _buildInteractiveMockupArea()),
               ] else ...[
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -348,7 +382,9 @@ class _LandingScreenState extends State<LandingScreen> {
                     const SizedBox(width: 140),
                     Expanded(
                       flex: 5,
-                      child: FadeInUp(delay: const Duration(milliseconds: 200), child: _buildInteractiveMockupArea()),
+                      child: FadeInUp(
+                          delay: const Duration(milliseconds: 200),
+                          child: _buildInteractiveMockupArea()),
                     ),
                   ],
                 ),
@@ -363,7 +399,8 @@ class _LandingScreenState extends State<LandingScreen> {
   Widget _buildHeroText(bool isMobile) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
-      crossAxisAlignment: isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      crossAxisAlignment:
+          isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -413,28 +450,36 @@ class _LandingScreenState extends State<LandingScreen> {
         ),
         const SizedBox(height: 36),
         Row(
-          mainAxisAlignment: isMobile ? MainAxisAlignment.center : MainAxisAlignment.start,
+          mainAxisAlignment:
+              isMobile ? MainAxisAlignment.center : MainAxisAlignment.start,
           children: [
             ElevatedButton(
               onPressed: () => _scrollToSection(isMobile ? 550 : 0),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4F46E5),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30)),
                 elevation: 0,
               ),
-              child: const Text("Découvrir la démo", style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text("Découvrir la démo",
+                  style: TextStyle(fontWeight: FontWeight.bold)),
             ),
             const SizedBox(width: 16),
             OutlinedButton(
               onPressed: () => context.push('/login/parent'),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0xFF4F46E5)),
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30)),
               ),
-              child: const Text("Console Parent", style: TextStyle(color: Color(0xFF4F46E5), fontWeight: FontWeight.bold)),
+              child: const Text("Console Parent",
+                  style: TextStyle(
+                      color: Color(0xFF4F46E5), fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -461,7 +506,6 @@ class _LandingScreenState extends State<LandingScreen> {
           ),
         ),
         const SizedBox(height: 24),
-
         Center(
           child: SizedBox(
             height: 480,
@@ -510,16 +554,25 @@ class _LandingScreenState extends State<LandingScreen> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1200),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 60),
+          padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 12 : 32, vertical: 60),
           child: Wrap(
             spacing: 24,
             runSpacing: 24,
             alignment: WrapAlignment.center,
             children: [
-              AnimatedHoverCard(child: _buildStatCard("Moteur IA Actif", "Analyse sémantique & contextuelle")),
-              AnimatedHoverCard(child: _buildStatCard("Sécurité Native", "100% inviolable sur Android")),
-              AnimatedHoverCard(child: _buildStatCard("Temps Réel", "Position & notifications GPS")),
-              AnimatedHoverCard(child: _buildStatCard("Accompagnement", "Lien parent-enfant renforcé")),
+              AnimatedHoverCard(
+                  child: _buildStatCard(
+                      "Moteur IA Actif", "Analyse sémantique & contextuelle")),
+              AnimatedHoverCard(
+                  child: _buildStatCard(
+                      "Sécurité Native", "100% inviolable sur Android")),
+              AnimatedHoverCard(
+                  child: _buildStatCard(
+                      "Temps Réel", "Position & notifications GPS")),
+              AnimatedHoverCard(
+                  child: _buildStatCard(
+                      "Accompagnement", "Lien parent-enfant renforcé")),
             ],
           ),
         ),
@@ -536,7 +589,9 @@ class _LandingScreenState extends State<LandingScreen> {
         color: isDark ? const Color(0xFF0F172A) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
+          color: isDark
+              ? const Color(0xFF1E293B)
+              : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
         ),
         boxShadow: [
           BoxShadow(
@@ -551,8 +606,8 @@ class _LandingScreenState extends State<LandingScreen> {
           Text(
             title,
             style: TextStyle(
-              color: isDark ? Colors.white : const Color(0xFF0F172A), 
-              fontSize: 14, 
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+              fontSize: 14,
               fontWeight: FontWeight.bold,
               fontFamily: 'Outfit',
             ),
@@ -562,7 +617,7 @@ class _LandingScreenState extends State<LandingScreen> {
             desc,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), 
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
               fontSize: 11,
               fontFamily: 'Outfit',
             ),
@@ -577,7 +632,8 @@ class _LandingScreenState extends State<LandingScreen> {
     return Container(
       width: double.infinity,
       color: isDark ? const Color(0xFF0B0F19) : Colors.white,
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 80),
+      padding:
+          EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 80),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1200),
@@ -585,25 +641,30 @@ class _LandingScreenState extends State<LandingScreen> {
             children: [
               const Text(
                 "FONCTIONNALITÉS CLÉS",
-                style: TextStyle(color: Color(0xFF4F46E5), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                style: TextStyle(
+                    color: Color(0xFF4F46E5),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5),
               ),
               const SizedBox(height: 12),
               Text(
                 "Une protection intelligente & complète",
                 style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A), 
-                  fontSize: 32, 
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  fontSize: 32,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Outfit',
                 ),
               ),
               const SizedBox(height: 48),
-
               Wrap(
                 spacing: 24,
                 runSpacing: 24,
                 alignment: WrapAlignment.center,
-                children: _features.map((f) => AnimatedHoverCard(child: _buildFeatureCard(f))).toList(),
+                children: _features
+                    .map((f) => AnimatedHoverCard(child: _buildFeatureCard(f)))
+                    .toList(),
               ),
             ],
           ),
@@ -622,7 +683,9 @@ class _LandingScreenState extends State<LandingScreen> {
         color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
+          color: isDark
+              ? const Color(0xFF334155)
+              : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
         ),
       ),
       child: Column(
@@ -634,14 +697,15 @@ class _LandingScreenState extends State<LandingScreen> {
               color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(f['icon'] as IconData, color: const Color(0xFF4F46E5), size: 20),
+            child: Icon(f['icon'] as IconData,
+                color: const Color(0xFF4F46E5), size: 20),
           ),
           const SizedBox(height: 16),
           Text(
             f['title'] as String,
             style: TextStyle(
-              color: isDark ? Colors.white : const Color(0xFF0F172A), 
-              fontSize: 15, 
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+              fontSize: 15,
               fontWeight: FontWeight.bold,
               fontFamily: 'Outfit',
             ),
@@ -650,8 +714,8 @@ class _LandingScreenState extends State<LandingScreen> {
           Text(
             f['description'] as String,
             style: TextStyle(
-              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569), 
-              fontSize: 11, 
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+              fontSize: 11,
               height: 1.5,
               fontFamily: 'Outfit',
             ),
@@ -667,19 +731,24 @@ class _LandingScreenState extends State<LandingScreen> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1200),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 80),
+          padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 12 : 32, vertical: 80),
           child: Column(
             children: [
               const Text(
                 "POURQUOI NOUS REJOINDRE ?",
-                style: TextStyle(color: Color(0xFF14B8A6), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                style: TextStyle(
+                    color: Color(0xFF14B8A6),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5),
               ),
               const SizedBox(height: 12),
               Text(
                 "Une armure inviolable au cœur du système",
                 style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A), 
-                  fontSize: 32, 
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  fontSize: 32,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Outfit',
                 ),
@@ -691,8 +760,10 @@ class _LandingScreenState extends State<LandingScreen> {
                   "Contrairement aux autres solutions facilement contournables, Guardian utilise les outils d'administration système natifs. L'enfant ne peut ni contourner par VPN, ni forcer l'arrêt, ni désinstaller l'application sans votre mot de passe parental. Le filtrage DNS fonctionne 24h/24, assurant une protection sans faille.",
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569), 
-                    fontSize: 14, 
+                    color: isDark
+                        ? const Color(0xFF94A3B8)
+                        : const Color(0xFF475569),
+                    fontSize: 14,
                     height: 1.6,
                     fontFamily: 'Outfit',
                   ),
@@ -710,7 +781,8 @@ class _LandingScreenState extends State<LandingScreen> {
     return Container(
       width: double.infinity,
       color: isDark ? const Color(0xFF0F172A) : Colors.white,
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 80),
+      padding:
+          EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 80),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1200),
@@ -718,25 +790,31 @@ class _LandingScreenState extends State<LandingScreen> {
             children: [
               const Text(
                 "TÉMOIGNAGES",
-                style: TextStyle(color: Color(0xFF4F46E5), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                style: TextStyle(
+                    color: Color(0xFF4F46E5),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5),
               ),
               const SizedBox(height: 12),
               Text(
                 "Ce que disent les parents",
                 style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A), 
-                  fontSize: 32, 
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  fontSize: 32,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Outfit',
                 ),
               ),
               const SizedBox(height: 48),
-
               Wrap(
                 spacing: 24,
                 runSpacing: 24,
                 alignment: WrapAlignment.center,
-                children: _testimonials.map((t) => AnimatedHoverCard(child: _buildTestimonialCard(t))).toList(),
+                children: _testimonials
+                    .map((t) =>
+                        AnimatedHoverCard(child: _buildTestimonialCard(t)))
+                    .toList(),
               ),
             ],
           ),
@@ -754,7 +832,9 @@ class _LandingScreenState extends State<LandingScreen> {
         color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
+          color: isDark
+              ? const Color(0xFF334155)
+              : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
         ),
       ),
       child: Column(
@@ -765,9 +845,12 @@ class _LandingScreenState extends State<LandingScreen> {
               Container(
                 width: 36,
                 height: 36,
-                decoration: BoxDecoration(color: t['color'] as Color, shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                    color: t['color'] as Color, shape: BoxShape.circle),
                 child: Center(
-                  child: Text(t['avatar'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: Text(t['avatar'] as String,
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -775,15 +858,16 @@ class _LandingScreenState extends State<LandingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    t['name'] as String, 
+                    t['name'] as String,
                     style: TextStyle(
-                      color: isDark ? Colors.white : const Color(0xFF0F172A), 
-                      fontSize: 12, 
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'Outfit',
                     ),
                   ),
-                  Text(t['role'] as String, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                  Text(t['role'] as String,
+                      style: const TextStyle(color: Colors.grey, fontSize: 10)),
                 ],
               ),
             ],
@@ -792,9 +876,9 @@ class _LandingScreenState extends State<LandingScreen> {
           Text(
             t['comment'] as String,
             style: TextStyle(
-              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569), 
-              fontSize: 11, 
-              height: 1.6, 
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+              fontSize: 11,
+              height: 1.6,
               fontStyle: FontStyle.italic,
               fontFamily: 'Outfit',
             ),
@@ -806,11 +890,12 @@ class _LandingScreenState extends State<LandingScreen> {
 
   Widget _buildPricingSection(bool isMobile) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       width: double.infinity,
       color: isDark ? const Color(0xFF020617) : const Color(0xFFF4F6FF),
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 80),
+      padding:
+          EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 80),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1200),
@@ -819,9 +904,9 @@ class _LandingScreenState extends State<LandingScreen> {
               const Text(
                 "TARIFS",
                 style: TextStyle(
-                  color: Color(0xFF4F46E5), 
-                  fontSize: 12, 
-                  fontWeight: FontWeight.w900, 
+                  color: Color(0xFF4F46E5),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
                   letterSpacing: 1.5,
                   fontFamily: 'Outfit',
                 ),
@@ -831,14 +916,13 @@ class _LandingScreenState extends State<LandingScreen> {
                 "Des plans adaptés à toutes les familles",
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A), 
-                  fontSize: 32, 
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  fontSize: 32,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Outfit',
                 ),
               ),
               const SizedBox(height: 48),
-
               Wrap(
                 spacing: 24,
                 runSpacing: 24,
@@ -848,7 +932,8 @@ class _LandingScreenState extends State<LandingScreen> {
                     title: "Starter",
                     price: "0 FCFA",
                     period: "À vie",
-                    desc: "L'essentiel pour débuter et protéger un premier appareil.",
+                    desc:
+                        "L'essentiel pour débuter et protéger un premier appareil.",
                     features: [
                       "1 appareil protégé",
                       "Suivi GPS basique",
@@ -863,7 +948,8 @@ class _LandingScreenState extends State<LandingScreen> {
                     title: "Premium",
                     price: "3 250 FCFA",
                     period: "/ mois",
-                    desc: "La protection complète assistée par intelligence artificielle.",
+                    desc:
+                        "La protection complète assistée par intelligence artificielle.",
                     features: [
                       "Jusqu'à 3 appareils protégés",
                       "Géolocalisation & zones illimitées",
@@ -879,7 +965,8 @@ class _LandingScreenState extends State<LandingScreen> {
                     title: "Famille",
                     price: "6 500 FCFA",
                     period: "/ mois",
-                    desc: "La tranquillité d'esprit absolue pour les grandes fratries.",
+                    desc:
+                        "La tranquillité d'esprit absolue pour les grandes fratries.",
                     features: [
                       "Appareils illimités",
                       "Tableau de bord multi-parents",
@@ -910,13 +997,14 @@ class _LandingScreenState extends State<LandingScreen> {
     required bool isPopular,
     required bool isDark,
   }) {
-    final cardBg = isDark 
-        ? (isPopular ? const Color(0xFF0F172A) : const Color(0xFF0B0F19)) 
+    final cardBg = isDark
+        ? (isPopular ? const Color(0xFF0F172A) : const Color(0xFF0B0F19))
         : Colors.white;
     final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
-    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
-    final borderColor = isPopular 
-        ? const Color(0xFF4F46E5) 
+    final textSecondary =
+        isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+    final borderColor = isPopular
+        ? const Color(0xFF4F46E5)
         : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0));
 
     return AnimatedHoverCard(
@@ -927,13 +1015,13 @@ class _LandingScreenState extends State<LandingScreen> {
           color: cardBg,
           borderRadius: BorderRadius.circular(28),
           border: Border.all(
-            color: borderColor, 
+            color: borderColor,
             width: isPopular ? 2.5 : 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: isPopular 
-                  ? const Color(0xFF4F46E5).withValues(alpha: 0.15) 
+              color: isPopular
+                  ? const Color(0xFF4F46E5).withValues(alpha: 0.15)
                   : Colors.black.withValues(alpha: 0.03),
               blurRadius: 20,
               offset: const Offset(0, 10),
@@ -945,7 +1033,8 @@ class _LandingScreenState extends State<LandingScreen> {
           children: [
             if (isPopular) ...[
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF4F46E5), Color(0xFF14B8A6)],
@@ -1010,23 +1099,24 @@ class _LandingScreenState extends State<LandingScreen> {
             const Divider(),
             const SizedBox(height: 24),
             ...features.map((f) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle_outline, color: Color(0xFF14B8A6), size: 16),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      f,
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 12,
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle_outline,
+                          color: Color(0xFF14B8A6), size: 16),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          f,
+                          style: TextStyle(
+                            color: textPrimary,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            )),
+                )),
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
@@ -1037,12 +1127,16 @@ class _LandingScreenState extends State<LandingScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF4F46E5),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24)),
                         elevation: 0,
                       ),
                       child: Text(
                         buttonText,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Outfit'),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            fontFamily: 'Outfit'),
                       ),
                     )
                   : OutlinedButton(
@@ -1051,7 +1145,8 @@ class _LandingScreenState extends State<LandingScreen> {
                         side: const BorderSide(
                           color: Color(0xFF4F46E5),
                         ),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24)),
                       ),
                       child: Text(
                         buttonText,
@@ -1076,32 +1171,38 @@ class _LandingScreenState extends State<LandingScreen> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1200),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 80),
+          padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 12 : 32, vertical: 80),
           child: Column(
             children: [
               const Text(
                 "FAQ",
-                style: TextStyle(color: Color(0xFF14B8A6), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                style: TextStyle(
+                    color: Color(0xFF14B8A6),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5),
               ),
               const SizedBox(height: 12),
               Text(
                 "Questions Fréquentes",
                 style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A), 
-                  fontSize: 32, 
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  fontSize: 32,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Outfit',
                 ),
               ),
               const SizedBox(height: 48),
-
               Container(
                 width: 700,
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF0F172A) : Colors.white,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                    color: isDark
+                        ? const Color(0xFF1E293B)
+                        : const Color(0xFFE2E8F0),
                   ),
                 ),
                 child: ListView.separated(
@@ -1109,7 +1210,9 @@ class _LandingScreenState extends State<LandingScreen> {
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: _faqs.length,
                   separatorBuilder: (context, index) => Divider(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                    color: isDark
+                        ? const Color(0xFF1E293B)
+                        : const Color(0xFFE2E8F0),
                   ),
                   itemBuilder: (context, index) {
                     final faq = _faqs[index];
@@ -1131,15 +1234,21 @@ class _LandingScreenState extends State<LandingScreen> {
                                 Text(
                                   faq['q']!,
                                   style: TextStyle(
-                                    color: isDark ? Colors.white : const Color(0xFF0F172A), 
-                                    fontSize: 14, 
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF0F172A),
+                                    fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                     fontFamily: 'Outfit',
                                   ),
                                 ),
                                 Icon(
-                                  isExpanded ? Icons.expand_less : Icons.expand_more, 
-                                  color: isDark ? const Color(0xFF94A3B8) : Colors.grey,
+                                  isExpanded
+                                      ? Icons.expand_less
+                                      : Icons.expand_more,
+                                  color: isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : Colors.grey,
                                 ),
                               ],
                             ),
@@ -1148,8 +1257,10 @@ class _LandingScreenState extends State<LandingScreen> {
                               Text(
                                 faq['a']!,
                                 style: TextStyle(
-                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), 
-                                  fontSize: 12, 
+                                  color: isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : const Color(0xFF64748B),
+                                  fontSize: 12,
                                   height: 1.6,
                                   fontFamily: 'Outfit',
                                 ),
@@ -1173,7 +1284,8 @@ class _LandingScreenState extends State<LandingScreen> {
     return Container(
       width: double.infinity,
       color: const Color(0xFF0F172A),
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 80),
+      padding:
+          EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 80),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1200),
@@ -1181,7 +1293,10 @@ class _LandingScreenState extends State<LandingScreen> {
             children: [
               const Text(
                 "Prêt à protéger vos enfants ?",
-                style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               const Text(
@@ -1189,7 +1304,6 @@ class _LandingScreenState extends State<LandingScreen> {
                 style: TextStyle(color: Colors.grey, fontSize: 14),
               ),
               const SizedBox(height: 36),
-
               Wrap(
                 spacing: 16,
                 runSpacing: 16,
@@ -1199,20 +1313,27 @@ class _LandingScreenState extends State<LandingScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4F46E5),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 28, vertical: 20),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30)),
                       elevation: 0,
                     ),
-                    child: const Text("Accéder Console Parent", style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text("Accéder Console Parent",
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                   OutlinedButton(
                     onPressed: () => context.push('/login/admin'),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Colors.white),
-                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 28, vertical: 20),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30)),
                     ),
-                    child: const Text("Accéder Console Administrateur", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: const Text("Accéder Console Administrateur",
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -1227,7 +1348,8 @@ class _LandingScreenState extends State<LandingScreen> {
     return Container(
       width: double.infinity,
       color: const Color(0xFF090B16),
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 40),
+      padding:
+          EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 40),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1200),
@@ -1240,9 +1362,11 @@ class _LandingScreenState extends State<LandingScreen> {
               ),
               const Row(
                 children: [
-                  Text("Mentions Légales", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                  Text("Mentions Légales",
+                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
                   SizedBox(width: 20),
-                  Text("Politique de Confidentialité", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                  Text("Politique de Confidentialité",
+                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
                 ],
               ),
             ],
@@ -1295,7 +1419,8 @@ class FadeInUp extends StatelessWidget {
     return FutureBuilder(
       future: Future.delayed(delay),
       builder: (context, snapshot) {
-        final show = snapshot.connectionState == ConnectionState.done || delay == Duration.zero;
+        final show = snapshot.connectionState == ConnectionState.done ||
+            delay == Duration.zero;
         return TweenAnimationBuilder<double>(
           tween: Tween<double>(begin: 0.0, end: show ? 1.0 : 0.0),
           duration: duration,

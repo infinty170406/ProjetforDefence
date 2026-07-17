@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 import 'core/models/app_state_manager.dart';
 import 'core/services/api_service.dart';
@@ -13,23 +12,17 @@ import 'core/router/app_router.dart';
 import 'core/widgets/alert_overlay.dart';
 import 'core/services/firestore_service.dart';
 import 'core/services/notification_service.dart';
-import 'core/services/global_monitor_service.dart';
 import 'core/repositories/child_repository.dart';
 import 'core/repositories/rules_repository.dart';
 import 'core/repositories/alert_repository.dart';
 import 'core/repositories/stats_repository.dart';
 import 'core/services/child_enforcement_service.dart';
 import 'core/services/storage_service.dart';
+import 'core/premium/entitlement_service.dart';
+import 'screens/settings/pin_lock_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  try {
-    await dotenv.load(fileName: ".env");
-    debugPrint('APP_LOG: .env loaded successfully.');
-  } catch (e) {
-    debugPrint('APP_LOG: Failed to load .env file: $e');
-  }
 
   debugPrint('APP_LOG: Initializing Firebase...');
 
@@ -62,7 +55,7 @@ void main() async {
 
   // Task 1: Optimization — Sequential initialization removed.
   // We launch the app immediately and run heavy services in the background.
-  // NOTE: GlobalMonitorService is initialized by AppStateManager.updateState(authenticated)
+  // NOTE: GuardianRealtimeService is initialized by AppStateManager.updateState(authenticated)
   // after the user signs in — NOT here, to avoid race conditions with Firebase Auth.
   unawaited(Future.wait([
     ApiService().initialize(),
@@ -76,12 +69,13 @@ void main() async {
   }));
 
   debugPrint('APP_LOG: Starting app UI...');
-  
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: stateManager),
         ChangeNotifierProvider.value(value: ApiService()),
+        ChangeNotifierProvider.value(value: EntitlementService()),
         Provider(create: (_) => ChildRepository()),
         Provider(create: (_) => RulesRepository()),
         Provider(create: (_) => AlertRepository()),
@@ -114,8 +108,19 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: stateManager.themeMode,
+      locale: stateManager.language.toLowerCase().startsWith('en') ||
+              stateManager.language == 'English'
+          ? const Locale('en')
+          : const Locale('fr'),
       routerConfig: AppRouter.router,
-      builder: (context, child) => AlertOverlay(child: child!),
+      builder: (context, child) {
+        if (stateManager.isAppLocked) {
+          return PinLockScreen(
+            onUnlocked: () => stateManager.setAppLocked(false),
+          );
+        }
+        return AlertOverlay(child: child!);
+      },
     );
   }
 }
@@ -156,8 +161,8 @@ class _FirebaseErrorApp extends StatelessWidget {
                 const SizedBox(height: 24),
                 const Text(
                   'Check that google-services.json is correctly\n'
-                      'in android/app/ and that the package name\n'
-                      'matches com.example.virt',
+                  'in android/app/ and that the package name\n'
+                  'matches com.example.virt',
                   style: TextStyle(color: Colors.grey, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),

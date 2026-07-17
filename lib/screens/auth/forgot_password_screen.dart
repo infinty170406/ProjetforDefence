@@ -34,10 +34,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           context: context,
           builder: (ctx) => AlertDialog(
             backgroundColor: Theme.of(context).colorScheme.surface,
-            title: Text('Email Sent', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+            title: Text('Email Sent',
+                style:
+                    TextStyle(color: Theme.of(context).colorScheme.onSurface)),
             content: Text(
               'A password reset link has been sent to your email address.',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             actions: [
               TextButton(
@@ -45,7 +48,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   Navigator.pop(ctx);
                   context.go('/login');
                 },
-                child: const Text('Back to Login', style: TextStyle(color: AppColors.primary)),
+                child: const Text('Back to Login',
+                    style: TextStyle(color: AppColors.primary)),
               ),
             ],
           ),
@@ -65,7 +69,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -76,11 +79,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
                   SizedBox(height: 24),
-                   Text(
+                  Text(
                     'Reset Password',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurface,

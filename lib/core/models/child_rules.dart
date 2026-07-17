@@ -92,13 +92,17 @@ class ChildRules {
       parentId: json['parentId'],
       childDeviceUid: json['childDeviceUid'],
       blockReason: json['block_reason'],
-      updatedAt: json['updatedAt'] != null 
-          ? (json['updatedAt'] as Timestamp).toDate() 
-          : null,
+      updatedAt: json['updatedAt'] is Timestamp
+          ? (json['updatedAt'] as Timestamp).toDate()
+          : json['updatedAt'] is DateTime
+              ? json['updatedAt'] as DateTime
+              : null,
       rulesConfigured: json['rulesConfigured'] ?? false,
       geminiApiKey: json['geminiApiKey'] ?? json['gemini_api_key'],
       monitoredNotificationPackages: List<String>.from(
-          json['monitoredNotificationPackages'] ?? json['monitored_notification_packages'] ?? []),
+          json['monitoredNotificationPackages'] ??
+              json['monitored_notification_packages'] ??
+              []),
     );
   }
 
@@ -178,12 +182,14 @@ class ChildRules {
       blockViolence: blockViolence ?? this.blockViolence,
       blockDrugs: blockDrugs ?? this.blockDrugs,
       blockSexualPredators: blockSexualPredators ?? this.blockSexualPredators,
-      blockAnxietyDepression: blockAnxietyDepression ?? this.blockAnxietyDepression,
+      blockAnxietyDepression:
+          blockAnxietyDepression ?? this.blockAnxietyDepression,
       blockSelfHarm: blockSelfHarm ?? this.blockSelfHarm,
       blockCyberbullying: blockCyberbullying ?? this.blockCyberbullying,
       blockMatureContent: blockMatureContent ?? this.blockMatureContent,
       blockEatingDisorders: blockEatingDisorders ?? this.blockEatingDisorders,
-      monitorAccountActivity: monitorAccountActivity ?? this.monitorAccountActivity,
+      monitorAccountActivity:
+          monitorAccountActivity ?? this.monitorAccountActivity,
       locationAlerts: locationAlerts ?? this.locationAlerts,
       customKeywords: customKeywords ?? this.customKeywords,
       customCategories: customCategories ?? this.customCategories,
@@ -193,7 +199,8 @@ class ChildRules {
       blockReason: blockReason ?? this.blockReason,
       rulesConfigured: rulesConfigured ?? this.rulesConfigured,
       geminiApiKey: geminiApiKey ?? this.geminiApiKey,
-      monitoredNotificationPackages: monitoredNotificationPackages ?? this.monitoredNotificationPackages,
+      monitoredNotificationPackages:
+          monitoredNotificationPackages ?? this.monitoredNotificationPackages,
     );
   }
 }

@@ -10,7 +10,6 @@ class OnboardingVisionAiScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -33,8 +32,9 @@ class OnboardingVisionAiScreen extends StatelessWidget {
                   Text(
                     'AI detects inappropriate content instantly.',
                     textAlign: TextAlign.center,
-                    style:
-                        TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 18),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 18),
                   ),
                   Spacer(),
                   CustomButton(
