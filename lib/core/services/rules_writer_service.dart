@@ -61,7 +61,12 @@ class RulesWriterService {
     });
 
     // SYNC: Mise à jour du document principal pour que le dashboard parent voit aussi le changement
-    await _db.collection('parents').doc(_parentId).collection('children').doc(childId).update({
+    await _db
+        .collection('parents')
+        .doc(_parentId)
+        .collection('children')
+        .doc(childId)
+        .update({
       'dailyLimitMinutes': dailyLimitMinutes,
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -117,12 +122,14 @@ class RulesWriterService {
         if (violence != null) 'blockViolence': violence,
         if (drugs != null) 'blockDrugs': drugs,
         if (sexualPredators != null) 'blockSexualPredators': sexualPredators,
-        if (anxietyDepression != null) 'blockAnxietyDepression': anxietyDepression,
+        if (anxietyDepression != null)
+          'blockAnxietyDepression': anxietyDepression,
         if (selfHarm != null) 'blockSelfHarm': selfHarm,
         if (cyberbullying != null) 'blockCyberbullying': cyberbullying,
         if (matureContent != null) 'blockMatureContent': matureContent,
         if (eatingDisorders != null) 'blockEatingDisorders': eatingDisorders,
-        if (monitorAccountActivity != null) 'monitorAccountActivity': monitorAccountActivity,
+        if (monitorAccountActivity != null)
+          'monitorAccountActivity': monitorAccountActivity,
         if (locationAlerts != null) 'locationAlerts': locationAlerts,
         if (customKeywords != null) 'customKeywords': customKeywords,
         if (customCategories != null) 'customCategories': customCategories,

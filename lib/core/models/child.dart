@@ -1,4 +1,4 @@
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class Child {
   final String id;
@@ -32,8 +32,8 @@ class Child {
       age: json['age'] as int? ?? 0,
       deviceStatus: json['deviceStatus'] as String?,
       lastLocation: location,
-      batteryLevel: json['batteryLevel'] != null 
-          ? (json['batteryLevel'] as num).toDouble() 
+      batteryLevel: json['batteryLevel'] != null
+          ? (json['batteryLevel'] as num).toDouble()
           : null,
     );
   }

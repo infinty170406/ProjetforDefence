@@ -2,14 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/models/chat_message.dart';
 import '../../core/models/app_state_manager.dart';
 import '../../core/services/firestore_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
-import '../../core/services/ai_webhook_service.dart';
-import '../../core/services/open_router_service.dart';
+import '../../core/services/ai/guardian_agent_service.dart';
 
 class HubChatAiScreen extends StatefulWidget {
   const HubChatAiScreen({super.key});
@@ -22,8 +20,8 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
     with TickerProviderStateMixin {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final OpenRouterService _openRouterService = OpenRouterService();
-  final AiWebhookService _aiWebhookService = AiWebhookService();
+  // Cerveau unique : l'agent IA Guardian (Gemini + contexte Firestore temps réel).
+  final GuardianAgentService _agent = GuardianAgentService();
   final FirestoreService _firestoreService = FirestoreService();
 
   bool _isTyping = false;
@@ -141,21 +139,23 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
   void _showChildPicker() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF13132A),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF13132A)
+          : Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Choose a child',
+            Text('Choose a child',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             ..._children.map((child) {
               final id = child['id'] ?? child['childId'];
               final isSelected = id == _selectedChildId;
@@ -165,19 +165,25 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                   Navigator.pop(ctx);
                 },
                 leading: CircleAvatar(
-                  backgroundColor:
-                      isSelected ? AppColors.primary : Colors.white10,
+                  backgroundColor: isSelected
+                      ? AppColors.primary
+                      : Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.1),
                   child: Text(child['displayName']?[0] ?? 'C',
-                      style: const TextStyle(color: Colors.white)),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface)),
                 ),
                 title: Text(child['displayName'] ?? 'Child',
-                    style: const TextStyle(color: Colors.white)),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface)),
                 trailing: isSelected
-                    ? const Icon(Icons.check_circle, color: AppColors.primary)
+                    ? Icon(Icons.check_circle, color: AppColors.primary)
                     : null,
               );
             }),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
           ],
         ),
       ),
@@ -224,7 +230,9 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
 
     try {
       // Fetch fresh data from Firestore to avoid "fictive" data
-      Map<String, dynamic>? enrichedContext = _childContext != null ? Map<String, dynamic>.from(_childContext!) : null;
+      Map<String, dynamic>? enrichedContext = _childContext != null
+          ? Map<String, dynamic>.from(_childContext!)
+          : null;
       if (enrichedContext != null) {
         final childId = enrichedContext['id'];
         final stats = await FirestoreService().getUsageStats(childId);
@@ -235,14 +243,10 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
         enrichedContext['rules'] = rules;
         enrichedContext['recentAlerts'] = alerts;
       }
-      // Using local Webhook for testing (n8n)
-      final parentId = FirebaseAuth.instance.currentUser?.uid ?? 'unknown_parent';
-      final childId = _selectedChildId ?? 'unknown_child';
-      
-      final response = await _aiWebhookService.sendMessage(
+
+      // Délégation à l'agent IA Guardian (§5 — chat avec contexte temps réel).
+      final response = await _agent.repondreQuestion(
         text,
-        parentId: parentId,
-        childId: childId,
         childContext: enrichedContext,
       );
       if (mounted) {
@@ -317,7 +321,7 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
           stateManager: stateManager,
           onClear: () {
             Navigator.pop(ctx);
-            _openRouterService.clearHistory();
+            _agent.clearChatHistory();
             stateManager.clearChatHistory();
             _sendWelcomeMessage();
           },
@@ -366,26 +370,34 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
               maxChildSize: 0.95,
               builder: (_, scrollCtrl) => Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF13132A),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF13132A)
+                      : Theme.of(context).colorScheme.surface,
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(24)),
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.07)),
+                  border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.07)),
                 ),
                 child: Column(
                   children: [
                     // Header
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                      padding: EdgeInsets.fromLTRB(20, 14, 20, 0),
                       child: Column(children: [
                         Container(
                           width: 40,
                           height: 4,
                           decoration: BoxDecoration(
-                              color: Colors.white24,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.24),
                               borderRadius: BorderRadius.circular(4)),
                         ),
-                        const SizedBox(height: 14),
+                        SizedBox(height: 14),
                         Row(children: [
                           GestureDetector(
                             onTap: () {
@@ -398,32 +410,48 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                               width: 32,
                               height: 32,
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.07),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.07),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.arrow_back_ios_new,
-                                  color: Colors.white60, size: 15),
+                              child: Icon(Icons.arrow_back_ios_new,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.6),
+                                  size: 15),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(session.title,
-                                      style: const TextStyle(
-                                          color: Colors.white,
+                                      style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
                                           fontSize: 15,
                                           fontWeight: FontWeight.w700)),
                                   Text(session.subtitle,
-                                      style: const TextStyle(
-                                          color: Colors.white38, fontSize: 11)),
+                                      style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withValues(alpha: 0.38),
+                                          fontSize: 11)),
                                 ]),
                           ),
                         ]),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         Divider(
-                            color: Colors.white.withValues(alpha: 0.07),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.07),
                             height: 1),
                       ]),
                     ),
@@ -431,7 +459,7 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                     Expanded(
                       child: ListView.builder(
                         controller: scrollCtrl,
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        padding: EdgeInsets.fromLTRB(16, 12, 16, 24),
                         itemCount: session.messages.length,
                         itemBuilder: (_, i) {
                           final msg = session.messages[i];
@@ -439,7 +467,7 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                           final time =
                               '${msg.timestamp.hour}:${msg.timestamp.minute.toString().padLeft(2, '0')}';
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
+                            padding: EdgeInsets.only(bottom: 10),
                             child: Row(
                               mainAxisAlignment: isUser
                                   ? MainAxisAlignment.end
@@ -448,7 +476,7 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                               children: [
                                 if (!isUser) ...[
                                   _aiAvatar(),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                 ],
                                 Flexible(
                                   child: LayoutBuilder(
@@ -456,7 +484,7 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                                       constraints: BoxConstraints(
                                           maxWidth:
                                               constraints.maxWidth * 0.82),
-                                      padding: const EdgeInsets.symmetric(
+                                      padding: EdgeInsets.symmetric(
                                           horizontal: 14, vertical: 10),
                                       decoration: BoxDecoration(
                                         gradient: isUser
@@ -468,7 +496,10 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                                             : null,
                                         color: isUser
                                             ? null
-                                            : const Color(0xFF1E1E35),
+                                            : (Theme.of(context).brightness ==
+                                                    Brightness.dark
+                                                ? const Color(0xFF1E1E35)
+                                                : const Color(0xFFF1F5F9)),
                                         borderRadius: BorderRadius.only(
                                           topLeft: const Radius.circular(16),
                                           topRight: const Radius.circular(16),
@@ -480,7 +511,9 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                                         border: isUser
                                             ? null
                                             : Border.all(
-                                                color: Colors.white
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface
                                                     .withValues(alpha: 0.07)),
                                       ),
                                       child: Column(
@@ -489,23 +522,28 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                                         children: [
                                           isUser
                                               ? Text(msg.text,
-                                                  style: const TextStyle(
-                                                      color: Colors.white,
+                                                  style: TextStyle(
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurface,
                                                       fontSize: 14,
                                                       height: 1.4))
                                               : _buildMarkdownContent(msg.text,
                                                   compact: true),
-                                          const SizedBox(height: 3),
+                                          SizedBox(height: 3),
                                           Text(time,
-                                              style: const TextStyle(
-                                                  color: Colors.white24,
+                                              style: TextStyle(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withValues(alpha: 0.24),
                                                   fontSize: 10)),
                                         ],
                                       ),
                                     ),
                                   ),
                                 ),
-                                if (isUser) const SizedBox(width: 8),
+                                if (isUser) SizedBox(width: 8),
                               ],
                             ),
                           );
@@ -528,10 +566,11 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
     final messages = stateManager.chatHistory;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D1A),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          const LiquidBackground(),
+          if (Theme.of(context).brightness == Brightness.dark)
+            const LiquidBackground(),
           SafeArea(
             child: Column(
               children: [
@@ -543,7 +582,7 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                       ? _buildEmptyState()
                       : ListView.builder(
                           controller: _scrollController,
-                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                          padding: EdgeInsets.fromLTRB(14, 12, 14, 8),
                           itemCount: messages.length + (_isTyping ? 1 : 0),
                           itemBuilder: (context, index) {
                             if (_isTyping && index == messages.length) {
@@ -569,25 +608,39 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
 
   Widget _buildAppBar(AppStateManager stateManager) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(6, 8, 8, 8),
+      padding: EdgeInsets.fromLTRB(6, 8, 8, 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D0D1A).withValues(alpha: 0.9),
+        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.9),
         border: Border(
-            bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
+            bottom: BorderSide(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.05))),
       ),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new,
-                color: Colors.white60, size: 18),
-            onPressed: () => context.pop(),
+            icon: Icon(Icons.arrow_back_ios_new,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.6),
+                size: 18),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/dashboard');
+              }
+            },
           ),
           // Avatar glow
           Container(
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 colors: [AppColors.primary, AppColors.accentTeal],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -601,9 +654,10 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                 )
               ],
             ),
-            child: const Icon(Icons.shield, color: Colors.white, size: 18),
+            child: Icon(Icons.shield,
+                color: Theme.of(context).colorScheme.onSurface, size: 18),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: GestureDetector(
               onTap: _children.length > 1 ? _showChildPicker : null,
@@ -612,16 +666,20 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                 children: [
                   Row(
                     children: [
-                      const Text('Guardian AI',
+                      Text('Guardian AI',
                           style: TextStyle(
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 0.3)),
                       if (_children.length > 1) ...[
-                        const SizedBox(width: 4),
-                        const Icon(Icons.arrow_drop_down,
-                            color: Colors.white30, size: 20),
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_drop_down,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.3),
+                            size: 20),
                       ],
                     ],
                   ),
@@ -644,17 +702,20 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                         ],
                       ),
                     ),
-                    const SizedBox(width: 5),
-                        Text(
-                          _isTyping ? 'AI is writing...' : 'Parental Assistant',
-                          style: TextStyle(
-                            color: _isTyping
-                                ? Colors.orangeAccent.withValues(alpha: 0.8)
-                                : Colors.white54,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                    SizedBox(width: 5),
+                    Text(
+                      _isTyping ? 'AI is writing...' : 'Parental Assistant',
+                      style: TextStyle(
+                        color: _isTyping
+                            ? Colors.orangeAccent.withValues(alpha: 0.8)
+                            : Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.54),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ]),
                 ],
               ),
@@ -668,9 +729,16 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
+                border: Border.all(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.09)),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -681,17 +749,20 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                           height: 2,
                           margin: EdgeInsets.only(bottom: i < 2 ? 3.5 : 0),
                           decoration: BoxDecoration(
-                            color: Colors.white60,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(2),
                           ),
                         )),
               ),
             ),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           if (_childContext != null)
             IconButton(
-              icon: const Icon(Icons.bar_chart_rounded,
+              icon: Icon(Icons.bar_chart_rounded,
                   color: AppColors.accentTeal, size: 20),
               onPressed: () => _analyzeChildActivity(stateManager),
             ),
@@ -705,18 +776,22 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
   // ============================================================
 
   Widget _buildChildSwitcher() {
-    if (_children.isEmpty) return const SizedBox.shrink();
+    if (_children.isEmpty) return SizedBox.shrink();
     return Container(
       height: 90,
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D0D1A).withValues(alpha: 0.5),
+        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.5),
         border: Border(
-            bottom: BorderSide(color: Colors.white.withValues(alpha: 0.03))),
+            bottom: BorderSide(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.03))),
       ),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(horizontal: 16),
         itemCount: _children.length,
         itemBuilder: (context, index) {
           final child = _children[index];
@@ -725,11 +800,11 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
           return GestureDetector(
             onTap: () => _selectChild(child),
             child: Container(
-              margin: const EdgeInsets.only(right: 12),
+              margin: EdgeInsets.only(right: 12),
               child: Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(2),
+                    padding: EdgeInsets.all(2),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
@@ -742,22 +817,35 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                       radius: 18,
                       backgroundColor: isSelected
                           ? AppColors.primary.withValues(alpha: 0.2)
-                          : Colors.white10,
+                          : Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.1),
                       child: Text(
                         child['displayName']?[0] ?? 'C',
                         style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.white60,
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.6),
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     child['displayName'] ?? 'Child',
                     style: TextStyle(
-                      color: isSelected ? AppColors.primary : Colors.white38,
+                      color: isSelected
+                          ? AppColors.primary
+                          : Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.38),
                       fontSize: 10,
                       fontWeight:
                           isSelected ? FontWeight.bold : FontWeight.normal,
@@ -774,8 +862,8 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
 
   Widget _buildChildContextBanner() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(14, 0, 14, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      margin: EdgeInsets.fromLTRB(14, 0, 14, 0),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
         color: AppColors.primary.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(14),
@@ -787,24 +875,29 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
           backgroundColor: AppColors.primary.withValues(alpha: 0.2),
           child: Text(
             (_childContext!['name'] as String)[0].toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.bold,
                 fontSize: 13),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Context: ${_childContext!['name']}',
-              style: const TextStyle(
-                  color: Colors.white,
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 12,
                   fontWeight: FontWeight.w600)),
           Text(
               '${_childContext!['age']} years old · ${_childContext!['deviceStatus']} · 🔋 ${_childContext!['battery']}',
-              style: const TextStyle(color: Colors.white38, fontSize: 10)),
+              style: TextStyle(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.38),
+                  fontSize: 10)),
         ])),
         Icon(Icons.info_outline_rounded,
             color: AppColors.primary.withValues(alpha: 0.5), size: 15),
@@ -819,7 +912,7 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
           width: 68,
           height: 68,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
                 colors: [AppColors.primary, AppColors.accentTeal]),
             shape: BoxShape.circle,
             boxShadow: [
@@ -830,11 +923,17 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
               )
             ],
           ),
-          child: const Icon(Icons.auto_awesome, color: Colors.white, size: 32),
+          child: Icon(Icons.auto_awesome,
+              color: Theme.of(context).colorScheme.onSurface, size: 32),
         ),
-        const SizedBox(height: 16),
-        const Text('Ask me your first question!',
-            style: TextStyle(color: Colors.white38, fontSize: 14)),
+        SizedBox(height: 16),
+        Text('Ask me your first question!',
+            style: TextStyle(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.38),
+                fontSize: 14)),
       ]),
     );
   }
@@ -842,11 +941,11 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
   // ✅ CHATGPT STYLE TYPING INDICATOR
   Widget _buildTypingIndicator() {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16, left: 4),
+      padding: EdgeInsets.only(bottom: 16, left: 4),
       child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: const Color(0xFF1E1E35),
             borderRadius: const BorderRadius.only(
@@ -855,17 +954,24 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
               bottomRight: Radius.circular(18),
               bottomLeft: Radius.circular(4),
             ),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+            border: Border.all(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.07)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Guardian AI is writing',
+              Text('Guardian AI is writing',
                   style: TextStyle(
-                      color: Colors.white70,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.70),
                       fontSize: 14,
                       fontStyle: FontStyle.italic)),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               AnimatedBuilder(
                 animation: _dotAnimations[0],
                 builder: (_, __) => Opacity(
@@ -887,20 +993,20 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
     );
   }
 
-
   Widget _aiAvatar() => Container(
         width: 30,
         height: 30,
         decoration: BoxDecoration(
           gradient:
-              const LinearGradient(colors: [AppColors.primary, AppColors.accentTeal]),
+              LinearGradient(colors: [AppColors.primary, AppColors.accentTeal]),
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
                 color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 8)
           ],
         ),
-        child: const Icon(Icons.auto_awesome, color: Colors.white, size: 15),
+        child: Icon(Icons.auto_awesome,
+            color: Theme.of(context).colorScheme.onSurface, size: 15),
       );
 
   // ============================================================
@@ -924,7 +1030,7 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
         );
       },
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 10),
+        padding: EdgeInsets.only(bottom: 10),
         child: Row(
           mainAxisAlignment:
               isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -939,9 +1045,8 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                     constraints: BoxConstraints(
                         maxWidth: MediaQuery.of(context).size.width * 0.82),
                     padding: isUser
-                        ? const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12)
-                        : const EdgeInsets.fromLTRB(16, 13, 16, 12),
+                        ? EdgeInsets.symmetric(horizontal: 16, vertical: 12)
+                        : EdgeInsets.fromLTRB(16, 13, 16, 12),
                     decoration: BoxDecoration(
                       gradient: isUser
                           ? LinearGradient(
@@ -953,7 +1058,11 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                               end: Alignment.bottomRight,
                             )
                           : null,
-                      color: isUser ? null : const Color(0xFF1E1E35),
+                      color: isUser
+                          ? null
+                          : (Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF1E1E35)
+                              : const Color(0xFFF1F5F9)),
                       borderRadius: BorderRadius.only(
                         topLeft: const Radius.circular(18),
                         topRight: const Radius.circular(18),
@@ -963,7 +1072,10 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                       border: isUser
                           ? null
                           : Border.all(
-                              color: Colors.white.withValues(alpha: 0.07)),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.07)),
                       boxShadow: [
                         BoxShadow(
                           color: isUser
@@ -976,27 +1088,35 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                     ),
                     child: isUser
                         ? Text(msg.text,
-                            style: const TextStyle(
-                                color: Colors.white,
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 15,
                                 height: 1.45))
                         : _buildMarkdownContent(msg.text),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(mainAxisSize: MainAxisSize.min, children: [
                     Text(time,
-                        style: const TextStyle(
-                            color: Colors.white24, fontSize: 10)),
+                        style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.24),
+                            fontSize: 10)),
                     if (isUser) ...[
-                      const SizedBox(width: 4),
-                      const Icon(Icons.done_all_rounded,
-                          size: 13, color: Colors.white30),
+                      SizedBox(width: 4),
+                      Icon(Icons.done_all_rounded,
+                          size: 13,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.3)),
                     ],
                   ]),
                 ],
               ),
             ),
-            if (isUser) const SizedBox(width: 8),
+            if (isUser) SizedBox(width: 8),
           ],
         ),
       ),
@@ -1022,8 +1142,13 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
 
       if (RegExp(r'^-{3,}$').hasMatch(trimmed)) {
         widgets.add(Padding(
-          padding: const EdgeInsets.symmetric(vertical: 7),
-          child: Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
+          padding: EdgeInsets.symmetric(vertical: 7),
+          child: Divider(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.1),
+              height: 1),
         ));
         continue;
       }
@@ -1036,7 +1161,9 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
           padding: EdgeInsets.only(top: compact ? 6 : 9, bottom: 3),
           child: Text(title,
               style: TextStyle(
-                color: level == 1 ? Colors.white : AppColors.accentTeal,
+                color: level == 1
+                    ? Theme.of(context).colorScheme.onSurface
+                    : AppColors.accentTeal,
                 fontSize: level == 1
                     ? fs + 2
                     : level == 2
@@ -1052,13 +1179,13 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
       final bulletMatch = RegExp(r'^[•\*\-]\s+(.+)').firstMatch(trimmed);
       if (bulletMatch != null) {
         widgets.add(Padding(
-          padding: const EdgeInsets.only(bottom: 3, left: 2),
+          padding: EdgeInsets.only(bottom: 3, left: 2),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(
               width: 5,
               height: 5,
-              margin: const EdgeInsets.only(top: 8, right: 9),
-              decoration: const BoxDecoration(
+              margin: EdgeInsets.only(top: 8, right: 9),
+              decoration: BoxDecoration(
                   color: AppColors.primary, shape: BoxShape.circle),
             ),
             Expanded(child: _inlineText(bulletMatch.group(1)!, fs)),
@@ -1070,19 +1197,19 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
       final numMatch = RegExp(r'^(\d+)[\.]\s+(.+)').firstMatch(trimmed);
       if (numMatch != null) {
         widgets.add(Padding(
-          padding: const EdgeInsets.only(bottom: 4, left: 2),
+          padding: EdgeInsets.only(bottom: 4, left: 2),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(
               width: 20,
               height: 20,
-              margin: const EdgeInsets.only(top: 2, right: 8),
+              margin: EdgeInsets.only(top: 2, right: 8),
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Center(
                   child: Text(numMatch.group(1)!,
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: AppColors.primary,
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700))),
@@ -1094,7 +1221,7 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
       }
 
       widgets.add(Padding(
-        padding: const EdgeInsets.only(bottom: 1),
+        padding: EdgeInsets.only(bottom: 1),
         child: _inlineText(trimmed, fs),
       ));
     }
@@ -1113,7 +1240,7 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
         RegExp(r'\*{3}(.+?)\*{3}|\*{2}(.+?)\*{2}|\*(.+?)\*|`(.+?)`');
     int cursor = 0;
     final base = TextStyle(
-        color: Colors.white.withValues(alpha: 0.88),
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.88),
         fontSize: fontSize,
         height: 1.5);
 
@@ -1125,14 +1252,15 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
         spans.add(TextSpan(
             text: m.group(1),
             style: base.copyWith(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w800,
                 fontStyle: FontStyle.italic)));
       } else if (m.group(2) != null) {
         spans.add(TextSpan(
             text: m.group(2),
             style: base.copyWith(
-                color: Colors.white, fontWeight: FontWeight.w700)));
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w700)));
       } else if (m.group(3) != null) {
         spans.add(TextSpan(
             text: m.group(3),
@@ -1140,8 +1268,8 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
       } else if (m.group(4) != null) {
         spans.add(WidgetSpan(
             child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-          margin: const EdgeInsets.symmetric(horizontal: 1),
+          padding: EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+          margin: EdgeInsets.symmetric(horizontal: 1),
           decoration: BoxDecoration(
             color: AppColors.primary.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(4),
@@ -1172,26 +1300,37 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
       height: 40,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 2),
         itemCount: _quickSuggestions.length,
         itemBuilder: (context, index) {
           final s = _quickSuggestions[index];
           return GestureDetector(
             onTap: () => _sendMessage(stateManager, quickMessage: s['text']),
             child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              margin: EdgeInsets.only(right: 8),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                border: Border.all(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.1)),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(s['icon']!, style: const TextStyle(fontSize: 13)),
-                const SizedBox(width: 5),
+                Text(s['icon']!, style: TextStyle(fontSize: 13)),
+                SizedBox(width: 5),
                 Text(s['text']!,
-                    style:
-                        const TextStyle(color: Colors.white54, fontSize: 12)),
+                    style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.54),
+                        fontSize: 12)),
               ]),
             ),
           );
@@ -1202,11 +1341,16 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
 
   Widget _buildInputArea(AppStateManager stateManager) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      padding: EdgeInsets.fromLTRB(14, 10, 14, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D0D1A).withValues(alpha: 0.98),
+        color:
+            Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.98),
         border: Border(
-            top: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
+            top: BorderSide(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.05))),
       ),
       child: SafeArea(
         child: Row(children: [
@@ -1215,13 +1359,22 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
               decoration: BoxDecoration(
                 color: const Color(0xFF1E1E35),
                 borderRadius: BorderRadius.circular(26),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                border: Border.all(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.1)),
               ),
               child: TextField(
                 controller: _messageController,
                 readOnly: _isTyping,
                 style: TextStyle(
-                    color: _isTyping ? Colors.white54 : Colors.white,
+                    color: _isTyping
+                        ? Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.54)
+                        : Theme.of(context).colorScheme.onSurface,
                     fontSize: 15),
                 maxLines: 4,
                 minLines: 1,
@@ -1232,21 +1385,30 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
                       ? 'Generation in progress...'
                       : 'Send a message to Guardian AI...',
                   hintStyle: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.3), fontSize: 14),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.3),
+                      fontSize: 14),
                   border: InputBorder.none,
                   contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                      EdgeInsets.symmetric(horizontal: 18, vertical: 13),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: _isTyping ? Colors.white10 : AppColors.primary,
+              color: _isTyping
+                  ? Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.1)
+                  : AppColors.primary,
               shape: BoxShape.circle,
               boxShadow: _isTyping
                   ? null
@@ -1263,7 +1425,12 @@ class _HubChatAiScreenState extends State<HubChatAiScreen>
               onPressed: _isTyping ? null : () => _sendMessage(stateManager),
               icon: Icon(
                 _isTyping ? Icons.stop_rounded : Icons.arrow_upward_rounded,
-                color: _isTyping ? Colors.white54 : Colors.white,
+                color: _isTyping
+                    ? Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.54)
+                    : Theme.of(context).colorScheme.onSurface,
                 size: 22,
               ),
             ),
@@ -1333,42 +1500,51 @@ class _HistoryPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF13132A),
+        color: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF13132A)
+            : Theme.of(context).colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+        border: Border.all(
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.07)),
       ),
       child: Column(children: [
         // ── Handle + Header ──
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+          padding: EdgeInsets.fromLTRB(20, 14, 20, 0),
           child: Column(children: [
             // Handle (3 lines)
             Container(
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.24),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Row(children: [
               Container(
                 width: 34,
                 height: 34,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                       colors: [AppColors.primary, AppColors.accentTeal]),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.history_rounded,
-                    color: Colors.white, size: 17),
+                child: Icon(Icons.history_rounded,
+                    color: Theme.of(context).colorScheme.onSurface, size: 17),
               ),
-              const SizedBox(width: 10),
-              const Expanded(
+              SizedBox(width: 10),
+              Expanded(
                 child: Text('History',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 17,
                         fontWeight: FontWeight.w700)),
               ),
@@ -1377,15 +1553,14 @@ class _HistoryPanel extends StatelessWidget {
                 GestureDetector(
                   onTap: onClear,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                       border:
                           Border.all(color: Colors.red.withValues(alpha: 0.2)),
                     ),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.delete_outline_rounded,
                           color: Colors.redAccent, size: 14),
                       SizedBox(width: 4),
@@ -1396,8 +1571,13 @@ class _HistoryPanel extends StatelessWidget {
                   ),
                 ),
             ]),
-            const SizedBox(height: 14),
-            Divider(color: Colors.white.withValues(alpha: 0.07), height: 1),
+            SizedBox(height: 14),
+            Divider(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.07),
+                height: 1),
           ]),
         ),
 
@@ -1410,18 +1590,29 @@ class _HistoryPanel extends StatelessWidget {
                       children: [
                         Icon(Icons.chat_bubble_outline_rounded,
                             size: 40,
-                            color: Colors.white.withValues(alpha: 0.15)),
-                        const SizedBox(height: 12),
-                        const Text('No conversations yet.',
-                            style:
-                                TextStyle(color: Colors.white38, fontSize: 14)),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.15)),
+                        SizedBox(height: 12),
+                        Text('No conversations yet.',
+                            style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.38),
+                                fontSize: 14)),
                       ]),
                 )
               : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, 32),
                   itemCount: sessions.length,
                   separatorBuilder: (_, __) => Divider(
-                      color: Colors.white.withValues(alpha: 0.05), height: 1),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.05),
+                      height: 1),
                   itemBuilder: (_, i) => _SessionTile(
                     session: sessions[i],
                     onTap: () => onSessionTap(sessions[i]),
@@ -1446,7 +1637,7 @@ class _SessionTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 4),
+        padding: EdgeInsets.symmetric(vertical: 13, horizontal: 4),
         child: Row(children: [
           // Icône bulle
           Container(
@@ -1458,9 +1649,9 @@ class _SessionTile extends StatelessWidget {
               border:
                   Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
             ),
-            child: const Icon(Icons.chat_rounded, color: AppColors.primary, size: 20),
+            child: Icon(Icons.chat_rounded, color: AppColors.primary, size: 20),
           ),
-          const SizedBox(width: 13),
+          SizedBox(width: 13),
           // Titre + sous-titre
           Expanded(
             child:
@@ -1469,40 +1660,49 @@ class _SessionTile extends StatelessWidget {
                 session.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 14.5,
                   fontWeight: FontWeight.w600,
                   height: 1.3,
                 ),
               ),
-              const SizedBox(height: 3),
+              SizedBox(height: 3),
               Text(
                 session.subtitle,
                 style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.38), fontSize: 12),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.38),
+                    fontSize: 12),
               ),
             ]),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           // Badge nombre de messages + flèche
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              padding: EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 '${session.messageCount} msg',
-                style: const TextStyle(
+                style: TextStyle(
                     color: AppColors.primary,
                     fontSize: 10,
                     fontWeight: FontWeight.w600),
               ),
             ),
-            const SizedBox(height: 6),
-            const Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 18),
+            SizedBox(height: 6),
+            Icon(Icons.chevron_right_rounded,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.24),
+                size: 18),
           ]),
         ]),
       ),

@@ -14,7 +14,7 @@ class CinematicSplashScreen extends StatelessWidget {
       if (context.mounted) context.go('/onboarding');
     });
 
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: Colors.black,
       body: Center(
         child: Column(
@@ -28,7 +28,7 @@ class CinematicSplashScreen extends StatelessWidget {
             Text(
               'Get ready...',
               style: TextStyle(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 18,
                 letterSpacing: 2,
               ),

@@ -11,21 +11,21 @@ class ProductPageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: Icon(Icons.close,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
-                  const Center(
+                  Center(
                     child: Column(
                       children: [
                         Icon(Icons.shield, color: AppColors.primary, size: 120),
@@ -33,7 +33,7 @@ class ProductPageScreen extends StatelessWidget {
                         Text(
                           'THE GUARDIAN',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 32,
                             fontWeight: FontWeight.bold,
                           ),
@@ -43,7 +43,8 @@ class ProductPageScreen extends StatelessWidget {
                           'The ultimate protection for your family.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: AppColors.textGray400,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 18,
                           ),
                         ),

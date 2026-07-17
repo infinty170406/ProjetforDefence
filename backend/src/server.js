@@ -4,6 +4,7 @@ import cors from 'cors';
 import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app';
 import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import { getMessaging } from 'firebase-admin/messaging';
 
 const required = (name) => {
   const value = process.env[name];
@@ -104,22 +105,46 @@ const createFreeTrial = (now) => ({
   features: {}, updatedAt: FieldValue.serverTimestamp(),
 });
 
-async function requireUser(request, response, next) {
+const apiError = (status, code, message) => {
+  const error = new Error(message);
+  error.status = status;
+  error.code = code;
+  return error;
+};
+
+async function authenticateRequest(request, response, next, { allowAnonymous }) {
   const header = request.get('authorization');
   if (!header?.startsWith('Bearer ')) {
-    return response.status(401).json({ error: 'Authentification requise.' });
+    return response.status(401).json({
+      error: 'Authentification requise.',
+      code: 'unauthenticated',
+    });
   }
 
   try {
     const token = await auth.verifyIdToken(header.substring('Bearer '.length));
-    if (token.firebase?.sign_in_provider === 'anonymous') {
-      return response.status(403).json({ error: 'Un compte parent est requis.' });
+    if (!allowAnonymous && token.firebase?.sign_in_provider === 'anonymous') {
+      return response.status(403).json({
+        error: 'Un compte parent est requis.',
+        code: 'permission-denied',
+      });
     }
     request.user = token;
     return next();
   } catch (_) {
-    return response.status(401).json({ error: 'Session invalide ou expirée.' });
+    return response.status(401).json({
+      error: 'Session invalide ou expirée.',
+      code: 'unauthenticated',
+    });
   }
+}
+
+async function requireAuthenticatedUser(request, response, next) {
+  return authenticateRequest(request, response, next, { allowAnonymous: true });
+}
+
+async function requireUser(request, response, next) {
+  return authenticateRequest(request, response, next, { allowAnonymous: false });
 }
 
 async function sendEmailJsOtp(email, code) {
@@ -342,10 +367,408 @@ app.post('/api/v1/billing/webhooks/sharepay', async (request, response, next) =>
   }
 });
 
+
+// ---------------------------------------------------------------------------
+// Parent / child secure API
+// These routes replace Firebase callable functions so the application can stay
+// on Firebase Spark while the authenticated backend is hosted on Render.
+// ---------------------------------------------------------------------------
+
+const PAIRING_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
+const PARENT_INVITE_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{6}$/;
+const IDENTIFIER_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+const ALERT_EVENT_ID_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
+const INVITE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const CHILD_ALERT_TYPES = new Set([
+  'SOS', 'BLOCKED_APP', 'TIME_LIMIT', 'OUTSIDE_HOURS',
+  'GEOFENCE_ENTER', 'GEOFENCE_EXIT', 'APP_TIME_LIMIT',
+  'KEYWORD_DETECTED', 'NOTIFICATION_RISK', 'GPS_DISABLED',
+]);
+const ALERT_TITLES = {
+  SOS: 'Alerte SOS',
+  BLOCKED_APP: 'Application bloquée',
+  TIME_LIMIT: 'Limite globale atteinte',
+  OUTSIDE_HOURS: 'Hors plage horaire',
+  GEOFENCE_ENTER: 'Entrée en zone',
+  GEOFENCE_EXIT: 'Sortie de zone',
+  APP_TIME_LIMIT: "Limite d'application atteinte",
+  KEYWORD_DETECTED: 'Mot-clé détecté',
+  NOTIFICATION_RISK: 'Notification à risque',
+  GPS_DISABLED: 'Localisation désactivée',
+};
+
+const boundedString = (value, maxLength, fallback = '') =>
+  typeof value === 'string' ? value.trim().slice(0, maxLength) : fallback;
+
+const finiteNumber = (value, min, max) =>
+  typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
+    ? value
+    : null;
+
+const newInviteCode = () => Array.from(
+  crypto.randomBytes(6),
+  (byte) => INVITE_ALPHABET[byte % INVITE_ALPHABET.length],
+).join('');
+
+async function assertPairedChildDevice(user, parentId, childId) {
+  if (!IDENTIFIER_PATTERN.test(parentId) || !IDENTIFIER_PATTERN.test(childId)) {
+    throw apiError(400, 'invalid-argument', 'Identifiants de liaison invalides.');
+  }
+  const childRef = db.doc(`parents/${parentId}/children/${childId}`);
+  const childSnap = await childRef.get();
+  const child = childSnap.data();
+  if (!childSnap.exists || child?.isLinked !== true || child?.childDeviceUid !== user.uid) {
+    throw apiError(403, 'permission-denied', "Cet appareil n'est pas associé à cet enfant.");
+  }
+  return childRef;
+}
+
+async function notifyParent(parentId, childId, alertId, alert) {
+  const parentSnap = await parentDocument(parentId).get();
+  if (!parentSnap.exists) return 0;
+
+  const parent = parentSnap.data() ?? {};
+  const rawTokens = Array.isArray(parent.fcmTokens)
+    ? parent.fcmTokens
+    : (typeof parent.fcmToken === 'string' ? [parent.fcmToken] : []);
+  const tokens = [...new Set(rawTokens)]
+    .filter((token) => typeof token === 'string' && token.length > 20)
+    .slice(0, 500);
+  if (tokens.length === 0) return 0;
+
+  const result = await getMessaging().sendEachForMulticast({
+    tokens,
+    notification: {
+      title: alert.title || `Guardian — ${alert.type || 'Alerte'}`,
+      body: alert.detail || alert.description || "Nouvelle alerte de l'enfant",
+    },
+    data: {
+      alertId,
+      type: alert.type || 'unknown',
+      childId,
+      severity: alert.severity || 'INFO',
+    },
+  });
+  return result.successCount;
+}
+
+app.post('/api/v1/family/invites', requireUser, async (request, response, next) => {
+  try {
+    const parentRef = parentDocument(request.user.uid);
+    if (!(await parentRef.get()).exists) {
+      throw apiError(412, 'failed-precondition', 'Profil parent introuvable.');
+    }
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const code = newInviteCode();
+      const inviteRef = db.doc(`parent_invites/${code}`);
+      try {
+        await db.runTransaction(async (transaction) => {
+          if ((await transaction.get(inviteRef)).exists) throw new Error('collision');
+          transaction.create(inviteRef, {
+            ownerUid: request.user.uid,
+            parentId: request.user.uid,
+            status: 'pending',
+            createdAt: FieldValue.serverTimestamp(),
+            expiresAt: Timestamp.fromMillis(Date.now() + 48 * 60 * 60 * 1000),
+          });
+        });
+        return response.status(201).json({ code, expiresInHours: 48 });
+      } catch (error) {
+        if (error.message !== 'collision') throw error;
+      }
+    }
+    throw apiError(409, 'aborted', "Impossible de créer l'invitation.");
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/v1/family/invites/accept', requireUser, async (request, response, next) => {
+  try {
+    const code = boundedString(request.body?.code, 6).toUpperCase();
+    if (!PARENT_INVITE_CODE_PATTERN.test(code)) {
+      throw apiError(400, 'invalid-argument', "Code d'invitation invalide.");
+    }
+
+    const inviteRef = db.doc(`parent_invites/${code}`);
+    await db.runTransaction(async (transaction) => {
+      const inviteSnap = await transaction.get(inviteRef);
+      const invite = inviteSnap.data();
+      const expiresAt = invite?.expiresAt;
+      if (!inviteSnap.exists) throw apiError(404, 'not-found', 'Invitation introuvable.');
+      if (invite?.status !== 'pending') {
+        throw apiError(412, 'failed-precondition', "L'invitation n'est plus disponible.");
+      }
+      if (!(expiresAt instanceof Timestamp) || expiresAt.toMillis() <= Date.now()) {
+        throw apiError(410, 'deadline-exceeded', "L'invitation a expiré.");
+      }
+      if (invite.ownerUid === request.user.uid || typeof invite.parentId !== 'string') {
+        throw apiError(403, 'permission-denied', 'Ce compte ne peut pas accepter cette invitation.');
+      }
+
+      transaction.update(inviteRef, {
+        usedBy: request.user.uid,
+        status: 'accepted',
+        acceptedAt: FieldValue.serverTimestamp(),
+      });
+      transaction.set(db.doc(`parents/${invite.parentId}/co_parents/${request.user.uid}`), {
+        uid: request.user.uid,
+        role: 'co_parent',
+        addedAt: FieldValue.serverTimestamp(),
+      });
+    });
+    return response.json({ success: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/v1/device/pair', requireAuthenticatedUser, async (request, response, next) => {
+  try {
+    const token = boundedString(request.body?.token, 128);
+    if (!PAIRING_TOKEN_PATTERN.test(token)) {
+      throw apiError(400, 'invalid-argument', 'Jeton de liaison invalide.');
+    }
+
+    const matches = await db.collectionGroup('children')
+      .where('invitationToken', '==', token)
+      .limit(2)
+      .get();
+    if (matches.size !== 1) {
+      throw apiError(404, 'not-found', 'Jeton de liaison invalide ou expiré.');
+    }
+
+    const childRef = matches.docs[0].ref;
+    const parentId = childRef.parent.parent.id;
+    const childId = childRef.id;
+
+    await db.runTransaction(async (transaction) => {
+      const childSnap = await transaction.get(childRef);
+      const child = childSnap.data();
+      const expiresAt = child?.invitationExpiresAt;
+      if (!childSnap.exists || child?.invitationToken !== token || child?.isLinked === true) {
+        throw apiError(412, 'failed-precondition', 'Ce jeton de liaison a déjà été utilisé.');
+      }
+      if (!(expiresAt instanceof Timestamp) || expiresAt.toMillis() <= Date.now()) {
+        throw apiError(410, 'deadline-exceeded', 'Le jeton de liaison a expiré.');
+      }
+      if (child?.parentId !== parentId) {
+        throw apiError(412, 'failed-precondition', "Propriétaire de l'enfant invalide.");
+      }
+
+      transaction.update(childRef, {
+        isLinked: true,
+        childDeviceUid: request.user.uid,
+        deviceStatus: 'ONLINE',
+        lastHeartbeat: FieldValue.serverTimestamp(),
+        pairedAt: FieldValue.serverTimestamp(),
+        invitationToken: FieldValue.delete(),
+        invitationExpiresAt: FieldValue.delete(),
+      });
+    });
+
+    return response.json({ parentId, childId });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/v1/device/alerts', requireAuthenticatedUser, async (request, response, next) => {
+  try {
+    const parentId = boundedString(request.body?.parentId, 128);
+    const childId = boundedString(request.body?.childId, 128);
+    const eventId = boundedString(request.body?.eventId, 128);
+    const type = boundedString(request.body?.type, 40).toUpperCase();
+    const detail = boundedString(request.body?.detail, 500);
+    if (!ALERT_EVENT_ID_PATTERN.test(eventId) || !CHILD_ALERT_TYPES.has(type)) {
+      throw apiError(400, 'invalid-argument', "Données d'alerte invalides.");
+    }
+    await assertPairedChildDevice(request.user, parentId, childId);
+
+    const severityCandidate = boundedString(request.body?.severity, 16).toUpperCase();
+    const severity = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'].includes(severityCandidate)
+      ? severityCandidate
+      : (type === 'SOS' ? 'CRITICAL' : 'HIGH');
+    const genre = boundedString(request.body?.genre, 32, 'restriction');
+    const extra = request.body?.extra && typeof request.body.extra === 'object'
+      ? request.body.extra
+      : {};
+
+    const alert = {
+      childId,
+      type,
+      title: ALERT_TITLES[type] || 'Alerte Guardian',
+      description: detail,
+      detail,
+      message: detail,
+      severity,
+      genre,
+      status: 'unread',
+      read: false,
+      ai_processed: false,
+      timestamp: FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
+    };
+
+    const latitude = finiteNumber(extra.latitude, -90, 90);
+    const longitude = finiteNumber(extra.longitude, -180, 180);
+    const battery = finiteNumber(extra.battery, -1, 100);
+    const score = finiteNumber(extra.score, 0, 100);
+    if (latitude !== null) alert.latitude = latitude;
+    if (longitude !== null) alert.longitude = longitude;
+    if (battery !== null) alert.battery = Math.round(battery);
+    if (score !== null) alert.score = Math.round(score);
+    for (const [key, maxLength] of Object.entries({
+      appName: 120,
+      appPackage: 180,
+      sender: 160,
+      category: 80,
+      reason: 300,
+    })) {
+      const value = boundedString(extra[key], maxLength);
+      if (value) alert[key] = value;
+    }
+
+    const alertRef = db.doc(
+      `parents/${parentId}/children/${childId}/alerts/notifications/items/${eventId}`,
+    );
+    let created = false;
+    await db.runTransaction(async (transaction) => {
+      if ((await transaction.get(alertRef)).exists) return;
+      transaction.create(alertRef, alert);
+      created = true;
+    });
+
+    let notifiedDevices = 0;
+    if (created) {
+      try {
+        notifiedDevices = await notifyParent(parentId, childId, eventId, alert);
+      } catch (notificationError) {
+        console.error('Parent notification failed:', notificationError?.message ?? 'unknown');
+      }
+    }
+
+    return response.json({ success: true, alertId: eventId, created, notifiedDevices });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/v1/device/metadata', requireAuthenticatedUser, async (request, response, next) => {
+  try {
+    const parentId = boundedString(request.body?.parentId, 128);
+    const childId = boundedString(request.body?.childId, 128);
+    const childRef = await assertPairedChildDevice(request.user, parentId, childId);
+
+    const update = {};
+    const batteryLevel = finiteNumber(request.body?.batteryLevel, 0, 100);
+    if (batteryLevel !== null) update.batteryLevel = Math.round(batteryLevel);
+    if (typeof request.body?.isCharging === 'boolean') update.isCharging = request.body.isCharging;
+
+    const latitude = finiteNumber(request.body?.latitude, -90, 90);
+    const longitude = finiteNumber(request.body?.longitude, -180, 180);
+    if ((latitude === null) !== (longitude === null)) {
+      throw apiError(400, 'invalid-argument', 'Latitude et longitude doivent être envoyées ensemble.');
+    }
+    if (latitude !== null && longitude !== null) {
+      update.lastLatitude = latitude;
+      update.lastLongitude = longitude;
+      update.lastLocationUpdate = FieldValue.serverTimestamp();
+    }
+    if (Object.keys(update).length === 0) {
+      throw apiError(400, 'invalid-argument', 'Aucune métadonnée prise en charge.');
+    }
+
+    await childRef.update(update);
+    return response.json({ success: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/v1/device/notifications/analyze', requireAuthenticatedUser, async (request, response, next) => {
+  try {
+    const parentId = boundedString(request.body?.parentId, 128);
+    const childId = boundedString(request.body?.childId, 128);
+    await assertPairedChildDevice(request.user, parentId, childId);
+
+    const apiKey = process.env.GEMINI_API_KEY ?? '';
+    const model = process.env.GEMINI_MODEL ?? '';
+    if (!apiKey || !/^[A-Za-z0-9._-]{1,80}$/.test(model)) {
+      return response.json({
+        risk: 'SAFE', score: 0, category: 'NONE', blocked: false,
+        confidence: 0, reason: "L'analyse serveur n'est pas configurée.",
+      });
+    }
+
+    const application = boundedString(request.body?.application, 120);
+    const sender = boundedString(request.body?.sender, 160);
+    const conversation = boundedString(request.body?.conversation, 200);
+    const message = boundedString(request.body?.message, 1000);
+    if (!message) {
+      return response.json({
+        risk: 'SAFE', score: 0, category: 'NONE', blocked: false,
+        confidence: 1, reason: 'Aucun message à analyser.',
+      });
+    }
+
+    const prompt = [
+      'Classify this child-device notification for digital-safety risk.',
+      'Return JSON only with risk, score, category, blocked, confidence, reason.',
+      `Application: ${application}`,
+      `Sender: ${sender}`,
+      `Conversation: ${conversation}`,
+      `Message: ${message}`,
+    ].join('\n');
+
+    try {
+      const providerResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: 'application/json' },
+          }),
+        },
+      );
+      if (!providerResponse.ok) throw new Error(`provider-status-${providerResponse.status}`);
+      const payload = await providerResponse.json();
+      const raw = payload?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const parsed = JSON.parse(raw || '{}');
+      const candidate = boundedString(parsed.risk, 16).toUpperCase();
+      const risk = ['SAFE', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(candidate)
+        ? candidate
+        : 'SAFE';
+      return response.json({
+        risk,
+        score: Math.max(0, Math.min(100, Number(parsed.score) || 0)),
+        category: boundedString(String(parsed.category || 'NONE').toUpperCase(), 80, 'NONE'),
+        blocked: parsed.blocked === true,
+        confidence: Math.max(0, Math.min(1, Number(parsed.confidence) || 0)),
+        reason: boundedString(parsed.reason, 300, 'Analyse terminée.'),
+      });
+    } catch (providerError) {
+      console.error('Notification analysis failed:', providerError?.message ?? 'unknown');
+      return response.json({
+        risk: 'SAFE', score: 0, category: 'NONE', blocked: false,
+        confidence: 0, reason: 'Analyse temporairement indisponible.',
+      });
+    }
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.use((error, _, response, __) => {
   const status = Number(error.status) || 500;
   if (status >= 500) console.error(error);
-  return response.status(status).json({ error: status >= 500 ? 'Erreur de service.' : error.message });
+  return response.status(status).json({
+    error: status >= 500 ? 'Erreur de service.' : error.message,
+    code: error.code ?? (status >= 500 ? 'internal' : 'request-failed'),
+  });
 });
 
 const port = Number(process.env.PORT ?? 3000);

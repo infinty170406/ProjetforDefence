@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/services/child_monitor_service.dart';
+import '../../core/services/child_enforcement_service.dart';
 import '../../core/services/storage_service.dart';
 
 class ChildDashboardScreen extends StatefulWidget {
@@ -34,6 +35,10 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
     _isChildMode = pairing['mode'] == 'child';
     // Store parentId for use by StreamBuilders and _loadStats.
     _parentId = pairing['parentId'];
+
+    if (_isChildMode) {
+      await ChildEnforcementService().start();
+    }
 
     if (widget.child != null) {
       // Parent app opened this screen: parentId comes from Firebase Auth.
@@ -72,7 +77,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
       setState(() => _isLoading = false);
     }
   }
-
 
   Future<void> _loadStats() async {
     final child = _childData ?? widget.child;
@@ -131,7 +135,6 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
     final name = child['displayName'] ?? 'Child';
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -141,121 +144,193 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
               color: AppColors.primary,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => context.pop()),
-                        const Spacer(),
+                        IconButton(
+                            icon: Icon(Icons.arrow_back,
+                                color: Theme.of(context).colorScheme.onSurface),
+                            onPressed: () => context.pop()),
+                        Spacer(),
                         if (!_isChildMode)
                           IconButton(
-                            icon: const Icon(Icons.settings_outlined, color: Colors.white),
-                            onPressed: () => context.push('/child/config', extra: child),
+                            icon: Icon(Icons.settings_outlined,
+                                color: Theme.of(context).colorScheme.onSurface),
+                            onPressed: () =>
+                                context.push('/child/config', extra: child),
                           ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(name, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 8),
+                    Text(name,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold)),
+                    SizedBox(height: 4),
                     StreamBuilder<String>(
-                      stream: ChildMonitorService().watchDeviceStatus(childId, parentId: _parentId),
+                      stream: ChildMonitorService()
+                          .watchDeviceStatus(childId, parentId: _parentId),
                       builder: (_, s) {
                         final online = (s.data ?? 'OFFLINE') == 'ONLINE';
                         final lastSync = _usageStats?['lastSync'];
-                        
+
                         return Row(
                           children: [
-                            Container(width: 8, height: 8, decoration: BoxDecoration(
-                              color: online ? Colors.green : Colors.red, shape: BoxShape.circle)),
-                            const SizedBox(width: 6),
-                            Text(online ? 'Online' : 'Offline', style: TextStyle(color: online ? Colors.green : Colors.red, fontSize: 13)),
-                            const SizedBox(width: 12),
-                            const Text('•', style: TextStyle(color: Colors.white24)),
-                            const SizedBox(width: 12),
-                            const Icon(Icons.sync, color: Colors.white24, size: 12),
-                            const SizedBox(width: 4),
+                            Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                    color: online ? Colors.green : Colors.red,
+                                    shape: BoxShape.circle)),
+                            SizedBox(width: 6),
+                            Text(online ? 'Online' : 'Offline',
+                                style: TextStyle(
+                                    color: online ? Colors.green : Colors.red,
+                                    fontSize: 13)),
+                            SizedBox(width: 12),
+                            Text('•',
+                                style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.24))),
+                            SizedBox(width: 12),
+                            Icon(Icons.sync,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.24),
+                                size: 12),
+                            SizedBox(width: 4),
                             Text(
                               'Last sync: ${_timeAgo(lastSync)}',
-                              style: const TextStyle(color: AppColors.textGray400, fontSize: 13),
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                  fontSize: 13),
                             ),
                           ],
                         );
                       },
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
 
                     // Screen Time
                     GlassCard(
-                      padding: const EdgeInsets.all(20),
-                      child: _isLoading 
-                        ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Row(
-                                children: [
-                                  Icon(Icons.timer_outlined, color: AppColors.primary, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('Screen Time Today', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              Builder(builder: (context) {
-                                final used = _usageStats?['totalMinutes'] ?? 0;
-                                final limit = child['dailyLimitMinutes'] ?? 120;
-                                final progress = (used / limit).clamp(0.0, 1.0);
-                                return Column(
+                      padding: EdgeInsets.all(20),
+                      child: _isLoading
+                          ? Center(
+                              child: CircularProgressIndicator(
+                                  color: AppColors.primary))
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
                                   children: [
-                                    LinearProgressIndicator(
-                                      value: progress,
-                                      backgroundColor: Colors.white10,
-                                      valueColor: AlwaysStoppedAnimation(progress >= 1.0 ? Colors.red : AppColors.primary),
-                                      minHeight: 8,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(_fmtMin(used), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                        Text('of ${_fmtMin(limit)}', style: const TextStyle(color: AppColors.textGray400)),
-                                      ],
-                                    ),
+                                    Icon(Icons.timer_outlined,
+                                        color: AppColors.primary, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('Screen Time Today',
+                                        style: TextStyle(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
+                                            fontWeight: FontWeight.bold)),
                                   ],
-                                );
-                              }),
-                            ],
-                          ),
+                                ),
+                                SizedBox(height: 16),
+                                Builder(builder: (context) {
+                                  final used =
+                                      _usageStats?['totalMinutes'] ?? 0;
+                                  final limit =
+                                      child['dailyLimitMinutes'] ?? 120;
+                                  final progress =
+                                      (used / limit).clamp(0.0, 1.0);
+                                  return Column(
+                                    children: [
+                                      LinearProgressIndicator(
+                                        value: progress,
+                                        backgroundColor: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.10),
+                                        valueColor: AlwaysStoppedAnimation(
+                                            progress >= 1.0
+                                                ? Colors.red
+                                                : AppColors.primary),
+                                        minHeight: 8,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(_fmtMin(used),
+                                              style: TextStyle(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface,
+                                                  fontWeight: FontWeight.bold)),
+                                          Text('of ${_fmtMin(limit)}',
+                                              style: TextStyle(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant)),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                }),
+                              ],
+                            ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
 
                     // Last Location
                     StreamBuilder<Map<String, dynamic>?>(
-                      stream: ChildMonitorService().watchLocation(childId, parentId: _parentId),
+                      stream: ChildMonitorService()
+                          .watchLocation(childId, parentId: _parentId),
                       builder: (_, snap) {
                         final loc = snap.data;
                         return GlassCard(
-                          padding: const EdgeInsets.all(20),
+                          padding: EdgeInsets.all(20),
                           child: Row(
                             children: [
-                              const Icon(Icons.location_on_outlined, color: AppColors.accentTeal, size: 24),
-                              const SizedBox(width: 12),
+                              Icon(Icons.location_on_outlined,
+                                  color: AppColors.accentTeal, size: 24),
+                              SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('Last Location', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                    Text('Last Location',
+                                        style: TextStyle(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
+                                            fontWeight: FontWeight.bold)),
                                     Text(
-                                      loc == null ? 'No location data' : '${loc['lat']?.toStringAsFixed(4)}, ${loc['lng']?.toStringAsFixed(4)}',
-                                      style: const TextStyle(color: AppColors.textGray400, fontSize: 13),
+                                      loc == null
+                                          ? 'No location data'
+                                          : '${loc['lat']?.toStringAsFixed(4)}, ${loc['lng']?.toStringAsFixed(4)}',
+                                      style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                          fontSize: 13),
                                     ),
                                   ],
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.map_outlined, color: AppColors.primary),
+                                icon: Icon(Icons.map_outlined,
+                                    color: AppColors.primary),
                                 onPressed: () => context.push('/map'),
                               ),
                             ],
@@ -263,11 +338,15 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
                         );
                       },
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
 
                     // Quick Actions
-                    const Text('Quick Actions', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
+                    Text('Quick Actions',
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
+                    SizedBox(height: 12),
                     Row(
                       children: [
                         if (!_isChildMode) ...[
@@ -276,56 +355,70 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
                               icon: Icons.block_flipped,
                               label: 'Block Apps',
                               color: Colors.redAccent,
-                              onTap: () => context.push('/child/rules', extra: child),
+                              onTap: () =>
+                                  context.push('/child/rules', extra: child),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                         ] else ...[
                           Expanded(
                             child: _quickAction(
                               icon: Icons.gavel_outlined,
                               label: 'Rules',
                               color: Colors.orangeAccent,
-                              onTap: () => context.push('/child/rules-summary', extra: {'child': child, 'rules': null}),
+                              onTap: () => context.push('/child/rules-summary',
+                                  extra: {'child': child, 'rules': null}),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                         ],
                         Expanded(
                           child: _quickAction(
                             icon: Icons.bar_chart,
                             label: 'Stats',
                             color: AppColors.accentTeal,
-                            onTap: () => context.push('/child/stats', extra: child),
+                            onTap: () =>
+                                context.push('/child/stats', extra: child),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: _quickAction(
                             icon: Icons.notifications_active_outlined,
                             label: 'Alerts',
                             color: Colors.purpleAccent,
-                            onTap: () => context.push('/child/alerts', extra: child),
+                            onTap: () =>
+                                context.push('/child/alerts', extra: child),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
 
                     // Recent Alerts
-                    const Text('Recent Alerts', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 10),
+                    Text('Recent Alerts',
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
+                    SizedBox(height: 10),
                     StreamBuilder<List<Map<String, dynamic>>>(
-                      stream: ChildMonitorService().watchAlerts(childId, parentId: _parentId),
+                      stream: ChildMonitorService()
+                          .watchAlerts(childId, parentId: _parentId),
                       builder: (_, snap) {
                         final alerts = snap.data?.take(3).toList() ?? [];
-                        if (alerts.isEmpty) return const Text('No recent alerts', style: TextStyle(color: AppColors.textGray400));
+                        if (alerts.isEmpty)
+                          return Text('No recent alerts',
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant));
                         return Column(
                           children: alerts.map((a) => _alertTile(a)).toList(),
                         );
                       },
                     ),
-                    const SizedBox(height: 80),
+                    SizedBox(height: 80),
                   ],
                 ),
               ),
@@ -345,7 +438,7 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
@@ -354,10 +447,11 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
         child: Column(
           children: [
             Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               label,
-              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: color, fontSize: 11, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -372,19 +466,27 @@ class _ChildDashboardScreenState extends State<ChildDashboardScreen> {
     final type = alert['type'] ?? 'ALERT';
     final isSos = type == 'SOS';
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: (isSos ? Colors.red : AppColors.primary).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: (isSos ? Colors.red : AppColors.primary).withValues(alpha: 0.3)),
+        border: Border.all(
+            color: (isSos ? Colors.red : AppColors.primary)
+                .withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Icon(isSos ? Icons.sos : Icons.notifications_outlined,
               color: isSos ? Colors.red : AppColors.primary, size: 18),
-          const SizedBox(width: 10),
-          Expanded(child: Text(type, style: const TextStyle(color: Colors.white70))),
+          SizedBox(width: 10),
+          Expanded(
+              child: Text(type,
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.70)))),
         ],
       ),
     );

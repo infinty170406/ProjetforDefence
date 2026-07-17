@@ -32,8 +32,8 @@ class _AlertOverlayState extends State<AlertOverlay> {
       location = AppRouter.router.state.uri.path;
     } catch (_) {
       try {
-        location = AppRouter.router.routerDelegate.currentConfiguration.last
-            .matchedLocation;
+        location = AppRouter
+            .router.routerDelegate.currentConfiguration.last.matchedLocation;
       } catch (__) {}
     }
 

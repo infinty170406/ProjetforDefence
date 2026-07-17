@@ -1,18 +1,20 @@
 import '../services/api_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../screens/onboarding/splash_welcome_screen.dart';
 import '../../screens/onboarding/onboarding_intro_ai_screen.dart';
 import '../../screens/onboarding/onboarding_vision_ai_screen.dart';
 import '../../screens/onboarding/onboarding_kyc_screen.dart';
 import '../../screens/onboarding/onboarding_child_profile_screen.dart';
 import '../../screens/onboarding/onboarding_pairing_final_screen.dart';
-// ADDED: new screens
 import '../../screens/onboarding/subscription_screen.dart';
 import '../../screens/auth/login_screen.dart';
 import '../../screens/auth/signup_screen.dart';
 import '../../screens/auth/forgot_password_screen.dart';
 import '../../screens/auth/identity_verification_screen.dart';
+import '../../screens/onboarding/initial_setup_screen.dart';
 import '../../screens/auth/otp_setup_screen.dart';
 import '../../screens/dashboard/dashboard_screen.dart';
 import '../../screens/dashboard/dashboard_ai_orchestrator_screen.dart';
@@ -35,18 +37,20 @@ import '../../screens/monitoring/ai_thinking_transition_screen.dart';
 import '../../screens/onboarding/cinematic_splash_screen.dart';
 import '../../screens/child/rules_config_wizard_screen.dart';
 import '../../screens/monitoring/ai_alert_detail_screen.dart';
+import '../../screens/dashboard/weekly_report_screen.dart';
 import '../../screens/settings/account_screen.dart';
-// NEW: added screens
 import '../../screens/child/child_dashboard_screen.dart';
 import '../../screens/child/rules_editor_screen.dart';
 import '../../screens/monitoring/usage_stats_screen.dart';
 import '../../screens/monitoring/alerts_screen.dart';
 import '../../screens/auth/child_pairing_screen.dart';
+import '../../features/subscription/presentation/my_subscription_screen.dart';
+import '../../features/subscription/presentation/premium_showcase_screen.dart';
+import '../../screens/onboarding/landing_screen.dart';
+import '../../screens/admin/admin_dashboard_screen.dart';
+import '../../screens/dashboard/main_shell.dart';
+import '../widgets/route_argument_error_screen.dart';
 
-// Routes accessibles SANS être connecté
-// ADDED: /otp-setup and /subscription are public (part of auth flow)
-// ADDED: /child/* routes are public because the child device is NEVER
-// authenticated with Firebase — it uses a stored pairing token only.
 const _publicRoutes = [
   '/',
   '/cinematic-splash',
@@ -61,19 +65,22 @@ const _publicRoutes = [
   '/onboarding/child-profile',
   '/onboarding/pairing',
   '/product-page',
-  // ── Child device routes (no Firebase Auth on child device) ──────────
+  '/login/parent',
+  '/login/admin',
   '/child/pair',
-  '/child/dashboard',
-  '/child/rules',
-  '/child/stats',
-  '/child/alerts',
-  '/child/rules-summary',
 ];
+
+Map<String, dynamic>? _childRouteExtra(Object? extra) {
+  if (extra is Map<String, dynamic> &&
+      (extra['id'] is String || extra['childId'] is String)) {
+    return extra;
+  }
+  return null;
+}
 
 class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: '/',
-
     refreshListenable: ApiService(),
     redirect: (context, state) {
       final isAuthenticated = FirebaseAuth.instance.currentUser != null;
@@ -86,15 +93,13 @@ class AppRouter {
       if (isAuthenticated) {
         final api = ApiService();
         final loc = state.matchedLocation;
-        final isAnonymous = FirebaseAuth.instance.currentUser?.isAnonymous ?? false;
+        final isAnonymous =
+            FirebaseAuth.instance.currentUser?.isAnonymous ?? false;
 
-        // Anonymous users (child devices) are exempt from OTP/KYC checks
-        // for public routes (which include all /child/* routes).
         if (isAnonymous || isPublicRoute) {
           return null;
         }
 
-        // 1. Force OTP if not verified
         if (!api.isOtpVerified) {
           if (loc != '/otp-setup') {
             return '/otp-setup';
@@ -102,8 +107,7 @@ class AppRouter {
           return null;
         }
 
-        // 2. Force KYC for protected areas if not verified
-        if (!api.isKycVerified) {
+        if (!api.isKycVerified && !api.isKycBypassed) {
           final protectedAreas = ['/dashboard', '/child', '/ai-hub'];
           bool isProtected = protectedAreas.any((area) => loc.startsWith(area));
           if (isProtected) {
@@ -111,9 +115,13 @@ class AppRouter {
           }
         }
 
-        // 3. Redirect verified users away from auth/onboarding screens
         if (api.isOtpVerified && api.isKycVerified) {
-          if (loc == '/login' || loc == '/signup' || loc == '/otp-setup') {
+          if (loc == '/login' ||
+              loc == '/signup' ||
+              loc == '/otp-setup' ||
+              loc == '/login/parent' ||
+              loc == '/login/admin' ||
+              loc == '/dashboard/web') {
             return '/dashboard';
           }
         }
@@ -121,76 +129,210 @@ class AppRouter {
 
       return null;
     },
-
     routes: [
       // Splash & Welcome
-      GoRoute(path: '/', builder: (context, state) => const SplashWelcomeScreen()),
-      GoRoute(path: '/cinematic-splash', builder: (context, state) => const CinematicSplashScreen()),
+      GoRoute(
+        path: '/',
+        builder: (context, state) =>
+            kIsWeb ? const LandingScreen() : const SplashWelcomeScreen(),
+      ),
+      GoRoute(
+          path: '/cinematic-splash',
+          builder: (context, state) => const CinematicSplashScreen()),
 
       // Auth
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
-      GoRoute(path: '/signup', builder: (context, state) => const SignupScreen()),
-      GoRoute(path: '/forgot-password', builder: (context, state) => const ForgotPasswordScreen()),
-      GoRoute(path: '/verify-identity', builder: (context, state) => const IdentityVerificationScreen()),
-      // ADDED: new auth routes
-      GoRoute(path: '/otp-setup', builder: (context, state) => const OtpSetupScreen()),
-      GoRoute(path: '/subscription', builder: (context, state) => const SubscriptionScreen()),
+      GoRoute(
+          path: '/signup', builder: (context, state) => const SignupScreen()),
+      GoRoute(
+          path: '/forgot-password',
+          builder: (context, state) => const ForgotPasswordScreen()),
+      GoRoute(
+          path: '/verify-identity',
+          builder: (context, state) => const IdentityVerificationScreen()),
+      GoRoute(
+          path: '/otp-setup',
+          builder: (context, state) => const OtpSetupScreen()),
+      GoRoute(
+          path: '/subscription',
+          builder: (context, state) => const SubscriptionScreen()),
+
+      // Web specific auth routes
+      GoRoute(
+          path: '/login/parent',
+          builder: (context, state) => const LoginScreen()),
+      GoRoute(
+          path: '/login/admin',
+          builder: (context, state) => const LoginScreen(isAdmin: true)),
+      GoRoute(
+          path: '/dashboard/web',
+          builder: (context, state) => const DashboardScreen()),
+      GoRoute(
+          path: '/admin',
+          builder: (context, state) => const AdminDashboardScreen()),
+      GoRoute(
+          path: '/admin/web',
+          builder: (context, state) => const AdminDashboardScreen()),
 
       // Onboarding
-      GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingIntroAiScreen()),
-      GoRoute(path: '/onboarding/vision', builder: (context, state) => const OnboardingVisionAiScreen()),
-      GoRoute(path: '/onboarding/kyc', builder: (context, state) => const OnboardingKycScreen()),
-      GoRoute(path: '/onboarding/child-profile', builder: (context, state) => const OnboardingChildProfileScreen()),
-      GoRoute(path: '/onboarding/pairing', builder: (context, state) => const OnboardingPairingFinalScreen()),
-
-      // Dashboard & Central Hub
-      GoRoute(path: '/dashboard', builder: (context, state) => const DashboardScreen()),
-      GoRoute(path: '/ai-orchestrator', builder: (context, state) => const DashboardAiOrchestratorScreen()),
-      GoRoute(path: '/ai-hub', builder: (context, state) => const HubChatAiScreen()),
-      GoRoute(path: '/map', builder: (context, state) => RealTimeMapScreen(initialChild: state.extra)),
-      GoRoute(path: '/safe-zones', builder: (context, state) => const SafeZonesScreen()),
-
-      // Child Management
-      GoRoute(path: '/child/create', builder: (context, state) => const ChildProfileCreationScreen()),
-      GoRoute(path: '/child/details', builder: (context, state) => ChildDetailsScreen(child: state.extra)),
-      GoRoute(path: '/child/edit', builder: (context, state) => ChildProfileModificationScreen(child: state.extra)),
-      GoRoute(path: '/child/link-gen', builder: (context, state) => InstallLinkGenerationScreen(child: state.extra)),
-      GoRoute(path: '/child/link-instr', builder: (context, state) => ChildInstallLinkScreen(child: state.extra)),
       GoRoute(
-        path: '/child/pair',
-        builder: (context, state) => ChildPairingScreen(
-          initialCode: state.uri.queryParameters['code'],
-        ),
-      ),
-
-      // Settings
-      GoRoute(path: '/settings/general', builder: (context, state) => const GeneralSettingsScreen()),
-      GoRoute(path: '/settings/account', builder: (context, state) => const AccountScreen()),
-      GoRoute(path: '/settings/notifications', builder: (context, state) => const NotificationSettingsScreen()),
-      GoRoute(path: '/settings/privacy', builder: (context, state) => const PrivacySettingsScreen()),
-      GoRoute(path: '/settings/roles', builder: (context, state) => const RolesPermissionsScreen()),
-
-      // Extras
-      GoRoute(path: '/tutorials', builder: (context, state) => const VisualTutorialsScreen()),
-      GoRoute(path: '/product-page', builder: (context, state) => const ProductPageScreen()),
-      GoRoute(path: '/ai-thinking', builder: (context, state) => const AiThinkingTransitionScreen()),
-      GoRoute(path: '/child/config', builder: (context, state) => RulesConfigWizardScreen(child: state.extra)),
-      GoRoute(path: '/alert/details', builder: (context, state) => const AiAlertDetailScreen()),
-      // NEW routes
-      GoRoute(path: '/child/dashboard', builder: (context, state) => ChildDashboardScreen(child: state.extra)),
-      GoRoute(path: '/child/rules', builder: (context, state) => RulesEditorScreen(child: state.extra)),
-      GoRoute(path: '/child/stats', builder: (context, state) => UsageStatsScreen(child: state.extra)),
-      GoRoute(path: '/child/alerts', builder: (context, state) => AlertsScreen(child: state.extra)),
+          path: '/onboarding',
+          builder: (context, state) => const OnboardingIntroAiScreen()),
       GoRoute(
-        path: '/child/rules-summary',
-        builder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>;
-          return RulesSummaryScreen(
-            child: extra['child'] as Map<String, dynamic>,
-            initialRules: extra['rules'] as Map<String, dynamic>?,
-          );
-        },
+          path: '/onboarding/vision',
+          builder: (context, state) => const OnboardingVisionAiScreen()),
+      GoRoute(
+          path: '/onboarding/kyc',
+          builder: (context, state) => const OnboardingKycScreen()),
+      GoRoute(
+          path: '/onboarding/child-profile',
+          builder: (context, state) => const OnboardingChildProfileScreen()),
+      GoRoute(
+          path: '/onboarding/pairing',
+          builder: (context, state) => const OnboardingPairingFinalScreen()),
+      GoRoute(
+          path: '/initial-setup',
+          builder: (context, state) => const InitialSetupScreen()),
+
+      // Shell Route for Parent Dashboard pages containing sidebar/bottom bar
+      ShellRoute(
+        builder: (context, state, child) => MainShell(child: child),
+        routes: [
+          GoRoute(
+              path: '/dashboard',
+              builder: (context, state) => const DashboardScreen()),
+          GoRoute(
+              path: '/ai-orchestrator',
+              builder: (context, state) =>
+                  const DashboardAiOrchestratorScreen()),
+          GoRoute(
+              path: '/ai-hub',
+              builder: (context, state) => const HubChatAiScreen()),
+          GoRoute(
+              path: '/map',
+              builder: (context, state) =>
+                  RealTimeMapScreen(initialChild: state.extra)),
+          GoRoute(
+              path: '/safe-zones',
+              builder: (context, state) => const SafeZonesScreen()),
+
+          // Child Management (inside the shell so we keep the sidebar on desktop/tablet)
+          GoRoute(
+              path: '/subscription/manage',
+              builder: (context, state) => const MySubscriptionScreen()),
+          GoRoute(
+              path: '/child/create',
+              builder: (context, state) => const ChildProfileCreationScreen()),
+          GoRoute(
+              path: '/child/details',
+              builder: (context, state) => _childPage(
+                  state.extra, (child) => ChildDetailsScreen(child: child))),
+          GoRoute(
+              path: '/child/edit',
+              builder: (context, state) => _childPage(state.extra,
+                  (child) => ChildProfileModificationScreen(child: child))),
+          GoRoute(
+              path: '/child/link-gen',
+              builder: (context, state) => _childPage(state.extra,
+                  (child) => InstallLinkGenerationScreen(child: child))),
+          GoRoute(
+              path: '/child/link-instr',
+              builder: (context, state) => _childPage(state.extra,
+                  (child) => ChildInstallLinkScreen(child: child))),
+          GoRoute(
+              path: '/child/pair',
+              builder: (context, state) => ChildPairingScreen(
+                  initialCode: state.uri.queryParameters['code'])),
+          GoRoute(
+              path: '/child/config',
+              builder: (context, state) => _childPage(state.extra,
+                  (child) => RulesConfigWizardScreen(child: child))),
+          GoRoute(
+              path: '/child/dashboard',
+              builder: (context, state) => _childPage(
+                  state.extra, (child) => ChildDashboardScreen(child: child))),
+          GoRoute(
+              path: '/child/rules',
+              builder: (context, state) => _childPage(
+                  state.extra, (child) => RulesEditorScreen(child: child))),
+          GoRoute(
+              path: '/child/stats',
+              builder: (context, state) => _childPage(
+                  state.extra, (child) => UsageStatsScreen(child: child))),
+          GoRoute(
+              path: '/child/alerts',
+              builder: (context, state) => _childPage(
+                  state.extra, (child) => AlertsScreen(child: child))),
+          GoRoute(
+            path: '/child/rules-summary',
+            builder: (context, state) {
+              final extra = state.extra;
+              if (extra is! Map<String, dynamic> ||
+                  _childRouteExtra(extra['child']) == null) {
+                return const RouteArgumentErrorScreen();
+              }
+              return RulesSummaryScreen(
+                child: _childRouteExtra(extra['child'])!,
+                initialRules: extra['rules'] as Map<String, dynamic>?,
+              );
+            },
+          ),
+
+          // Settings
+          GoRoute(
+              path: '/settings/general',
+              builder: (context, state) => const GeneralSettingsScreen()),
+          GoRoute(
+              path: '/settings/account',
+              builder: (context, state) => const AccountScreen()),
+          GoRoute(
+              path: '/settings/notifications',
+              builder: (context, state) => const NotificationSettingsScreen()),
+          GoRoute(
+              path: '/settings/privacy',
+              builder: (context, state) => const PrivacySettingsScreen()),
+          GoRoute(
+              path: '/settings/roles',
+              builder: (context, state) => const RolesPermissionsScreen()),
+          GoRoute(
+              path: '/settings/subscription',
+              builder: (context, state) => const MySubscriptionScreen()),
+          GoRoute(
+              path: '/premium-showcase',
+              builder: (context, state) => const PremiumShowcaseScreen()),
+          GoRoute(
+              path: '/premium',
+              builder: (context, state) => const PremiumShowcaseScreen()),
+
+          // Extras
+          GoRoute(
+              path: '/tutorials',
+              builder: (context, state) => const VisualTutorialsScreen()),
+          GoRoute(
+              path: '/product-page',
+              builder: (context, state) => const ProductPageScreen()),
+          GoRoute(
+              path: '/ai-thinking',
+              builder: (context, state) => const AiThinkingTransitionScreen()),
+          GoRoute(
+              path: '/alert/details',
+              builder: (context, state) => AiAlertDetailScreen(
+                  args: state.extra as Map<String, dynamic>?)),
+          GoRoute(
+              path: '/ai-report',
+              builder: (context, state) =>
+                  WeeklyReportScreen(child: state.extra)),
+        ],
       ),
     ],
   );
+}
+
+Widget _childPage(
+  Object? extra,
+  Widget Function(Map<String, dynamic> child) builder,
+) {
+  final child = _childRouteExtra(extra);
+  if (child == null) return const RouteArgumentErrorScreen();
+  return builder(child);
 }

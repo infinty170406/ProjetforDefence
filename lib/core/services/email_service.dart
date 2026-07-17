@@ -1,5 +1,6 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
+import 'api_config.dart';
+import 'api_service.dart';
 
 class EmailService {
   static final EmailService _instance = EmailService._internal();
@@ -8,15 +9,13 @@ class EmailService {
 
   Future<void> sendOtpEmail(String targetEmail, String code) async {
     try {
-      final HttpsCallable callable = FirebaseFunctions.instance.httpsCallable('sendOtpEmail');
-      final response = await callable.call(<String, dynamic>{
+      await ApiService().postWithAuth(ApiConfig.sendOtp, <String, dynamic>{
         'targetEmail': targetEmail,
         'code': code,
       });
-
-      debugPrint('EmailService: OTP sent successfully via Cloud Functions. Response: ${response.data}');
+      debugPrint('EmailService: OTP relay accepted by Render API.');
     } catch (e) {
-      debugPrint('EmailService: Failed to send OTP via Cloud Functions: $e');
+      debugPrint('EmailService: Error sending OTP via Render: $e');
       rethrow;
     }
   }

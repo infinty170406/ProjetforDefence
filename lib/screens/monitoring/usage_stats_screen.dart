@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
+import 'package:fl_chart/fl_chart.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/app_tile_with_details.dart';
@@ -9,32 +10,162 @@ import '../../core/services/child_monitor_service.dart';
 import '../../core/services/firestore_service.dart';
 
 const _kKnownApps = [
-  {'pkg': 'com.facebook.katana', 'name': 'Facebook', 'cat': 'Social', 'icon': Icons.facebook},
-  {'pkg': 'com.instagram.android', 'name': 'Instagram', 'cat': 'Social', 'icon': Icons.photo_camera},
-  {'pkg': 'com.snapchat.android', 'name': 'Snapchat', 'cat': 'Social', 'icon': Icons.remove_red_eye},
-  {'pkg': 'com.zhiliaoapp.musically', 'name': 'TikTok', 'cat': 'Social', 'icon': Icons.music_video},
-  {'pkg': 'com.twitter.android', 'name': 'Twitter/X', 'cat': 'Social', 'icon': Icons.alternate_email},
-  {'pkg': 'com.whatsapp', 'name': 'WhatsApp', 'cat': 'Messaging', 'icon': Icons.chat},
-  {'pkg': 'com.discord', 'name': 'Discord', 'cat': 'Messaging', 'icon': Icons.headset},
-  {'pkg': 'com.google.android.youtube', 'name': 'YouTube', 'cat': 'Entertainment', 'icon': Icons.play_circle},
-  {'pkg': 'com.netflix.mediaclient', 'name': 'Netflix', 'cat': 'Entertainment', 'icon': Icons.live_tv},
-  {'pkg': 'com.spotify.music', 'name': 'Spotify', 'cat': 'Entertainment', 'icon': Icons.music_note},
-  {'pkg': 'com.roblox.client', 'name': 'Roblox', 'cat': 'Gaming', 'icon': Icons.games},
-  {'pkg': 'com.mojang.minecraftpe', 'name': 'Minecraft', 'cat': 'Gaming', 'icon': Icons.grid_view},
-  {'pkg': 'com.activision.callofduty.shooter', 'name': 'Call of Duty', 'cat': 'Gaming', 'icon': Icons.sports_esports},
-  {'pkg': 'com.google.android.gm', 'name': 'Gmail', 'cat': 'Productivity', 'icon': Icons.email},
-  {'pkg': 'com.google.android.apps.maps', 'name': 'Maps', 'cat': 'Utility', 'icon': Icons.map},
-  {'pkg': 'com.android.chrome', 'name': 'Chrome', 'cat': 'Browser', 'icon': Icons.language},
-  {'pkg': 'com.pinterest', 'name': 'Pinterest', 'cat': 'Social', 'icon': Icons.push_pin},
-  {'pkg': 'com.facebook.lite', 'name': 'Lite', 'cat': 'Social', 'icon': Icons.facebook},
-  {'pkg': 'com.duolingo', 'name': 'Duolingo', 'cat': 'Education', 'icon': Icons.language},
-  {'pkg': 'com.openai.chatgpt', 'name': 'ChatGPT', 'cat': 'Productivity', 'icon': Icons.chat},
-  {'pkg': 'cn.wps.moffice_eng', 'name': 'WPS Office', 'cat': 'Productivity', 'icon': Icons.description},
-  {'pkg': 'com.radio.fmradio', 'name': 'Radio FM', 'cat': 'Entertainment', 'icon': Icons.radio},
-  {'pkg': 'com.miui.gallery', 'name': 'Galerie', 'cat': 'Utility', 'icon': Icons.photo_library},
-  {'pkg': 'com.sec.android.gallery3d', 'name': 'Galerie', 'cat': 'Utility', 'icon': Icons.photo_library},
-  {'pkg': 'com.miui.securitycenter', 'name': 'Sécurité', 'cat': 'Utility', 'icon': Icons.security},
-  {'pkg': 'com.miui.video', 'name': 'Mi Vidéo', 'cat': 'Entertainment', 'icon': Icons.video_library},
+  {
+    'pkg': 'com.facebook.katana',
+    'name': 'Facebook',
+    'cat': 'Social',
+    'icon': Icons.facebook
+  },
+  {
+    'pkg': 'com.instagram.android',
+    'name': 'Instagram',
+    'cat': 'Social',
+    'icon': Icons.photo_camera
+  },
+  {
+    'pkg': 'com.snapchat.android',
+    'name': 'Snapchat',
+    'cat': 'Social',
+    'icon': Icons.remove_red_eye
+  },
+  {
+    'pkg': 'com.zhiliaoapp.musically',
+    'name': 'TikTok',
+    'cat': 'Social',
+    'icon': Icons.music_video
+  },
+  {
+    'pkg': 'com.twitter.android',
+    'name': 'Twitter/X',
+    'cat': 'Social',
+    'icon': Icons.alternate_email
+  },
+  {
+    'pkg': 'com.whatsapp',
+    'name': 'WhatsApp',
+    'cat': 'Messaging',
+    'icon': Icons.chat
+  },
+  {
+    'pkg': 'com.discord',
+    'name': 'Discord',
+    'cat': 'Messaging',
+    'icon': Icons.headset
+  },
+  {
+    'pkg': 'com.google.android.youtube',
+    'name': 'YouTube',
+    'cat': 'Entertainment',
+    'icon': Icons.play_circle
+  },
+  {
+    'pkg': 'com.netflix.mediaclient',
+    'name': 'Netflix',
+    'cat': 'Entertainment',
+    'icon': Icons.live_tv
+  },
+  {
+    'pkg': 'com.spotify.music',
+    'name': 'Spotify',
+    'cat': 'Entertainment',
+    'icon': Icons.music_note
+  },
+  {
+    'pkg': 'com.roblox.client',
+    'name': 'Roblox',
+    'cat': 'Gaming',
+    'icon': Icons.games
+  },
+  {
+    'pkg': 'com.mojang.minecraftpe',
+    'name': 'Minecraft',
+    'cat': 'Gaming',
+    'icon': Icons.grid_view
+  },
+  {
+    'pkg': 'com.activision.callofduty.shooter',
+    'name': 'Call of Duty',
+    'cat': 'Gaming',
+    'icon': Icons.sports_esports
+  },
+  {
+    'pkg': 'com.google.android.gm',
+    'name': 'Gmail',
+    'cat': 'Productivity',
+    'icon': Icons.email
+  },
+  {
+    'pkg': 'com.google.android.apps.maps',
+    'name': 'Maps',
+    'cat': 'Utility',
+    'icon': Icons.map
+  },
+  {
+    'pkg': 'com.android.chrome',
+    'name': 'Chrome',
+    'cat': 'Browser',
+    'icon': Icons.language
+  },
+  {
+    'pkg': 'com.pinterest',
+    'name': 'Pinterest',
+    'cat': 'Social',
+    'icon': Icons.push_pin
+  },
+  {
+    'pkg': 'com.facebook.lite',
+    'name': 'Lite',
+    'cat': 'Social',
+    'icon': Icons.facebook
+  },
+  {
+    'pkg': 'com.duolingo',
+    'name': 'Duolingo',
+    'cat': 'Education',
+    'icon': Icons.language
+  },
+  {
+    'pkg': 'com.openai.chatgpt',
+    'name': 'ChatGPT',
+    'cat': 'Productivity',
+    'icon': Icons.chat
+  },
+  {
+    'pkg': 'cn.wps.moffice_eng',
+    'name': 'WPS Office',
+    'cat': 'Productivity',
+    'icon': Icons.description
+  },
+  {
+    'pkg': 'com.radio.fmradio',
+    'name': 'Radio FM',
+    'cat': 'Entertainment',
+    'icon': Icons.radio
+  },
+  {
+    'pkg': 'com.miui.gallery',
+    'name': 'Galerie',
+    'cat': 'Utility',
+    'icon': Icons.photo_library
+  },
+  {
+    'pkg': 'com.sec.android.gallery3d',
+    'name': 'Galerie',
+    'cat': 'Utility',
+    'icon': Icons.photo_library
+  },
+  {
+    'pkg': 'com.miui.securitycenter',
+    'name': 'Sécurité',
+    'cat': 'Utility',
+    'icon': Icons.security
+  },
+  {
+    'pkg': 'com.miui.video',
+    'name': 'Mi Vidéo',
+    'cat': 'Entertainment',
+    'icon': Icons.video_library
+  },
 ];
 
 class UsageStatsScreen extends StatefulWidget {
@@ -42,8 +173,7 @@ class UsageStatsScreen extends StatefulWidget {
   const UsageStatsScreen({super.key, this.child});
 
   @override
-  State<UsageStatsScreen> createState() =>
-      _UsageStatsScreenState();
+  State<UsageStatsScreen> createState() => _UsageStatsScreenState();
 }
 
 class _UsageStatsScreenState extends State<UsageStatsScreen> {
@@ -55,11 +185,9 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
   String _selectedPeriod = 'week';
   StreamSubscription<Map<String, dynamic>>? _statsSub;
 
-  String get _childId =>
-      widget.child?['id'] ?? widget.child?['childId'] ?? '';
+  String get _childId => widget.child?['id'] ?? widget.child?['childId'] ?? '';
 
-  String get _childName =>
-      widget.child?['displayName'] ?? 'Child';
+  String get _childName => widget.child?['displayName'] ?? 'Child';
 
   int get _dailyLimit =>
       (widget.child?['dailyLimitMinutes'] as num?)?.toInt() ?? 120;
@@ -103,7 +231,8 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
   Future<void> _loadWeekStats() async {
     if (_childId.isEmpty) return;
     try {
-      final week = await ChildMonitorService().getWeekStats(_childId, parentId: _parentId);
+      final week = await ChildMonitorService()
+          .getWeekStats(_childId, parentId: _parentId);
       if (mounted) {
         setState(() {
           _weekStats = week;
@@ -115,7 +244,8 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
   Future<void> _loadMonthStats() async {
     if (_childId.isEmpty) return;
     try {
-      final month = await ChildMonitorService().getMonthStats(_childId, parentId: _parentId);
+      final month = await ChildMonitorService()
+          .getMonthStats(_childId, parentId: _parentId);
       if (mounted) {
         setState(() {
           _monthStats = month;
@@ -139,8 +269,60 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width >= 800;
+    final paddingVal = isWide ? 32.0 : 16.0;
+
+    Widget content;
+    if (_isLoading) {
+      content = Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
+    } else if (isWide) {
+      content = Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left Column
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTodaySummary(),
+                const SizedBox(height: 24),
+                _buildInteractiveStatsCard(),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          // Right Column
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTopApps(),
+                const SizedBox(height: 24),
+                _buildWebUsage(),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else {
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildTodaySummary(),
+          const SizedBox(height: 24),
+          _buildInteractiveStatsCard(),
+          const SizedBox(height: 24),
+          _buildTopApps(),
+          const SizedBox(height: 24),
+          _buildWebUsage(),
+        ],
+      );
+    }
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -148,24 +330,21 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
             child: RefreshIndicator(
               onRefresh: _loadStats,
               color: AppColors.primary,
-              child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary))
-                  : ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        _buildHeader(context),
-                        const SizedBox(height: 24),
-                        _buildTodaySummary(),
-                        const SizedBox(height: 24),
-                        _buildInteractiveStatsCard(),
-                        const SizedBox(height: 24),
-                        _buildTopApps(),
-                        const SizedBox(height: 24),
-                        _buildWebUsage(),
-                        const SizedBox(height: 40),
-                      ],
-                    ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints:
+                      BoxConstraints(maxWidth: isWide ? 1200 : double.infinity),
+                  child: ListView(
+                    padding: EdgeInsets.all(paddingVal),
+                    children: [
+                      _buildHeader(context),
+                      const SizedBox(height: 24),
+                      content,
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -175,24 +354,27 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
 
   Widget _buildWebUsage() {
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: ChildMonitorService().watchWebHistory(_childId, parentId: _parentId),
+      stream:
+          ChildMonitorService().watchWebHistory(_childId, parentId: _parentId),
       builder: (context, snapshot) {
         final history = snapshot.data ?? [];
         if (history.isEmpty) {
-          return const GlassCard(
+          return GlassCard(
             padding: EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Top websites today',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 18,
                         fontWeight: FontWeight.bold)),
                 SizedBox(height: 12),
                 Text(
                   'No web browsing history yet.\nHistory is recorded from the child\'s browser visits.',
-                  style: TextStyle(color: AppColors.textGray400, fontSize: 13),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 13),
                 ),
               ],
             ),
@@ -210,25 +392,33 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
           // Skip empty or invalid domains
           if (domain.isEmpty || domain == url && !url.contains('.')) continue;
           // Clean "www." prefix for display
-          final cleanDomain = domain.startsWith('www.') ? domain.substring(4) : domain;
+          final cleanDomain =
+              domain.startsWith('www.') ? domain.substring(4) : domain;
           domainsCount[cleanDomain] = (domainsCount[cleanDomain] ?? 0) + 1;
           // Prefer a real page title over a generic placeholder
-          if (title.isNotEmpty && title != 'Website' && !domainTitles.containsKey(cleanDomain)) {
+          if (title.isNotEmpty &&
+              title != 'Website' &&
+              !domainTitles.containsKey(cleanDomain)) {
             domainTitles[cleanDomain] = title;
           }
         }
 
         if (domainsCount.isEmpty) {
-          return const GlassCard(
+          return GlassCard(
             padding: EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Top websites today',
-                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold)),
                 SizedBox(height: 12),
                 Text('No web history with valid URLs recorded.',
-                    style: TextStyle(color: AppColors.textGray400, fontSize: 13)),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 13)),
               ],
             ),
           );
@@ -240,32 +430,35 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
         final maxCount = domainsCount[topDomains.first] ?? 1;
 
         return GlassCard(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Text('Top websites today',
+                  Text('Top websites today',
                       style: TextStyle(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 18,
                           fontWeight: FontWeight.bold)),
-                  const Spacer(),
+                  Spacer(),
                   Text('${history.length} visits',
-                      style: const TextStyle(color: AppColors.textGray400, fontSize: 12)),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 12)),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               ...topDomains.map((domain) {
                 final count = domainsCount[domain]!;
                 final title = domainTitles[domain] ?? _formatDomainName(domain);
                 final ratio = count / maxCount;
                 // Google favicon service — fast, reliable, no API key needed
-                final faviconUrl = 'https://www.google.com/s2/favicons?domain=$domain&sz=64';
+                final faviconUrl =
+                    'https://www.google.com/s2/favicons?domain=$domain&sz=64';
 
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
+                  padding: EdgeInsets.only(bottom: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -286,7 +479,7 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                                 width: 40,
                                 height: 40,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(
+                                errorBuilder: (_, __, ___) => Icon(
                                   Icons.public,
                                   color: AppColors.primary,
                                   size: 20,
@@ -294,15 +487,16 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   title,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 14,
                                   ),
@@ -311,8 +505,10 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                                 ),
                                 Text(
                                   domain,
-                                  style: const TextStyle(
-                                    color: AppColors.textGray400,
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                                     fontSize: 11,
                                   ),
                                   maxLines: 1,
@@ -323,20 +519,26 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                           ),
                           Text(
                             '$count ${count == 1 ? 'visit' : 'visits'}',
-                            style: const TextStyle(
-                              color: Colors.white70,
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.70),
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Container(
                         height: 3,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.05),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(1.5),
                         ),
                         child: FractionallySizedBox(
@@ -355,14 +557,18 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                 );
               }),
               // Footer note
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Row(
-                children: const [
-                  Icon(Icons.info_outline, color: AppColors.textGray400, size: 12),
+                children: [
+                  Icon(Icons.info_outline,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      size: 12),
                   SizedBox(width: 4),
                   Text(
                     'Based on browser history from child\'s device',
-                    style: TextStyle(color: AppColors.textGray400, fontSize: 10),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 10),
                   ),
                 ],
               ),
@@ -373,27 +579,29 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
     );
   }
 
-
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
         IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back,
+              color: Theme.of(context).colorScheme.onSurface),
           onPressed: () => context.pop(),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Usage Statistics',
               style: TextStyle(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 22,
                   fontWeight: FontWeight.bold),
             ),
             Text(_childName,
-                style: const TextStyle(color: AppColors.textGray400, fontSize: 13)),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13)),
           ],
         ),
       ],
@@ -408,22 +616,22 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
     final isOverLimit = used >= limit && limit > 0;
 
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Today',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: isOverLimit
                       ? Colors.red.withValues(alpha: 0.2)
@@ -431,7 +639,9 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  isOverLimit ? 'Allocated time reached' : '$remaining min left',
+                  isOverLimit
+                      ? 'Allocated time reached'
+                      : '$remaining min left',
                   style: TextStyle(
                     color: isOverLimit ? Colors.red : AppColors.primary,
                     fontWeight: FontWeight.bold,
@@ -441,21 +651,25 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Row(
             children: [
-              _buildTimeStat('Used', _formatMinutes(used), Colors.white),
-              const SizedBox(width: 32),
+              _buildTimeStat('Used', _formatMinutes(used),
+                  Theme.of(context).colorScheme.onSurface),
+              SizedBox(width: 32),
               _buildTimeStat('Allocated', _formatMinutes(limit),
-                  AppColors.textGray400),
+                  Theme.of(context).colorScheme.onSurfaceVariant),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: Colors.white10,
+              backgroundColor: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.10),
               valueColor: AlwaysStoppedAnimation<Color>(
                 isOverLimit ? Colors.red : AppColors.primary,
               ),
@@ -473,37 +687,44 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
       children: [
         Text(value,
             style: TextStyle(
-                color: valueColor,
-                fontSize: 28,
-                fontWeight: FontWeight.bold)),
+                color: valueColor, fontSize: 28, fontWeight: FontWeight.bold)),
         Text(label,
-            style: const TextStyle(color: AppColors.textGray400, fontSize: 13)),
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 13)),
       ],
     );
   }
 
   Widget _buildInteractiveStatsCard() {
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Activité',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold),
               ),
               Container(
-                padding: const EdgeInsets.all(4),
+                padding: EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.08)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -516,7 +737,7 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           _buildPeriodContent(),
         ],
       ),
@@ -534,22 +755,26 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.35),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            )
-          ] : [],
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : [],
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : AppColors.textGray400,
+            color: isSelected
+                ? Colors.white
+                : Theme.of(context).colorScheme.onSurfaceVariant,
             fontSize: 12,
             fontWeight: FontWeight.bold,
           ),
@@ -565,11 +790,11 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
         final pkg = app['packageName'] as String? ?? '';
         final mins = (app['usageMinutes'] as num?)?.toInt() ?? 0;
         if (mins <= 0) continue;
-        
+
         final known = _kKnownApps.cast<Map<String, dynamic>?>().firstWhere(
-          (a) => a?['pkg'] == pkg,
-          orElse: () => null,
-        );
+              (a) => a?['pkg'] == pkg,
+              orElse: () => null,
+            );
         final cat = known?['cat'] ?? app['category'] as String? ?? 'other';
         final cleanCat = cat.toString().toLowerCase().trim();
         catMinutes[cleanCat] = (catMinutes[cleanCat] ?? 0) + mins;
@@ -577,12 +802,14 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
 
       final total = catMinutes.values.fold<int>(0, (a, b) => a + b);
       if (total <= 0) {
-        return const SizedBox(
+        return SizedBox(
           height: 120,
           child: Center(
             child: Text(
               'Aucune activité enregistrée aujourd\'hui',
-              style: TextStyle(color: AppColors.textGray400, fontSize: 13),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 13),
             ),
           ),
         );
@@ -591,79 +818,16 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
       final sortedCats = catMinutes.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              height: 12,
-              width: double.infinity,
-              color: Colors.white.withValues(alpha: 0.05),
-              child: Row(
-                children: sortedCats.map((entry) {
-                  final ratio = total > 0 ? entry.value / total : 0.0;
-                  if (ratio <= 0) return const SizedBox();
-                  return Expanded(
-                    flex: (ratio * 100).toInt().clamp(1, 100),
-                    child: Container(
-                      color: _categoryColor(entry.key),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          ...sortedCats.map((entry) {
-            final mins = entry.value;
-            final ratio = total > 0 ? mins / total : 0.0;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: _categoryColor(entry.key),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: _categoryColor(entry.key).withValues(alpha: 0.4),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    _formatCategoryName(entry.key),
-                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
-                  ),
-                  const Spacer(),
-                  Text(
-                    _formatMinutes(mins),
-                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '(${(ratio * 100).toStringAsFixed(0)}%)',
-                    style: const TextStyle(color: AppColors.textGray400, fontSize: 12),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ],
-      );
+      return _buildDonutChart(sortedCats, total);
     } else if (_selectedPeriod == 'week') {
       if (_weekStats.isEmpty) {
-        return const SizedBox(
+        return SizedBox(
           height: 120,
           child: Center(
             child: Text('Aucune donnée pour la semaine',
-                style: TextStyle(color: AppColors.textGray400, fontSize: 13)),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13)),
           ),
         );
       }
@@ -685,16 +849,22 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
 
             return Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+                padding: EdgeInsets.symmetric(horizontal: 4),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     if (mins > 0)
                       Text(
                         mins.toInt().toString(),
-                        style: const TextStyle(color: Colors.white60, fontSize: 9, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.60),
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold),
                       ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Container(
                       height: (ratio * 85).clamp(4.0, 85.0),
                       decoration: BoxDecoration(
@@ -702,22 +872,33 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
                           colors: isOverLimit
-                              ? [Colors.redAccent.withValues(alpha: 0.5), Colors.redAccent]
-                              : [AppColors.primary.withValues(alpha: 0.4), AppColors.primary],
+                              ? [
+                                  Colors.redAccent.withValues(alpha: 0.5),
+                                  Colors.redAccent
+                                ]
+                              : [
+                                  AppColors.primary.withValues(alpha: 0.4),
+                                  AppColors.primary
+                                ],
                         ),
                         borderRadius: BorderRadius.circular(5),
                         boxShadow: [
                           BoxShadow(
-                            color: (isOverLimit ? Colors.redAccent : AppColors.primary).withValues(alpha: 0.25),
+                            color: (isOverLimit
+                                    ? Colors.redAccent
+                                    : AppColors.primary)
+                                .withValues(alpha: 0.25),
                             blurRadius: 4,
                           )
                         ],
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Text(dayLabel,
-                        style: const TextStyle(
-                            color: AppColors.textGray400, fontSize: 11)),
+                        style: TextStyle(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 11)),
                   ],
                 ),
               ),
@@ -728,11 +909,13 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
     } else {
       // month view
       if (_monthStats.isEmpty) {
-        return const SizedBox(
+        return SizedBox(
           height: 120,
           child: Center(
             child: Text('Aucune donnée pour le mois',
-                style: TextStyle(color: AppColors.textGray400, fontSize: 13)),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13)),
           ),
         );
       }
@@ -745,7 +928,7 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
         scrollDirection: Axis.horizontal,
         reverse: true,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: EdgeInsets.symmetric(horizontal: 4),
           child: SizedBox(
             height: 130,
             child: Row(
@@ -759,16 +942,22 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
 
                 return Container(
                   width: 15,
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  margin: EdgeInsets.symmetric(horizontal: 4),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       if (mins > 0)
                         Text(
                           mins.toInt().toString(),
-                          style: const TextStyle(color: Colors.white54, fontSize: 8, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.54),
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold),
                         ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Container(
                         height: (ratio * 80).clamp(4.0, 80.0),
                         decoration: BoxDecoration(
@@ -776,16 +965,25 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
                             begin: Alignment.bottomCenter,
                             end: Alignment.topCenter,
                             colors: isOverLimit
-                                ? [Colors.redAccent.withValues(alpha: 0.5), Colors.redAccent]
-                                : [AppColors.primary.withValues(alpha: 0.4), AppColors.primary],
+                                ? [
+                                    Colors.redAccent.withValues(alpha: 0.5),
+                                    Colors.redAccent
+                                  ]
+                                : [
+                                    AppColors.primary.withValues(alpha: 0.4),
+                                    AppColors.primary
+                                  ],
                           ),
                           borderRadius: BorderRadius.circular(3),
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Text(
                         dayNum,
-                        style: const TextStyle(color: AppColors.textGray400, fontSize: 9),
+                        style: TextStyle(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 9),
                       ),
                     ],
                   ),
@@ -796,6 +994,204 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
         ),
       );
     }
+  }
+
+  int _touchedIndex = -1;
+
+  Widget _buildDonutChart(List<MapEntry<String, int>> sortedCats, int total) {
+    final sections = <PieChartSectionData>[];
+    for (int i = 0; i < sortedCats.length; i++) {
+      final entry = sortedCats[i];
+      final ratio = total > 0 ? entry.value / total : 0.0;
+      final isTouched = i == _touchedIndex;
+      final radius = isTouched ? 68.0 : 58.0;
+      final fontSize = isTouched ? 13.0 : 11.0;
+
+      sections.add(PieChartSectionData(
+        color: _categoryColor(entry.key),
+        value: entry.value.toDouble(),
+        title: '${(ratio * 100).toStringAsFixed(0)}%',
+        radius: radius,
+        titleStyle: TextStyle(
+          fontSize: fontSize,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+          shadows: [Shadow(color: Colors.black45, blurRadius: 4)],
+        ),
+        badgeWidget: null,
+      ));
+    }
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 220,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              PieChart(
+                PieChartData(
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                      setState(() {
+                        if (!event.isInterestedForInteractions ||
+                            pieTouchResponse == null ||
+                            pieTouchResponse.touchedSection == null) {
+                          _touchedIndex = -1;
+                          return;
+                        }
+                        _touchedIndex = pieTouchResponse
+                            .touchedSection!.touchedSectionIndex;
+                      });
+                    },
+                  ),
+                  sectionsSpace: 3,
+                  centerSpaceRadius: 58,
+                  sections: sections,
+                  startDegreeOffset: -90,
+                ),
+                swapAnimationDuration: const Duration(milliseconds: 400),
+                swapAnimationCurve: Curves.easeInOutCubic,
+              ),
+              // Centre du donut : temps total
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _formatMinutes(total),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Total',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Légende
+        Wrap(
+          spacing: 16,
+          runSpacing: 10,
+          children: sortedCats.asMap().entries.map((e) {
+            final i = e.key;
+            final entry = e.value;
+            final mins = entry.value;
+            final ratio = total > 0 ? mins / total : 0.0;
+            final isSelected = i == _touchedIndex;
+            return GestureDetector(
+              onTap: () => setState(() => _touchedIndex = isSelected ? -1 : i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? _categoryColor(entry.key).withValues(alpha: 0.15)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? _categoryColor(entry.key)
+                        : Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: _categoryColor(entry.key),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _categoryColor(entry.key)
+                                .withValues(alpha: 0.4),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _formatCategoryName(entry.key),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 12,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${(ratio * 100).toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
+        // Détail de la catégorie touchée
+        if (_touchedIndex >= 0 && _touchedIndex < sortedCats.length)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: _categoryColor(sortedCats[_touchedIndex].key)
+                    .withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: _categoryColor(sortedCats[_touchedIndex].key)
+                        .withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _formatCategoryName(sortedCats[_touchedIndex].key),
+                    style: TextStyle(
+                      color: _categoryColor(sortedCats[_touchedIndex].key),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '— ${_formatMinutes(sortedCats[_touchedIndex].value)}',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   Color _categoryColor(String cat) {
@@ -854,20 +1250,21 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
 
   Widget _buildTopApps() {
     if (_apps.isEmpty) {
-      return const GlassCard(
+      return GlassCard(
         padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Top apps today',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.bold)),
             SizedBox(height: 20),
             Center(
               child: Text('No app data yet',
-                  style: TextStyle(color: AppColors.textGray400)),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
             ),
           ],
         ),
@@ -883,27 +1280,29 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
         0, (sum, a) => sum + ((a['usageMinutes'] as num?)?.toInt() ?? 0));
 
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Top apps today',
+          Text('Top apps today',
               style: TextStyle(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 18,
                   fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           ...top.map((app) {
             final pkg = app['packageName'] as String? ?? '?';
             final mins = (app['usageMinutes'] as num?)?.toInt() ?? 0;
             final ratio = totalUsed > 0 ? mins / totalUsed : 0.0;
-            
-            final knownApp = _kKnownApps.cast<Map<String, dynamic>?>().firstWhere(
-              (a) => a?['pkg'] == pkg,
-              orElse: () => null,
-            );
 
-            final category = knownApp?['cat'] ?? app['category'] as String? ?? 'other';
+            final knownApp =
+                _kKnownApps.cast<Map<String, dynamic>?>().firstWhere(
+                      (a) => a?['pkg'] == pkg,
+                      orElse: () => null,
+                    );
+
+            final category =
+                knownApp?['cat'] ?? app['category'] as String? ?? 'other';
             final fallbackIcon = knownApp?['icon'] as IconData?;
 
             return AppTileWithDetails(
@@ -955,21 +1354,21 @@ class _UsageStatsScreenState extends State<UsageStatsScreen> {
       {'domain': 'facebook.com', 'name': 'Facebook'},
       {'domain': 'google.com', 'name': 'Google'},
     ];
-    
+
     for (var site in knownSites) {
       if (domain.contains(site['domain']!)) {
         return site['name']!;
       }
     }
-    
+
     String cleanDomain = domain.replaceFirst(RegExp(r'^www\.'), '');
     List<String> parts = cleanDomain.split('.');
     if (parts.isNotEmpty) {
-        String name = parts.first;
-        if (name.length > 1) {
-            return name[0].toUpperCase() + name.substring(1);
-        }
-        return name;
+      String name = parts.first;
+      if (name.length > 1) {
+        return name[0].toUpperCase() + name.substring(1);
+      }
+      return name;
     }
     return domain;
   }

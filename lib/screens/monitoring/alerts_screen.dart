@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
@@ -7,6 +6,8 @@ import '../../core/widgets/liquid_background.dart';
 import '../../core/services/child_monitor_service.dart';
 import '../../core/models/alert_model.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/localization/app_localizations.dart';
+import '../../core/utils/timezone_helper.dart';
 
 class AlertsScreen extends StatefulWidget {
   final dynamic child;
@@ -33,18 +34,26 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width >= 800;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(context),
-                _buildFilterBar(),
-                Expanded(child: _buildAlertsList()),
-              ],
+            child: Center(
+              child: ConstrainedBox(
+                constraints:
+                    BoxConstraints(maxWidth: isWide ? 1200 : double.infinity),
+                child: Column(
+                  children: [
+                    _buildHeader(context),
+                    _buildFilterBar(),
+                    Expanded(child: _buildAlertsList()),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -58,7 +67,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back,
+                color: Theme.of(context).colorScheme.onSurface),
             onPressed: () => context.pop(),
           ),
           const SizedBox(width: 8),
@@ -66,16 +76,18 @@ class _AlertsScreenState extends State<AlertsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Alerts',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 24,
                       fontWeight: FontWeight.bold),
                 ),
                 Text(
                   _childName,
-                  style: const TextStyle(color: AppColors.textGray400, fontSize: 14),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 14),
                 ),
               ],
             ),
@@ -110,24 +122,37 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppColors.primary
-                      : Colors.white.withValues(alpha: 0.08),
+                      : Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: isSelected
                         ? AppColors.primary
-                        : Colors.white.withValues(alpha: 0.15),
+                        : Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.15),
                   ),
                 ),
                 child: Row(
                   children: [
                     Icon(f.$3,
                         size: 14,
-                        color: isSelected ? Colors.black : Colors.white70),
+                        color: isSelected
+                            ? Colors.black
+                            : Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.70)),
                     const SizedBox(width: 6),
                     Text(
                       f.$2,
                       style: TextStyle(
-                        color: isSelected ? Colors.black : Colors.white,
+                        color: isSelected
+                            ? Colors.black
+                            : Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
@@ -144,17 +169,20 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   Widget _buildAlertsList() {
     if (_childId.isEmpty) {
-      return const Center(
+      return Center(
         child: Text('Child not found',
-            style: TextStyle(color: AppColors.textGray400)),
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
       );
     }
+
+    final width = MediaQuery.of(context).size.width;
 
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: ChildMonitorService().watchAlerts(_childId, parentId: _parentId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(color: AppColors.primary),
           );
         }
@@ -162,38 +190,70 @@ class _AlertsScreenState extends State<AlertsScreen> {
         if (snapshot.hasError) {
           return Center(
             child: Text('Error: ${snapshot.error}',
-                style: const TextStyle(color: Colors.red)),
+                style: TextStyle(color: Colors.red)),
           );
         }
 
         final rawAlerts = snapshot.data ?? [];
-        final alerts = rawAlerts.map((data) => AlertModel.fromJson(data)).toList();
+        final alerts =
+            rawAlerts.map((data) => AlertModel.fromJson(data)).toList();
 
         final filteredAlerts = _filter == 'ALL'
             ? alerts
             : alerts.where((a) => a.type == _filter).toList();
 
         if (filteredAlerts.isEmpty) {
-          return const Center(
+          return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.check_circle_outline, color: AppColors.primary, size: 64),
-                SizedBox(height: 16),
-                Text('No alerts found', style: TextStyle(color: Colors.white, fontSize: 18)),
+                Icon(Icons.check_circle_outline,
+                    color: AppColors.primary, size: 64),
+                const SizedBox(height: 16),
+                Text('No alerts found',
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 18)),
               ],
             ),
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          itemCount: filteredAlerts.length,
-          itemBuilder: (context, index) {
-            final alert = filteredAlerts[index];
-            return _buildAlertCard(alert);
-          },
-        );
+        if (width < 600) {
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: filteredAlerts.length,
+            itemBuilder: (context, index) {
+              final alert = filteredAlerts[index];
+              return _buildAlertCard(alert);
+            },
+          );
+        } else {
+          final int cols = width <= 1024 ? 2 : 3;
+          final List<List<AlertModel>> columns = List.generate(cols, (_) => []);
+          for (int i = 0; i < filteredAlerts.length; i++) {
+            columns[i % cols].add(filteredAlerts[i]);
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: List.generate(cols, (colIndex) {
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Column(
+                      children: columns[colIndex]
+                          .map((alert) => _buildAlertCard(alert))
+                          .toList(),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          );
+        }
       },
     );
   }
@@ -211,22 +271,28 @@ class _AlertsScreenState extends State<AlertsScreen> {
     final batt = alert.metadata?['battery'] as int?;
 
     return GlassCard(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.all(16),
+      // Tap → écran de détail enrichi par l'agent IA (§4).
+      onTap: () => context.push('/alert/details', extra: {
+        'alert': alert,
+        'child': widget.child,
+      }),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: _alertColor(type).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(_alertIcon(type), color: _alertColor(type), size: 20),
+                child:
+                    Icon(_alertIcon(type), color: _alertColor(type), size: 20),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,18 +301,18 @@ class _AlertsScreenState extends State<AlertsScreen> {
                       children: [
                         Text(
                           _alertLabel(type),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
                           ),
                         ),
                         if (isUnread) ...[
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Container(
                             width: 8,
                             height: 8,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               color: AppColors.primary,
                               shape: BoxShape.circle,
                             ),
@@ -255,22 +321,32 @@ class _AlertsScreenState extends State<AlertsScreen> {
                       ],
                     ),
                     Text(time,
-                        style: const TextStyle(
-                            color: AppColors.textGray400, fontSize: 12)),
+                        style: TextStyle(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 12)),
                   ],
                 ),
               ),
             ],
           ),
           if (detail.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Text(detail,
-                style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                style: TextStyle(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.70),
+                    fontSize: 14)),
           ],
-          
+
+          // Analyse Guardian (§4) — commentaire IA + badge de risque si présent.
+          if (alert.hasAiAnalysis) _buildAiBadge(alert),
+
           // NEW: Interactive buttons (Allow / Deny)
           if (alert.isInteractive) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
@@ -279,12 +355,12 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green.withValues(alpha: 0.2),
                       foregroundColor: Colors.greenAccent,
-                      side: const BorderSide(color: Colors.greenAccent, width: 0.5),
+                      side: BorderSide(color: Colors.greenAccent, width: 0.5),
                     ),
-                    child: const Text('ALLOW'),
+                    child: Text('ALLOW'),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: TextButton(
                     onPressed: () => _handleAlertAction(alert, 'DENY'),
@@ -292,7 +368,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                       foregroundColor: Colors.redAccent,
                       backgroundColor: Colors.red.withValues(alpha: 0.1),
                     ),
-                    child: const Text('DENY'),
+                    child: Text('DENY'),
                   ),
                 ),
               ],
@@ -300,43 +376,44 @@ class _AlertsScreenState extends State<AlertsScreen> {
           ],
 
           if (isSos && batt != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.battery_std, color: Colors.orange, size: 16),
-                const SizedBox(width: 4),
+                Icon(Icons.battery_std, color: Colors.orange, size: 16),
+                SizedBox(width: 4),
                 Text('Battery: $batt%',
-                    style: const TextStyle(color: Colors.orange, fontSize: 13)),
+                    style: TextStyle(color: Colors.orange, fontSize: 13)),
               ],
             ),
           ],
           if (isSos && lat != null && lng != null) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    icon: const Icon(Icons.map, size: 16),
-                    label: const Text('View on map'),
+                    icon: Icon(Icons.map, size: 16),
+                    label: Text('View on map'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary),
+                      side: BorderSide(color: AppColors.primary),
                     ),
                     onPressed: () => context.push('/map'),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.call, size: 16),
-                    label: const Text('Call'),
+                    icon: Icon(Icons.call, size: 16),
+                    label: Text('Call'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
+                      foregroundColor: Theme.of(context).colorScheme.onSurface,
                     ),
                     onPressed: () async {
                       final phone = alert.metadata?['phone'] ?? '112';
-                      final Uri uri = Uri(scheme: 'tel', path: phone.toString());
+                      final Uri uri =
+                          Uri(scheme: 'tel', path: phone.toString());
                       final canLaunch = await canLaunchUrl(uri);
                       if (!context.mounted) return;
                       if (canLaunch) {
@@ -357,6 +434,82 @@ class _AlertsScreenState extends State<AlertsScreen> {
     );
   }
 
+  /// Encart compact présentant l'analyse de l'agent IA sur la carte d'alerte.
+  Widget _buildAiBadge(AlertModel alert) {
+    final risk = alert.aiRisk ?? 'low';
+    final riskColor = _riskColor(risk);
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: AppColors.accentTeal, size: 15),
+              const SizedBox(width: 6),
+              Text('Analyse Guardian',
+                  style: TextStyle(
+                      color: AppColors.accentTeal,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: riskColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: riskColor.withValues(alpha: 0.4)),
+                ),
+                child: Text(_riskLabel(risk),
+                    style: TextStyle(
+                        color: riskColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(alert.aiComment ?? '',
+              style: TextStyle(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.85),
+                  fontSize: 13,
+                  height: 1.4)),
+        ],
+      ),
+    );
+  }
+
+  Color _riskColor(String risk) {
+    switch (risk.toLowerCase()) {
+      case 'critical':
+        return Colors.redAccent;
+      case 'moderate':
+        return Colors.orangeAccent;
+      default:
+        return Colors.greenAccent;
+    }
+  }
+
+  String _riskLabel(String risk) {
+    switch (risk.toLowerCase()) {
+      case 'critical':
+        return 'CRITIQUE';
+      case 'moderate':
+        return 'MODÉRÉ';
+      default:
+        return 'FAIBLE';
+    }
+  }
+
   void _handleAlertAction(AlertModel alert, String action) async {
     try {
       await ChildMonitorService().handleAlertInteraction(
@@ -369,7 +522,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Action $action processed for ${alert.actionValue}')),
+          SnackBar(
+              content:
+                  Text('Action $action processed for ${alert.actionValue}')),
         );
       }
     } catch (e) {
@@ -383,40 +538,57 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   IconData _alertIcon(String type) {
     switch (type) {
-      case 'SOS': return Icons.emergency;
-      case 'BLOCKED_APP': return Icons.block;
-      case 'TIME_LIMIT': return Icons.timer_off;
-      case 'OUTSIDE_HOURS': return Icons.nights_stay;
-      default: return Icons.info_outline;
+      case 'SOS':
+        return Icons.emergency;
+      case 'BLOCKED_APP':
+        return Icons.block;
+      case 'TIME_LIMIT':
+        return Icons.timer_off;
+      case 'OUTSIDE_HOURS':
+        return Icons.nights_stay;
+      default:
+        return Icons.info_outline;
     }
   }
 
   Color _alertColor(String type) {
     switch (type) {
-      case 'SOS': return Colors.red;
-      case 'BLOCKED_APP': return Colors.orange;
-      case 'TIME_LIMIT': return Colors.amber;
-      case 'OUTSIDE_HOURS': return Colors.purple;
-      default: return AppColors.primary;
+      case 'SOS':
+        return Colors.red;
+      case 'BLOCKED_APP':
+        return Colors.orange;
+      case 'TIME_LIMIT':
+        return Colors.amber;
+      case 'OUTSIDE_HOURS':
+        return Colors.purple;
+      default:
+        return AppColors.primary;
     }
   }
 
   String _alertLabel(String type) {
     switch (type) {
-      case 'SOS': return '🆘 SOS Alert';
-      case 'BLOCKED_APP': return '🚫 App blocked';
-      case 'TIME_LIMIT': return '⏰ Limit reached';
-      case 'OUTSIDE_HOURS': return '🌙 Outside schedule';
-      default: return 'Alert';
+      case 'SOS':
+        return '🆘 SOS Alert';
+      case 'BLOCKED_APP':
+        return '🚫 App blocked';
+      case 'TIME_LIMIT':
+        return '⏰ Limit reached';
+      case 'OUTSIDE_HOURS':
+        return '🌙 Outside schedule';
+      default:
+        return 'Alert';
     }
   }
 
   String _formatDate(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inHours < 1) return '${diff.inMinutes} min ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    return '${dt.day}/${dt.month} at ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    final adjustedDt = TimezoneHelper.getAdjustedDateTime(context, dt);
+    final adjustedNow =
+        TimezoneHelper.getAdjustedDateTime(context, DateTime.now());
+    final diff = adjustedNow.difference(adjustedDt);
+    if (diff.inMinutes < 1) return 'Just now'.tr(context);
+    if (diff.inHours < 1) return '${diff.inMinutes} min ago'.tr(context);
+    if (diff.inDays < 1) return '${diff.inHours}h ago'.tr(context);
+    return '${adjustedDt.day}/${adjustedDt.month} at ${adjustedDt.hour}:${adjustedDt.minute.toString().padLeft(2, '0')}';
   }
 }

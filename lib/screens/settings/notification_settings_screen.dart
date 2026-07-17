@@ -20,30 +20,30 @@ class _NotificationSettingsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
-                  const SizedBox(height: 24),
-                  const Text(
+                  SizedBox(height: 24),
+                  Text(
                     'Notifications',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
                   _buildToggleItem('Security Alerts', _alertsEnabled,
                       (val) => setState(() => _alertsEnabled = val)),
                   _buildToggleItem('Weekly Reports', _weeklyReport,
@@ -59,19 +59,23 @@ class _NotificationSettingsScreenState
 
   Widget _buildToggleItem(String title, bool value, Function(bool) onChanged) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: 16),
       child: GlassCard(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(title,
-                style: const TextStyle(color: Colors.white, fontSize: 16)),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 16)),
             Switch(
               value: value,
               onChanged: onChanged,
               thumbColor: WidgetStateProperty.resolveWith<Color?>(
-                (states) => states.contains(WidgetState.selected) ? AppColors.primary : null,
+                (states) => states.contains(WidgetState.selected)
+                    ? AppColors.primary
+                    : null,
               ),
             ),
           ],

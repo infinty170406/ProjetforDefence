@@ -5,6 +5,11 @@ import '../../core/widgets/liquid_background.dart';
 import '../../core/services/child_monitor_service.dart';
 import '../../core/services/firestore_service.dart';
 import '../../core/widgets/app_tile_with_details.dart';
+import '../../core/services/api_config.dart';
+import 'package:provider/provider.dart';
+import '../../core/premium/entitlement_service.dart';
+import '../../core/premium/feature_flags.dart';
+import 'dart:ui';
 
 class RulesEditorScreen extends StatefulWidget {
   final dynamic child;
@@ -42,6 +47,28 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
   final _blockReasonController = TextEditingController();
   String _appSearchQuery = '';
 
+  // AI Configuration Fields
+  bool _showGeminiKey = false;
+  final _geminiApiKeyController = TextEditingController();
+  List<String> _monitoredNotificationPackages = [];
+  final _notifAppSearchController = TextEditingController();
+  String _notifAppSearchQuery = '';
+
+  static const List<String> _defaultMonitoredPackages = [
+    'com.whatsapp',
+    'com.instagram.android',
+    'com.snapchat.android',
+    'com.facebook.orca',
+    'com.facebook.katana',
+    'com.zhiliaoapp.musically',
+    'com.tiktok',
+    'com.twitter.android',
+    'org.telegram.messenger',
+    'com.google.android.apps.messaging',
+    'com.android.mms',
+    'com.discord',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -76,14 +103,27 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
             _blockReasonController.text = snap['block_reason'] as String;
           }
 
+          // Load Gemini / Notification Monitoring settings
+          final key = snap['geminiApiKey'] ?? snap['gemini_api_key'] ?? '';
+          _geminiApiKeyController.text = key;
+          if (key.isNotEmpty) {
+            ApiConfig.geminiApiKey = key;
+          }
+          _monitoredNotificationPackages = List<String>.from(
+              snap['monitoredNotificationPackages'] ??
+                  snap['monitored_notification_packages'] ??
+                  _defaultMonitoredPackages);
+
           final start = snap['allowedTimeStart'] as String?;
           final end = snap['allowedTimeEnd'] as String?;
           if (start != null && end != null) {
             _scheduleEnabled = true;
             final sParts = start.split(':');
             final eParts = end.split(':');
-            _allowedStart = TimeOfDay(hour: int.parse(sParts[0]), minute: int.parse(sParts[1]));
-            _allowedEnd = TimeOfDay(hour: int.parse(eParts[0]), minute: int.parse(eParts[1]));
+            _allowedStart = TimeOfDay(
+                hour: int.parse(sParts[0]), minute: int.parse(sParts[1]));
+            _allowedEnd = TimeOfDay(
+                hour: int.parse(eParts[0]), minute: int.parse(eParts[1]));
           }
         });
       }
@@ -144,8 +184,18 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
         monitorAccountActivity: _monitorAccountActivity,
         locationAlerts: _locationAlerts,
         customKeywords: _customKeywords,
-        blockReason: _blockReasonController.text.trim().isEmpty ? null : _blockReasonController.text.trim(),
+        blockReason: _blockReasonController.text.trim().isEmpty
+            ? null
+            : _blockReasonController.text.trim(),
+        geminiApiKey: _geminiApiKeyController.text.trim().isEmpty
+            ? null
+            : _geminiApiKeyController.text.trim(),
+        monitoredNotificationPackages: _monitoredNotificationPackages,
       );
+      final key = _geminiApiKeyController.text.trim();
+      if (key.isNotEmpty) {
+        ApiConfig.geminiApiKey = key;
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Rules saved ✓'), backgroundColor: Colors.green));
@@ -184,13 +234,14 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
     _keywordController.dispose();
     _appSearchController.dispose();
     _blockReasonController.dispose();
+    _geminiApiKeyController.dispose();
+    _notifAppSearchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       body: Stack(
         children: [
           const LiquidBackground(),
@@ -198,50 +249,55 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16),
                   child: Row(
                     children: [
                       IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          icon: Icon(Icons.arrow_back,
+                              color: Theme.of(context).colorScheme.onSurface),
                           onPressed: () => context.pop()),
-                      const Text('Edit Rules',
+                      Text('Edit Rules',
                           style: TextStyle(
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 20,
                               fontWeight: FontWeight.bold)),
-                      const Spacer(),
+                      Spacer(),
                     ],
                   ),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Daily Limit
-                        const Text('Daily screen time allocation',
+                        Text('Daily screen time allocation',
                             style: TextStyle(
-                                color: Colors.white,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         Center(
                             child: Text(_fmtMin(_dailyLimitMinutes),
-                                style: const TextStyle(
+                                style: TextStyle(
                                     color: AppColors.primary,
                                     fontSize: 32,
                                     fontWeight: FontWeight.bold))),
                         Slider(
-                          value: _dailyLimitMinutes.toDouble(),
-                          min: 15,
-                          max: 480,
-                          divisions: 31,
+                          value:
+                              _dailyLimitMinutes.toDouble().clamp(0.0, 1440.0),
+                          min: 0,
+                          max: 1440,
+                          divisions: 96,
                           activeColor: AppColors.primary,
-                          inactiveColor: Colors.white12,
+                          inactiveColor: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.12),
                           onChanged: (v) =>
                               setState(() => _dailyLimitMinutes = v.round()),
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         // Schedule
                         _toggleRow(
                             'Allowed Hours',
@@ -250,7 +306,7 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                             (v) => setState(() => _scheduleEnabled = v),
                             isDanger: false),
                         if (_scheduleEnabled) ...[
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           Row(
                             children: [
                               Expanded(
@@ -259,14 +315,14 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                                       _allowedStart,
                                       (t) =>
                                           setState(() => _allowedStart = t))),
-                              const SizedBox(width: 12),
+                              SizedBox(width: 12),
                               Expanded(
                                   child: _timeTile('To', _allowedEnd,
                                       (t) => setState(() => _allowedEnd = t))),
                             ],
                           ),
                         ],
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         // Categories
                         _toggleRow(
                             'Block Adult & Pornography',
@@ -274,71 +330,75 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                             _blockAdultContent,
                             (v) => setState(() => _blockAdultContent = v),
                             isDanger: true),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         _toggleRow(
                             'Block Drugs & Alcohol',
                             Icons.medication_outlined,
                             _blockDrugs,
                             (v) => setState(() => _blockDrugs = v),
                             isDanger: true),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         _toggleRow(
                             'Block Violence & Gore',
                             Icons.warning_amber_outlined,
                             _blockViolence,
                             (v) => setState(() => _blockViolence = v),
                             isDanger: true),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         _toggleRow(
                             'Block Sexual Predators',
                             Icons.security_outlined,
                             _blockSexualPredators,
                             (v) => setState(() => _blockSexualPredators = v),
                             isDanger: true),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         _toggleRow(
                             'Monitor Anxiety / Depression',
                             Icons.psychology_outlined,
                             _blockAnxietyDepression,
                             (v) => setState(() => _blockAnxietyDepression = v),
                             isDanger: true),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         _toggleRow(
                             'Monitor Self-Harm / Suicide',
                             Icons.healing_outlined,
                             _blockSelfHarm,
                             (v) => setState(() => _blockSelfHarm = v),
                             isDanger: true),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         _toggleRow(
                             'Monitor Cyberbullying',
                             Icons.gavel_outlined,
                             _blockCyberbullying,
                             (v) => setState(() => _blockCyberbullying = v),
                             isDanger: true),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         _toggleRow(
                             'Monitor Eating Disorders',
                             Icons.accessibility_new_outlined,
                             _blockEatingDisorders,
                             (v) => setState(() => _blockEatingDisorders = v),
                             isDanger: true),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         _toggleRow(
                             'General Mature Content',
                             Icons.explicit_outlined,
                             _blockMatureContent,
                             (v) => setState(() => _blockMatureContent = v),
                             isDanger: true),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         // Safe Zones Section
-                        const Row(
+                        Row(
                           children: [
-                            Icon(Icons.location_on, color: AppColors.primary, size: 20),
+                            Icon(Icons.location_on,
+                                color: AppColors.primary, size: 20),
                             SizedBox(width: 8),
-                            Text('GEOGRAPHIC SECURITY',
+                            Text(
+                              'GEOGRAPHIC SECURITY',
                               style: TextStyle(
-                                color: AppColors.textGray400,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.2,
@@ -346,69 +406,97 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         _toggleRow(
                             'Location Alerts',
                             Icons.notifications_active_outlined,
                             _locationAlerts,
                             (v) => setState(() => _locationAlerts = v),
                             isDanger: false),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         ElevatedButton.icon(
                           onPressed: () => context.push('/safe-zones'),
-                          icon: const Icon(Icons.map, size: 18),
-                          label: const Text('Manage Safe Zones'),
+                          icon: Icon(Icons.map, size: 18),
+                          label: Text('Manage Safe Zones'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white.withValues(alpha: 0.05),
-                            foregroundColor: Colors.white,
-                            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.05),
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onSurface,
+                            side: BorderSide(
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.3)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                             minimumSize: const Size(double.infinity, 48),
                           ),
                         ),
                         if (_installedApps.isNotEmpty) ...[
-                          const SizedBox(height: 32),
+                          SizedBox(height: 32),
                           Row(
                             children: [
-                              const Icon(Icons.apps, color: AppColors.primary, size: 20),
-                              const SizedBox(width: 8),
-                              const Text('APPLICATION CONTROL',
+                              Icon(Icons.apps,
+                                  color: AppColors.primary, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'APPLICATION CONTROL',
                                 style: TextStyle(
-                                  color: AppColors.textGray400,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 1.2,
                                 ),
                               ),
-                              const Spacer(),
+                              Spacer(),
                               Text('${_blockedApps.length} blocked',
-                                style: const TextStyle(color: Colors.redAccent, fontSize: 11)),
+                                  style: TextStyle(
+                                      color: Colors.redAccent, fontSize: 11)),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           // Search Box for Apps
                           TextField(
                             controller: _appSearchController,
-                            onChanged: (v) => setState(() => _appSearchQuery = v.trim().toLowerCase()),
-                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                            onChanged: (v) => setState(
+                                () => _appSearchQuery = v.trim().toLowerCase()),
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: 13),
                             decoration: InputDecoration(
                               hintText: 'Search apps...',
-                              hintStyle: const TextStyle(color: AppColors.textGray400),
-                              prefixIcon: const Icon(Icons.search, color: AppColors.textGray400, size: 18),
+                              hintStyle: TextStyle(
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.light
+                                      ? const Color(0xFF94A3B8)
+                                      : AppColors.textGray400),
+                              prefixIcon: Icon(Icons.search,
+                                  color: AppColors.textGray400, size: 18),
                               filled: true,
-                              fillColor: Colors.white.withValues(alpha: 0.05),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                              fillColor: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.05),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none),
+                              contentPadding: EdgeInsets.symmetric(vertical: 0),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           ..._installedApps
-                            .where((pkg) => pkg.toLowerCase().contains(_appSearchQuery))
-                            .map((pkg) {
+                              .where((pkg) =>
+                                  pkg.toLowerCase().contains(_appSearchQuery))
+                              .map((pkg) {
                             final blocked = _blockedApps.contains(pkg);
-                            final childId = widget.child?['id'] ?? widget.child?['childId'] ?? '';
+                            final childId = widget.child?['id'] ??
+                                widget.child?['childId'] ??
+                                '';
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
+                              padding: EdgeInsets.only(bottom: 8),
                               child: AppTileWithDetails(
                                 childId: childId,
                                 packageName: pkg,
@@ -425,24 +513,32 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                                       }
                                     });
                                   },
-                                  activeTrackColor: Colors.redAccent.withValues(alpha: 0.3),
+                                  activeTrackColor:
+                                      Colors.redAccent.withValues(alpha: 0.3),
                                   activeThumbColor: Colors.redAccent,
                                   inactiveThumbColor: Colors.grey,
-                                  inactiveTrackColor: Colors.white10,
+                                  inactiveTrackColor: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.10),
                                 ),
                               ),
                             );
                           }),
                         ],
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         // ── Custom Keywords Section ──────────────────────
-                        const Row(
+                        Row(
                           children: [
-                            Icon(Icons.manage_search, color: AppColors.primary, size: 18),
+                            Icon(Icons.manage_search,
+                                color: AppColors.primary, size: 18),
                             SizedBox(width: 8),
-                            Text('CUSTOM MONITORING',
+                            Text(
+                              'CUSTOM MONITORING',
                               style: TextStyle(
-                                color: AppColors.textGray400,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.2,
@@ -450,93 +546,551 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
-                        const Text(
+                        SizedBox(height: 6),
+                        Text(
                           'Add words or topics to monitor. You will be alerted when they are detected on the device.',
-                          style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.4),
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.54),
+                              fontSize: 12,
+                              height: 1.4),
                         ),
-                        const SizedBox(height: 14),
+                        SizedBox(height: 14),
                         Row(
                           children: [
                             Expanded(
                               child: TextField(
                                 controller: _keywordController,
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface),
                                 textCapitalization: TextCapitalization.words,
                                 decoration: InputDecoration(
                                   hintText: 'e.g. Fortnite, gambling...',
-                                  hintStyle: const TextStyle(color: AppColors.textGray400, fontSize: 13),
+                                  hintStyle: TextStyle(
+                                      color: AppColors.textGray400,
+                                      fontSize: 13),
                                   filled: true,
-                                  fillColor: Colors.white.withValues(alpha: 0.06),
+                                  fillColor: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.06),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Colors.white12),
+                                    borderSide: BorderSide(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.12)),
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Colors.white12),
+                                    borderSide: BorderSide(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.12)),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
+                                    borderSide: BorderSide(
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.6)),
                                   ),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 14),
                                 ),
                                 onSubmitted: (_) => _addEditorKeyword(),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(width: 10),
                             GestureDetector(
                               onTap: _addEditorKeyword,
                               child: Container(
-                                padding: const EdgeInsets.all(14),
+                                padding: EdgeInsets.all(14),
                                 decoration: BoxDecoration(
                                   color: AppColors.primary,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Icon(Icons.add, color: Colors.white),
+                                child: Icon(Icons.add,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface),
                               ),
                             ),
                           ],
                         ),
                         if (_customKeywords.isNotEmpty) ...[
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: _customKeywords.map((kw) => Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.label_outline, color: AppColors.primary, size: 13),
-                                  const SizedBox(width: 6),
-                                  Text(kw, style: const TextStyle(color: Colors.white, fontSize: 13)),
-                                  const SizedBox(width: 8),
-                                  GestureDetector(
-                                    onTap: () => setState(() {
-                                      _customKeywords = _customKeywords.where((k) => k != kw).toList();
-                                    }),
-                                    child: const Icon(Icons.close, color: Colors.white38, size: 13),
-                                  ),
-                                ],
-                              ),
-                            )).toList(),
+                            children: _customKeywords
+                                .map((kw) => Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                            color: AppColors.primary
+                                                .withValues(alpha: 0.35)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.label_outline,
+                                              color: AppColors.primary,
+                                              size: 13),
+                                          SizedBox(width: 6),
+                                          Text(kw,
+                                              style: TextStyle(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface,
+                                                  fontSize: 13)),
+                                          SizedBox(width: 8),
+                                          GestureDetector(
+                                            onTap: () => setState(() {
+                                              _customKeywords = _customKeywords
+                                                  .where((k) => k != kw)
+                                                  .toList();
+                                            }),
+                                            child: Icon(Icons.close,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface
+                                                    .withValues(alpha: 0.38),
+                                                size: 13),
+                                          ),
+                                        ],
+                                      ),
+                                    ))
+                                .toList(),
                           ),
                         ],
-                        const SizedBox(height: 24),
-                        const Row(
+                        SizedBox(height: 24),
+                        // ── AI Configuration Section ────────────────────
+                        Row(
                           children: [
-                            Icon(Icons.message, color: AppColors.primary, size: 18),
+                            Icon(Icons.psychology,
+                                color: AppColors.primary, size: 20),
                             SizedBox(width: 8),
-                            Text('CUSTOM BLOCK MESSAGE',
+                            Text(
+                              'AI SURVEILLANCE & THREAT DETECTION',
                               style: TextStyle(
-                                color: AppColors.textGray400,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.amber,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'PREMIUM',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Configure the Gemini AI engine for real-time notification interception and context-aware risk analysis on the child device.',
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.54),
+                              fontSize: 12,
+                              height: 1.4),
+                        ),
+                        SizedBox(height: 14),
+                        Builder(
+                          builder: (context) {
+                            final entitlement =
+                                context.read<EntitlementService>();
+                            final isPremiumEnabled =
+                                entitlement.isFeatureEnabled(
+                                    FeatureFlags.cyberbullyingDetection);
+
+                            return Stack(
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.04),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.10)),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Gemini API Key',
+                                            style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Required on the child device to perform local AI analysis of notifications.',
+                                            style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.5),
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          TextField(
+                                            controller: _geminiApiKeyController,
+                                            obscureText: !_showGeminiKey,
+                                            enabled: isPremiumEnabled,
+                                            style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface,
+                                              fontFamily: 'monospace',
+                                              fontSize: 13,
+                                            ),
+                                            decoration: InputDecoration(
+                                              hintText:
+                                                  'Enter Gemini API Key (AIzaSy...)',
+                                              hintStyle: TextStyle(
+                                                  color: AppColors.textGray400,
+                                                  fontSize: 13),
+                                              filled: true,
+                                              fillColor: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.06),
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                borderSide: BorderSide(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurface
+                                                        .withValues(
+                                                            alpha: 0.12)),
+                                              ),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                borderSide: BorderSide(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurface
+                                                        .withValues(
+                                                            alpha: 0.12)),
+                                              ),
+                                              focusedBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                borderSide: BorderSide(
+                                                    color: AppColors.primary
+                                                        .withValues(
+                                                            alpha: 0.6)),
+                                              ),
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                      vertical: 14),
+                                              suffixIcon: IconButton(
+                                                icon: Icon(
+                                                  _showGeminiKey
+                                                      ? Icons.visibility_off
+                                                      : Icons.visibility,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withValues(alpha: 0.5),
+                                                ),
+                                                onPressed: () => setState(() =>
+                                                    _showGeminiKey =
+                                                        !_showGeminiKey),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    Text(
+                                      'Monitored Application Notifications',
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Select which apps should have their incoming notifications intercepted and analyzed by Gemini.',
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.5),
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextField(
+                                      controller: _notifAppSearchController,
+                                      enabled: isPremiumEnabled,
+                                      onChanged: (v) => setState(() =>
+                                          _notifAppSearchQuery =
+                                              v.trim().toLowerCase()),
+                                      style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
+                                          fontSize: 13),
+                                      decoration: InputDecoration(
+                                        hintText: 'Search notification apps...',
+                                        hintStyle: TextStyle(
+                                            color:
+                                                Theme.of(context).brightness ==
+                                                        Brightness.light
+                                                    ? const Color(0xFF94A3B8)
+                                                    : AppColors.textGray400),
+                                        prefixIcon: Icon(Icons.search,
+                                            color: AppColors.textGray400,
+                                            size: 18),
+                                        filled: true,
+                                        fillColor: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.05),
+                                        border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            borderSide: BorderSide.none),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                vertical: 0),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    if (_installedApps.isEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 16.0),
+                                        child: Center(
+                                          child: Text(
+                                            'No installed apps detected on child device yet.',
+                                            style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.4),
+                                              fontStyle: FontStyle.italic,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      Container(
+                                        height: 200,
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withValues(alpha: 0.02),
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          border: Border.all(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.08)),
+                                        ),
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          child: ListView(
+                                            physics:
+                                                const BouncingScrollPhysics(),
+                                            padding: const EdgeInsets.all(8),
+                                            children: _installedApps
+                                                .where((pkg) => pkg
+                                                    .toLowerCase()
+                                                    .contains(
+                                                        _notifAppSearchQuery))
+                                                .map((pkg) {
+                                              final isMonitored =
+                                                  _monitoredNotificationPackages
+                                                      .contains(pkg);
+                                              final childId = widget
+                                                      .child?['id'] ??
+                                                  widget.child?['childId'] ??
+                                                  '';
+                                              return Padding(
+                                                padding: const EdgeInsets.only(
+                                                    bottom: 4.0),
+                                                child: AppTileWithDetails(
+                                                  childId: childId,
+                                                  packageName: pkg,
+                                                  trailing: Switch(
+                                                    value: isMonitored,
+                                                    onChanged: isPremiumEnabled
+                                                        ? (v) {
+                                                            setState(() {
+                                                              if (v) {
+                                                                _monitoredNotificationPackages =
+                                                                    [
+                                                                  ..._monitoredNotificationPackages,
+                                                                  pkg
+                                                                ];
+                                                              } else {
+                                                                _monitoredNotificationPackages =
+                                                                    _monitoredNotificationPackages
+                                                                        .where((p) =>
+                                                                            p !=
+                                                                            pkg)
+                                                                        .toList();
+                                                              }
+                                                            });
+                                                          }
+                                                        : null,
+                                                    activeTrackColor: AppColors
+                                                        .primary
+                                                        .withValues(alpha: 0.3),
+                                                    activeThumbColor:
+                                                        AppColors.primary,
+                                                    inactiveThumbColor:
+                                                        Colors.grey,
+                                                    inactiveTrackColor:
+                                                        Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurface
+                                                            .withValues(
+                                                                alpha: 0.10),
+                                                  ),
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                if (!isPremiumEnabled)
+                                  Positioned.fill(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: BackdropFilter(
+                                        filter: ImageFilter.blur(
+                                            sigmaX: 3, sigmaY: 3),
+                                        child: Container(
+                                          color: Colors.black.withOpacity(0.4),
+                                          alignment: Alignment.center,
+                                          padding: const EdgeInsets.all(16),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.lock,
+                                                  color: Colors.amber,
+                                                  size: 36),
+                                              const SizedBox(height: 12),
+                                              const Text(
+                                                'Détectez le Cyberharcèlement avec l\'IA',
+                                                style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 15),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              const SizedBox(height: 6),
+                                              const Text(
+                                                'Cette fonctionnalité requiert l\'abonnement Guardian Premium.',
+                                                style: TextStyle(
+                                                    color: Colors.white70,
+                                                    fontSize: 12),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              const SizedBox(height: 16),
+                                              ElevatedButton(
+                                                onPressed: () => context
+                                                    .push('/premium-showcase'),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      AppColors.primary,
+                                                  foregroundColor: Colors.white,
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              50)),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 24,
+                                                      vertical: 12),
+                                                ),
+                                                child: const Text(
+                                                    'Découvrir Premium',
+                                                    style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold)),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
+                        SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Icon(Icons.message,
+                                color: AppColors.primary, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'CUSTOM BLOCK MESSAGE',
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.2,
@@ -544,61 +1098,87 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
-                        const Text(
+                        SizedBox(height: 6),
+                        Text(
                           'Message displayed on the child\'s device when an app or website is blocked.',
-                          style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.4),
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.54),
+                              fontSize: 12,
+                              height: 1.4),
                         ),
-                        const SizedBox(height: 14),
+                        SizedBox(height: 14),
                         TextField(
                           controller: _blockReasonController,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface),
                           textCapitalization: TextCapitalization.sentences,
                           decoration: InputDecoration(
-                            hintText: 'e.g. It\'s time to sleep, put your phone down.',
-                            hintStyle: const TextStyle(color: AppColors.textGray400, fontSize: 13),
+                            hintText:
+                                'e.g. It\'s time to sleep, put your phone down.',
+                            hintStyle: TextStyle(
+                                color: AppColors.textGray400, fontSize: 13),
                             filled: true,
-                            fillColor: Colors.white.withValues(alpha: 0.06),
+                            fillColor: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.06),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.white12),
+                              borderSide: BorderSide(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.12)),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.white12),
+                              borderSide: BorderSide(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.12)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
+                              borderSide: BorderSide(
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.6)),
                             ),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
                           ),
                         ),
-                        const SizedBox(height: 80),
+                        SizedBox(height: 80),
                       ],
                     ),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(20),
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _isSaving ? null : _save,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        foregroundColor:
+                            Theme.of(context).colorScheme.onSurface,
+                        padding: EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
                       ),
                       child: _isSaving
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : const Text('Apply Rules',
+                                  strokeWidth: 2,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface))
+                          : Text('Apply Rules',
                               style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
@@ -614,28 +1194,44 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
   Widget _toggleRow(
       String label, IconData icon, bool value, void Function(bool) onChanged,
       {bool isDanger = false}) {
-    final activeCol = isDanger ? AppColors.statusDanger : Colors.white;
+    final activeCol = isDanger
+        ? AppColors.statusDanger
+        : Theme.of(context).colorScheme.onSurface;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.10)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white70, size: 20),
-          const SizedBox(width: 12),
+          Icon(icon,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.70),
+              size: 20),
+          SizedBox(width: 12),
           Expanded(
-              child:
-                  Text(label, style: const TextStyle(color: Colors.white70))),
+              child: Text(label,
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.70)))),
           Switch(
             value: value,
             onChanged: onChanged,
             activeThumbColor: activeCol,
             activeTrackColor: activeCol.withValues(alpha: 0.3),
             inactiveThumbColor: Colors.grey[400],
-            inactiveTrackColor: Colors.white.withValues(alpha: 0.1),
+            inactiveTrackColor:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
           ),
         ],
       ),
@@ -651,19 +1247,22 @@ class _RulesEditorScreenState extends State<RulesEditorScreen> {
         if (picked != null) onSet(picked);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
+          color:
+              Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
         ),
         child: Column(children: [
           Text(label,
-              style: const TextStyle(color: AppColors.textGray400, fontSize: 11)),
-          const SizedBox(height: 4),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 11)),
+          SizedBox(height: 4),
           Text(time.format(context),
-              style: const TextStyle(
-                  color: Colors.white,
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                   fontSize: 18)),
         ]),

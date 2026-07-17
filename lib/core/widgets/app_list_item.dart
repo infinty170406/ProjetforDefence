@@ -56,7 +56,8 @@ class AppListItem extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: color.withValues(alpha: 0.1), width: 1),
+                  border:
+                      Border.all(color: color.withValues(alpha: 0.1), width: 1),
                 ),
                 child: Center(
                   child: cleanBase64 != null
@@ -67,7 +68,8 @@ class AppListItem extends StatelessWidget {
                             width: 32,
                             height: 32,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Icon(icon, size: 24, color: color),
+                            errorBuilder: (_, __, ___) =>
+                                Icon(icon, size: 24, color: color),
                           ),
                         )
                       : iconUrl != null && iconUrl!.isNotEmpty
@@ -78,7 +80,8 @@ class AppListItem extends StatelessWidget {
                                 width: 32,
                                 height: 32,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Icon(icon, size: 24, color: color),
+                                errorBuilder: (_, __, ___) =>
+                                    Icon(icon, size: 24, color: color),
                               ),
                             )
                           : Icon(icon, size: 24, color: color),
@@ -92,8 +95,8 @@ class AppListItem extends StatelessWidget {
                   children: [
                     Text(
                       label,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
                         letterSpacing: 0.3,
@@ -112,8 +115,8 @@ class AppListItem extends StatelessWidget {
               else
                 Text(
                   timeStr,
-                  style: const TextStyle(
-                    color: Colors.white70,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                   ),
@@ -126,7 +129,10 @@ class AppListItem extends StatelessWidget {
               height: 4,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(2),
               ),
               child: FractionallySizedBox(
@@ -220,12 +226,21 @@ class AppListItem extends StatelessWidget {
     final pkg = packageName.toLowerCase();
 
     // Phone / Dialer
-    if (lbl.contains('dialer') || lbl.contains('phone') || pkg.contains('dialer') || pkg.contains('.phone') || pkg.contains('.call')) {
+    if (lbl.contains('dialer') ||
+        lbl.contains('phone') ||
+        pkg.contains('dialer') ||
+        pkg.contains('.phone') ||
+        pkg.contains('.call')) {
       return Icons.phone;
     }
     // Gallery / Photos
-    if (lbl.contains('photo') || lbl.contains('gallery') || lbl.contains('image') ||
-        pkg.contains('gallery') || pkg.contains('photos') || pkg.contains('.miui.gallery') || pkg.contains('sec.android.gallery')) {
+    if (lbl.contains('photo') ||
+        lbl.contains('gallery') ||
+        lbl.contains('image') ||
+        pkg.contains('gallery') ||
+        pkg.contains('photos') ||
+        pkg.contains('.miui.gallery') ||
+        pkg.contains('sec.android.gallery')) {
       return Icons.photo_library;
     }
     // Camera
@@ -233,54 +248,95 @@ class AppListItem extends StatelessWidget {
       return Icons.camera_alt;
     }
     // Browser / Web
-    if (lbl.contains('browser') || lbl.contains('chrome') || lbl.contains('firefox') ||
-        pkg.contains('browser') || pkg.contains('chrome') || pkg.contains('firefox') || pkg.contains('opera')) {
+    if (lbl.contains('browser') ||
+        lbl.contains('chrome') ||
+        lbl.contains('firefox') ||
+        pkg.contains('browser') ||
+        pkg.contains('chrome') ||
+        pkg.contains('firefox') ||
+        pkg.contains('opera')) {
       return Icons.language;
     }
     // Maps / GPS
-    if (lbl.contains('maps') || lbl.contains('gps') || pkg.contains('.maps') || pkg.contains('navigation')) {
+    if (lbl.contains('maps') ||
+        lbl.contains('gps') ||
+        pkg.contains('.maps') ||
+        pkg.contains('navigation')) {
       return Icons.map;
     }
     // Music / Audio
-    if (lbl.contains('music') || lbl.contains('spotify') || lbl.contains('radio') ||
-        pkg.contains('music') || pkg.contains('spotify') || pkg.contains('radio') || pkg.contains('audio')) {
+    if (lbl.contains('music') ||
+        lbl.contains('spotify') ||
+        lbl.contains('radio') ||
+        pkg.contains('music') ||
+        pkg.contains('spotify') ||
+        pkg.contains('radio') ||
+        pkg.contains('audio')) {
       return Icons.music_note;
     }
     // Video
-    if (lbl.contains('video') || lbl.contains('youtube') || lbl.contains('netflix') ||
-        pkg.contains('video') || pkg.contains('youtube') || pkg.contains('netflix')) {
+    if (lbl.contains('video') ||
+        lbl.contains('youtube') ||
+        lbl.contains('netflix') ||
+        pkg.contains('video') ||
+        pkg.contains('youtube') ||
+        pkg.contains('netflix')) {
       return Icons.play_circle;
     }
     // Messaging / SMS
-    if (lbl.contains('message') || lbl.contains('sms') || lbl.contains('chat') || lbl.contains('whatsapp') ||
-        pkg.contains('mms') || pkg.contains('sms') || pkg.contains('message') || pkg.contains('whatsapp')) {
+    if (lbl.contains('message') ||
+        lbl.contains('sms') ||
+        lbl.contains('chat') ||
+        lbl.contains('whatsapp') ||
+        pkg.contains('mms') ||
+        pkg.contains('sms') ||
+        pkg.contains('message') ||
+        pkg.contains('whatsapp')) {
       return Icons.chat_bubble;
     }
     // Email
-    if (lbl.contains('email') || lbl.contains('mail') || lbl.contains('gmail') ||
-        pkg.contains('email') || pkg.contains('mail') || pkg.contains('gmail')) {
+    if (lbl.contains('email') ||
+        lbl.contains('mail') ||
+        lbl.contains('gmail') ||
+        pkg.contains('email') ||
+        pkg.contains('mail') ||
+        pkg.contains('gmail')) {
       return Icons.email;
     }
     // Settings
-    if (lbl.contains('settings') || lbl.contains('paramètre') || pkg.contains('settings') || pkg.contains('config')) {
+    if (lbl.contains('settings') ||
+        lbl.contains('paramètre') ||
+        pkg.contains('settings') ||
+        pkg.contains('config')) {
       return Icons.settings;
     }
     // Security / Antivirus
-    if (lbl.contains('security') || lbl.contains('antivirus') || pkg.contains('security')) {
+    if (lbl.contains('security') ||
+        lbl.contains('antivirus') ||
+        pkg.contains('security')) {
       return Icons.security;
     }
     // Files / Documents
-    if (lbl.contains('file') || lbl.contains('document') || lbl.contains('office') ||
-        pkg.contains('files') || pkg.contains('document') || pkg.contains('office')) {
+    if (lbl.contains('file') ||
+        lbl.contains('document') ||
+        lbl.contains('office') ||
+        pkg.contains('files') ||
+        pkg.contains('document') ||
+        pkg.contains('office')) {
       return Icons.folder;
     }
     // Calculator
-    if (lbl.contains('calculator') || lbl.contains('calcul') || pkg.contains('calculator')) {
+    if (lbl.contains('calculator') ||
+        lbl.contains('calcul') ||
+        pkg.contains('calculator')) {
       return Icons.calculate;
     }
     // Clock / Alarm
-    if (lbl.contains('clock') || lbl.contains('alarm') || lbl.contains('timer') ||
-        pkg.contains('clock') || pkg.contains('alarm')) {
+    if (lbl.contains('clock') ||
+        lbl.contains('alarm') ||
+        lbl.contains('timer') ||
+        pkg.contains('clock') ||
+        pkg.contains('alarm')) {
       return Icons.alarm;
     }
     // Contacts
@@ -288,8 +344,11 @@ class AppListItem extends StatelessWidget {
       return Icons.contacts;
     }
     // Store / Shopping
-    if (lbl.contains('store') || lbl.contains('shop') || lbl.contains('play') ||
-        pkg.contains('vending') || pkg.contains('store')) {
+    if (lbl.contains('store') ||
+        lbl.contains('shop') ||
+        lbl.contains('play') ||
+        pkg.contains('vending') ||
+        pkg.contains('store')) {
       return Icons.store;
     }
     return Icons.apps;

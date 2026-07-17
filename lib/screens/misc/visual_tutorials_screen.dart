@@ -10,35 +10,37 @@ class VisualTutorialsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
-                  const SizedBox(height: 24),
-                  const Text(
+                  SizedBox(height: 24),
+                  Text(
                     'Tutorials',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 32,
                         fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
                   Expanded(
                     child: ListView(
                       children: [
-                        _buildTutorialItem('Set up a safe zone', '2 min'),
-                        _buildTutorialItem('Read AI reports', '3 min'),
-                        _buildTutorialItem('Manage screen time', '4 min'),
+                        _buildTutorialItem(
+                            context, 'Set up a safe zone', '2 min'),
+                        _buildTutorialItem(context, 'Read AI reports', '3 min'),
+                        _buildTutorialItem(
+                            context, 'Manage screen time', '4 min'),
                       ],
                     ),
                   ),
@@ -51,27 +53,29 @@ class VisualTutorialsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTutorialItem(String title, String duration) {
+  Widget _buildTutorialItem(
+      BuildContext context, String title, String duration) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: 16),
       child: GlassCard(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         child: Row(
           children: [
-            const Icon(Icons.play_circle_outline, color: AppColors.primary, size: 40),
-            const SizedBox(width: 20),
+            Icon(Icons.play_circle_outline, color: AppColors.primary, size: 40),
+            SizedBox(width: 20),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: const TextStyle(
-                          color: Colors.white,
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 18,
                           fontWeight: FontWeight.bold)),
                   Text(duration,
-                      style: const TextStyle(
-                          color: AppColors.textGray400, fontSize: 14)),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 14)),
                 ],
               ),
             ),

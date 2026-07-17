@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_text_field.dart';
-import '../../core/services/firestore_service.dart';
+import '../../core/repositories/child_repository.dart';
+import '../../core/premium/entitlement_service.dart';
+import '../../core/premium/plan_permissions.dart';
+import '../../features/subscription/widgets/locked_feature_sheet.dart';
 
 class ChildProfileCreationScreen extends StatefulWidget {
   const ChildProfileCreationScreen({super.key});
@@ -20,8 +24,34 @@ class _ChildProfileCreationScreenState
   final _ageController = TextEditingController();
   bool _isLoading = false;
   String _loadingMessage = 'Creating...';
+  String _selectedRelation = 'Fils';
+  String _selectedAvatar = '👦';
 
   Future<void> _handleCreate() async {
+    final childRepository = context.read<ChildRepository>();
+    final entitlement = context.read<EntitlementService>();
+    final currentCount = await childRepository.getChildrenCount();
+
+    if (!mounted) return;
+
+    if (!entitlement.canAddChild(currentCount)) {
+      LockedFeatureSheet.show(
+        context,
+        featureName: "Ajouter un profil enfant",
+        featureDescription:
+            "Votre plan actuel (${entitlement.currentSubscription.planEnum.displayName}) est limité à un maximum de ${entitlement.getLimit('children')} enfant(s).",
+        requiredPlan: entitlement.activePlan == SubscriptionPlan.free
+            ? "Guardian Plus"
+            : "Guardian Premium",
+        benefits: const [
+          "Jusqu'à 3 enfants protégés en simultané (Plus)",
+          "Nombre d'enfants illimité (Premium)",
+          "Historique étendu de localisation et rapports IA",
+        ],
+      );
+      return;
+    }
+
     if (_nameController.text.isEmpty || _ageController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
@@ -62,20 +92,25 @@ class _ChildProfileCreationScreenState
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.backgroundDark,
-          title: const Text('Confirmation', style: TextStyle(color: Colors.white)),
-          content: const Text(
+          title: Text('Confirmation',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+          content: Text(
             'This child is a major (18-21 years old). Some parental restrictions will be limited. Do you want to continue?',
-            style: TextStyle(color: AppColors.textGray400),
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel', style: TextStyle(color: AppColors.textGray400)),
+              child: Text('Cancel',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Continue', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+              child: Text('Continue',
+                  style: TextStyle(
+                      color: AppColors.primary, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -89,10 +124,12 @@ class _ChildProfileCreationScreenState
     });
 
     try {
-      final result = await FirestoreService().createChild(
+      final result = await childRepository.createChild(
         displayName: _nameController.text.trim(),
         age: age,
         isMinor: isMinor,
+        avatar: _selectedAvatar,
+        relation: _selectedRelation,
       );
 
       if (mounted) {
@@ -120,12 +157,12 @@ class _ChildProfileCreationScreenState
   void _showConfigurationDialog(dynamic result) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -133,23 +170,28 @@ class _ChildProfileCreationScreenState
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.24),
                     borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 20),
-            const Icon(Icons.check_circle, color: Colors.greenAccent, size: 52),
-            const SizedBox(height: 12),
-            const Text('Profile Created!',
+            SizedBox(height: 20),
+            Icon(Icons.check_circle, color: Colors.greenAccent, size: 52),
+            SizedBox(height: 12),
+            Text('Profile Created!',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 22,
                     fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Text(
               'How would you like to configure ${_nameController.text.trim()}\'s rules?',
-              style: const TextStyle(color: AppColors.textGray400, fontSize: 14),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 14),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             _configOption(
               ctx,
               Icons.auto_awesome,
@@ -161,7 +203,7 @@ class _ChildProfileCreationScreenState
                     extra: {'child': result, 'mode': 'setup'});
               },
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             _configOption(
               ctx,
               Icons.settings,
@@ -172,18 +214,18 @@ class _ChildProfileCreationScreenState
                 context.pushReplacement('/child/config', extra: result);
               },
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             _configOption(
               ctx,
               Icons.skip_next,
               'Skip for now',
               'Configure rules later',
-              Colors.white38,
+              Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
               () {
                 context.pushReplacement('/child/link-gen', extra: result);
               },
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
         ),
       ),
@@ -198,7 +240,7 @@ class _ChildProfileCreationScreenState
         onTap();
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(14),
@@ -207,22 +249,24 @@ class _ChildProfileCreationScreenState
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(10),
               decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.15), shape: BoxShape.circle),
               child: Icon(icon, color: color, size: 22),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold)),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontWeight: FontWeight.bold)),
                   Text(subtitle,
-                      style: const TextStyle(
-                          color: AppColors.textGray400, fontSize: 12)),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 12)),
                 ],
               ),
             ),
@@ -236,66 +280,119 @@ class _ChildProfileCreationScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // SAME: close button
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: Icon(Icons.close,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   // SAME: title
-                  const Text(
+                  Text(
                     'New Profile',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 32,
                         fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     "Add a profile for one of your children to start protecting them.",
-                    style:
-                        TextStyle(color: AppColors.textGray400, fontSize: 16),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 16),
                   ),
-                  const SizedBox(height: 40),
-                  // SAME: avatar placeholder
-                  Center(
-                    child: Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.glassBorder),
-                      ),
-                      child: const Icon(Icons.add_a_photo_outlined,
-                          color: Colors.white70, size: 32),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  // SAME: fields
+                  SizedBox(height: 40),
                   CustomTextField(
                     controller: _nameController,
                     hint: "Child's first name",
                     prefixIcon: Icons.child_care,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   CustomTextField(
                     controller: _ageController,
                     hint: 'Age (1-21)',
                     prefixIcon: Icons.calendar_today,
                     keyboardType: TextInputType.number,
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 24),
+                  Text(
+                    'Lien de parenté',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: ['Fils', 'Fille', 'Autre'].map((rel) {
+                      final active = _selectedRelation == rel;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: ChoiceChip(
+                          label: Text(rel),
+                          selected: active,
+                          onSelected: (val) {
+                            if (val) setState(() => _selectedRelation = rel);
+                          },
+                          selectedColor: AppColors.primary.withOpacity(0.2),
+                          labelStyle: TextStyle(
+                            color: active ? AppColors.primary : Colors.grey,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Choisissez un avatar',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children:
+                        ['👦', '👧', '🦖', '🦄', '🐱', '🐶'].map((avatar) {
+                      final active = _selectedAvatar == avatar;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedAvatar = avatar),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: active
+                                ? AppColors.primary.withOpacity(0.15)
+                                : Colors.transparent,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: active
+                                  ? AppColors.primary
+                                  : Colors.transparent,
+                              width: 2,
+                            ),
+                          ),
+                          child: Text(avatar,
+                              style: const TextStyle(fontSize: 22)),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  SizedBox(height: 32),
                   // SAME: button
                   CustomButton(
                     text: _isLoading ? _loadingMessage : 'Next',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
+import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_text_field.dart';
 import '../../core/services/api_service.dart';
@@ -11,8 +12,7 @@ class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() =>
-      _SignupScreenState();
+  State<SignupScreen> createState() => _SignupScreenState();
 }
 
 class _PasswordRule {
@@ -23,8 +23,7 @@ class _PasswordRule {
   static String _currentPassword = '';
 }
 
-class _SignupScreenState
-    extends State<SignupScreen> {
+class _SignupScreenState extends State<SignupScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -96,7 +95,7 @@ class _SignupScreenState
       );
       // SYNC PUSH TOKEN
       await NotificationService().syncToken();
-      
+
       if (mounted) context.go('/otp-setup');
     } catch (e) {
       if (mounted) {
@@ -116,7 +115,7 @@ class _SignupScreenState
       await ApiService().signInWithGoogle();
       // SYNC PUSH TOKEN
       await NotificationService().syncToken();
-      
+
       if (mounted) context.go('/dashboard');
     } catch (e) {
       if (mounted) {
@@ -142,159 +141,205 @@ class _SignupScreenState
   @override
   Widget build(BuildContext context) {
     _PasswordRule._currentPassword = _passwordController.text;
-    return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
-      body: Stack(
+    final width = MediaQuery.of(context).size.width;
+    final isWebWide = width > 800;
+
+    Widget content = SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const LiquidBackground(),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+          IconButton(
+            icon: Icon(Icons.arrow_back,
+                color: Theme.of(context).colorScheme.onSurface),
+            onPressed: () => context.pop(),
+          ),
+          const SizedBox(height: 16),
+          Text('Create an account',
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          Text('Protect your children with The Guardian.',
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 14)),
+          const SizedBox(height: 28),
+
+          // Google Sign-Up
+          _buildGoogleButton(),
+          const SizedBox(height: 20),
+          _buildDivider(),
+          const SizedBox(height: 20),
+
+          CustomTextField(
+            controller: _nameController,
+            hint: 'Full name',
+            prefixIcon: Icons.person_outline,
+            errorText: _nameError,
+          ),
+          const SizedBox(height: 14),
+          CustomTextField(
+            controller: _emailController,
+            hint: 'Email',
+            prefixIcon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            errorText: _emailError,
+          ),
+          const SizedBox(height: 14),
+          CustomTextField(
+            controller: _passwordController,
+            hint: 'Password',
+            prefixIcon: Icons.lock_outline,
+            obscureText: _obscurePassword,
+            suffixIcon:
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+            onSuffixTap: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
+            errorText: _passwordError,
+            onChanged: (_) => setState(() {}),
+          ),
+          // Real-time password strength indicators
+          if (_passwordController.text.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 12, left: 4),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => context.pop(),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Create an account',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  const Text('Protect your children with The Guardian.',
-                      style: TextStyle(
-                          color: AppColors.textGray400, fontSize: 14)),
-                  const SizedBox(height: 28),
-
-                  // Google Sign-Up
-                  _buildGoogleButton(),
-                  const SizedBox(height: 20),
-                  _buildDivider(),
-                  const SizedBox(height: 20),
-
-                  CustomTextField(
-                    controller: _nameController,
-                    hint: 'Full name',
-                    prefixIcon: Icons.person_outline,
-                    errorText: _nameError,
-                  ),
-                  const SizedBox(height: 14),
-                  CustomTextField(
-                    controller: _emailController,
-                    hint: 'Email',
-                    prefixIcon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    errorText: _emailError,
-                  ),
-                  const SizedBox(height: 14),
-                  CustomTextField(
-                    controller: _passwordController,
-                    hint: 'Password',
-                    prefixIcon: Icons.lock_outline,
-                    obscureText: _obscurePassword,
-                    suffixIcon: _obscurePassword
-                        ? Icons.visibility_off
-                        : Icons.visibility,
-                    onSuffixTap: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                    errorText: _passwordError,
-                    onChanged: (_) => setState(() {}),
-                  ),
-                  // Real-time password strength indicators
-                  if (_passwordController.text.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12, left: 4),
-                      child: Column(
-                        children: [
-                          ..._rules.map((r) => Padding(
-                                padding: const EdgeInsets.only(bottom: 6),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      r.met
-                                          ? Icons.check_circle
-                                          : Icons.radio_button_unchecked,
-                                      color: r.met
-                                          ? Colors.greenAccent
-                                          : Colors.white38,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(r.label,
-                                        style: TextStyle(
-                                          color: r.met
-                                              ? Colors.greenAccent
-                                              : Colors.white54,
-                                          fontSize: 12,
-                                        )),
-                                  ],
-                                ),
-                              )),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 28),
-                  CustomButton(
-                    text: _isLoading ? 'Creating account...' : 'Create Account',
-                    onPressed: _isLoading ? null : _handleRegister,
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('Already have an account? ',
-                            style:
-                                TextStyle(color: Colors.white70, fontSize: 14)),
-                        GestureDetector(
-                          onTap: () => context.go('/login'),
-                          child: const Text('Login',
-                              style: TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.bold)),
+                  ..._rules.map((r) => Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          children: [
+                            Icon(
+                              r.met
+                                  ? Icons.check_circle
+                                  : Icons.radio_button_unchecked,
+                              color: r.met
+                                  ? Colors.greenAccent
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.38),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(r.label,
+                                style: TextStyle(
+                                  color: r.met
+                                      ? Colors.greenAccent
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.54),
+                                  fontSize: 12,
+                                )),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                      )),
                 ],
               ),
             ),
+          const SizedBox(height: 28),
+          CustomButton(
+            text: _isLoading ? 'Creating account...' : 'Create Account',
+            onPressed: _isLoading ? null : _handleRegister,
           ),
+          const SizedBox(height: 16),
+          Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Already have an account? ',
+                    style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.70),
+                        fontSize: 14)),
+                GestureDetector(
+                  onTap: () => context.go('/login'),
+                  child: const Text('Login',
+                      style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+
+    if (isWebWide) {
+      content = Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: GlassCard(
+            margin: const EdgeInsets.symmetric(vertical: 40),
+            padding: const EdgeInsets.all(8),
+            child: content,
+          ),
+        ),
+      );
+    } else {
+      content = SafeArea(child: content);
+    }
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          const LiquidBackground(),
+          content,
         ],
       ),
     );
   }
 
   Widget _buildGoogleButton() {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return GestureDetector(
       onTap: _isGoogleLoading ? null : _handleGoogleSignUp,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
+          color: isLight
+              ? Colors.white.withValues(alpha: 0.92)
+              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          border: Border.all(
+              color: isLight
+                  ? const Color(0xFFCBD5E1)
+                  : Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.15)),
+          boxShadow: isLight
+              ? [
+                  BoxShadow(
+                      color: const Color(0xFF4F46E5).withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: Offset(0, 2))
+                ]
+              : [],
         ),
         child: _isGoogleLoading
-            ? const Center(
+            ? Center(
                 child: SizedBox(
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white)))
+                        strokeWidth: 2,
+                        color: Theme.of(context).colorScheme.onSurface)))
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _GoogleLogo(),
-                  const SizedBox(width: 12),
-                  const Text('Sign up with Google',
+                  SizedBox(width: 12),
+                  Text('Sign up with Google',
                       style: TextStyle(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 15,
                           fontWeight: FontWeight.w600)),
                 ],
@@ -306,13 +351,25 @@ class _SignupScreenState
   Widget _buildDivider() {
     return Row(
       children: [
-        Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.12))),
-        const Padding(
+        Expanded(
+            child: Divider(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.12))),
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Text('or',
-              style: TextStyle(color: AppColors.textGray400, fontSize: 13)),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 13)),
         ),
-        Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.12))),
+        Expanded(
+            child: Divider(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.12))),
       ],
     );
   }
@@ -324,7 +381,7 @@ class _GoogleLogo extends StatelessWidget {
     return Container(
       width: 22,
       height: 22,
-      decoration: const BoxDecoration(shape: BoxShape.circle),
+      decoration: BoxDecoration(shape: BoxShape.circle),
       child: CustomPaint(painter: _GoogleLogoPainter()),
     );
   }

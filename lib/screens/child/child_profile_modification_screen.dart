@@ -21,6 +21,8 @@ class _ChildProfileModificationScreenState
   late TextEditingController _nameController;
   late TextEditingController _ageController;
   bool _isLoading = false;
+  late String _selectedRelation;
+  late String _selectedAvatar;
 
   @override
   void initState() {
@@ -29,6 +31,8 @@ class _ChildProfileModificationScreenState
         TextEditingController(text: widget.child?['displayName'] ?? '');
     _ageController =
         TextEditingController(text: widget.child?['age']?.toString() ?? '');
+    _selectedRelation = widget.child?['relation'] ?? 'Fils';
+    _selectedAvatar = widget.child?['avatar'] ?? '👦';
   }
 
   @override
@@ -48,6 +52,8 @@ class _ChildProfileModificationScreenState
         childId,
         displayName: _nameController.text.trim(),
         age: int.tryParse(_ageController.text) ?? 0,
+        avatar: _selectedAvatar,
+        relation: _selectedRelation,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -73,14 +79,20 @@ class _ChildProfileModificationScreenState
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete profile'),
-        content: const Text('Do you really want to delete this child profile?'),
+        title: Text('Delete profile',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
+        content: Text('Do you really want to delete this child profile?',
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
         actions: [
           TextButton(
-              onPressed: () => context.pop(false), child: const Text('Cancel')),
+              onPressed: () => context.pop(false),
+              child: const Text('Cancel',
+                  style: TextStyle(color: AppColors.primary))),
           TextButton(
             onPressed: () => context.pop(true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child:
+                const Text('Delete', style: TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),
@@ -111,52 +123,120 @@ class _ChildProfileModificationScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
-                  const SizedBox(height: 24),
-                  const Text(
+                  SizedBox(height: 24),
+                  Text(
                     'Edit Profile',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 40),
                   CustomTextField(
                     controller: _nameController,
                     hint: "Child's first name",
                     prefixIcon: Icons.child_care,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   CustomTextField(
                     controller: _ageController,
                     hint: 'Age',
                     prefixIcon: Icons.calendar_today,
                     keyboardType: TextInputType.number,
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(height: 24),
+                  Text(
+                    'Lien de parenté',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: ['Fils', 'Fille', 'Autre'].map((rel) {
+                      final active = _selectedRelation == rel;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: ChoiceChip(
+                          label: Text(rel),
+                          selected: active,
+                          onSelected: (val) {
+                            if (val) setState(() => _selectedRelation = rel);
+                          },
+                          selectedColor: AppColors.primary.withOpacity(0.2),
+                          labelStyle: TextStyle(
+                            color: active ? AppColors.primary : Colors.grey,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Choisissez un avatar',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children:
+                        ['👦', '👧', '🦖', '🦄', '🐱', '🐶'].map((avatar) {
+                      final active = _selectedAvatar == avatar;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedAvatar = avatar),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: active
+                                ? AppColors.primary.withOpacity(0.15)
+                                : Colors.transparent,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: active
+                                  ? AppColors.primary
+                                  : Colors.transparent,
+                              width: 2,
+                            ),
+                          ),
+                          child: Text(avatar,
+                              style: const TextStyle(fontSize: 22)),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  SizedBox(height: 40),
                   CustomButton(
-                    text: _isLoading
-                        ? 'Saving...'
-                        : 'Save changes',
+                    text: _isLoading ? 'Saving...' : 'Save changes',
                     onPressed: _isLoading ? null : _handleSave,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   CustomButton(
                     text: 'Delete profile',
+                    backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
+                    textColor: Colors.redAccent,
+                    isOutlined: true,
                     onPressed: _isLoading ? null : _handleDelete,
                   ),
                 ],

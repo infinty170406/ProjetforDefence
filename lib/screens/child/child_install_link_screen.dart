@@ -20,87 +20,92 @@ class ChildInstallLinkScreen extends StatelessWidget {
     final link = 'https://the-guardian.app/child/pair?code=$token';
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   Text(
                     'Link for $displayName',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  SizedBox(height: 16),
+                  Text(
                     "Use this code on the child's device to link the account.",
                     style: TextStyle(
-                      color: AppColors.textGray400,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 16,
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  SizedBox(height: 30),
                   GlassCard(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(24),
                     child: Column(
                       children: [
-                        const Text(
+                        Text(
                           'Invitation code',
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.70),
                             fontSize: 14,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Text(
                           token,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.primary,
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 2,
                           ),
                         ),
-                        const SizedBox(height: 24),
-                        const Text(
+                        SizedBox(height: 24),
+                        Text(
                           'Direct link:',
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.70),
                             fontSize: 14,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Text(
                           link,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 14,
                             decoration: TextDecoration.underline,
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         CustomButton(
                           text: 'Copy link',
                           onPressed: () {
                             Clipboard.setData(ClipboardData(text: link));
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text(
-                                    'Link copied to clipboard'),
+                                content: Text('Link copied to clipboard'),
                                 backgroundColor: AppColors.primary,
                               ),
                             );
@@ -109,7 +114,7 @@ class ChildInstallLinkScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   CustomButton(
                     text: 'Done',
                     onPressed: () => context.go('/dashboard'),

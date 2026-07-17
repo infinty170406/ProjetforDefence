@@ -20,13 +20,12 @@ class _InstallLinkGenerationScreenState
   String? _generatedLink;
   String? _token;
 
-
   Future<void> _generatePairingLink() async {
     setState(() => _generating = true);
     try {
       // The invitationToken is already generated at child creation in ChildRepository.
       final token = widget.child?['invitationToken'] ?? 'ERROR';
-      
+
       if (token == 'ERROR') {
         throw Exception('Invitation token not found for this profile.');
       }
@@ -41,60 +40,72 @@ class _InstallLinkGenerationScreenState
       setState(() => _generating = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.statusDanger),
+          SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: AppColors.statusDanger),
         );
       }
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final displayName = widget.child?['displayName'] ?? 'your child';
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: () => context.pop(),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   Text(
                     'Link for $displayName',
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
+                  SizedBox(height: 12),
+                  Text(
                     'Generate a secure pairing link valid for 48 hours.',
-                    style: TextStyle(color: AppColors.textGray400, fontSize: 16),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 16),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   if (_generatedLink == null) ...[
                     Center(
                       child: Column(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(24),
+                            padding: EdgeInsets.all(24),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.3)),
                             ),
-                            child: const Icon(Icons.link, color: AppColors.primary, size: 80),
+                            child: Icon(Icons.link,
+                                color: AppColors.primary, size: 80),
                           ),
-                          const SizedBox(height: 24),
-                          const Text(
+                          SizedBox(height: 24),
+                          Text(
                             'Tap below to generate a unique pairing link for this device.',
-                            style: TextStyle(color: AppColors.textGray400, fontSize: 14),
+                            style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                                fontSize: 14),
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -105,61 +116,80 @@ class _InstallLinkGenerationScreenState
                       child: Column(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(20),
+                            padding: EdgeInsets.all(20),
                             decoration: BoxDecoration(
                               color: Colors.green.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                  color: Colors.green.withValues(alpha: 0.3)),
                             ),
-                            child: const Icon(Icons.check_circle_outline, color: Colors.green, size: 60),
+                            child: Icon(Icons.check_circle_outline,
+                                color: Colors.green, size: 60),
                           ),
-                          const SizedBox(height: 20),
+                          SizedBox(height: 20),
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.05),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.05),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.white12),
+                              border: Border.all(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.12)),
                             ),
                             child: Column(
                               children: [
                                 Text('Token: $_token',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         color: AppColors.accentTeal,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 20,
                                         letterSpacing: 3)),
-                                const SizedBox(height: 8),
+                                SizedBox(height: 8),
                                 Text(
                                   _generatedLink!,
-                                  style: const TextStyle(color: AppColors.textGray400, fontSize: 11),
+                                  style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                      fontSize: 11),
                                   textAlign: TextAlign.center,
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          const Text('Valid for 48 hours',
-                              style: TextStyle(color: AppColors.textGray400, fontSize: 12)),
-                          const SizedBox(height: 20),
+                          SizedBox(height: 12),
+                          Text('Valid for 48 hours',
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                  fontSize: 12)),
+                          SizedBox(height: 20),
                           OutlinedButton.icon(
                             onPressed: () {
-                              Clipboard.setData(ClipboardData(text: _generatedLink!));
+                              Clipboard.setData(
+                                  ClipboardData(text: _generatedLink!));
                               ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Link copied!')));
+                                  const SnackBar(
+                                      content: Text('Link copied!')));
                             },
-                            icon: const Icon(Icons.copy, size: 16),
-                            label: const Text('Copy Link'),
+                            icon: Icon(Icons.copy, size: 16),
+                            label: Text('Copy Link'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.primary,
-                              side: const BorderSide(color: AppColors.primary),
+                              side: BorderSide(color: AppColors.primary),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ],
-                  const Spacer(),
+                  Spacer(),
                   CustomButton(
                     text: _generating
                         ? 'Generating...'
@@ -170,10 +200,11 @@ class _InstallLinkGenerationScreenState
                   ),
                   if (_generatedLink != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 12),
+                      padding: EdgeInsets.only(top: 12),
                       child: CustomButton(
                         text: 'View Instructions',
-                        onPressed: () => context.push('/child/link-instr', extra: widget.child),
+                        onPressed: () => context.push('/child/link-instr',
+                            extra: widget.child),
                       ),
                     ),
                 ],

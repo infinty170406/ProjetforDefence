@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
+import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_text_field.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/notification_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool isAdmin;
+  const LoginScreen({super.key, this.isAdmin = false});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -59,8 +61,10 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       // SYNC PUSH TOKEN
       await NotificationService().syncToken();
-      
-      if (mounted) context.go('/dashboard');
+
+      if (mounted) {
+        context.go(widget.isAdmin ? '/admin' : '/dashboard');
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -79,8 +83,10 @@ class _LoginScreenState extends State<LoginScreen> {
       await ApiService().signInWithGoogle();
       // SYNC PUSH TOKEN
       await NotificationService().syncToken();
-      
-      if (mounted) context.go('/dashboard');
+
+      if (mounted) {
+        context.go(widget.isAdmin ? '/admin' : '/dashboard');
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -103,127 +109,155 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isWebWide = width > 800;
+
+    Widget content = SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 48),
+          Text('Login',
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text('Happy to see you again.',
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 18)),
+          const SizedBox(height: 40),
+          _buildGoogleButton(),
+          const SizedBox(height: 20),
+          _buildDivider(),
+          const SizedBox(height: 20),
+          CustomTextField(
+            controller: _emailController,
+            hint: 'Email',
+            prefixIcon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            errorText: _emailError,
+          ),
+          const SizedBox(height: 16),
+          CustomTextField(
+            controller: _passwordController,
+            hint: 'Password',
+            prefixIcon: Icons.lock_outline,
+            obscureText: _obscurePassword,
+            suffixIcon:
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+            onSuffixTap: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
+            errorText: _passwordError,
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => context.push('/forgot-password'),
+              child: const Text('Forgot password?',
+                  style: TextStyle(color: AppColors.primary)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          CustomButton(
+            text: _isLoading ? 'Logging in...' : 'Login',
+            onPressed: _isLoading ? null : _handleLogin,
+          ),
+          const SizedBox(height: 28),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text("Don't have an account? ",
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.70))),
+              GestureDetector(
+                onTap: () => context.push('/signup'),
+                child: const Text('Sign Up',
+                    style: TextStyle(
+                        color: AppColors.primary, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+
+    if (isWebWide) {
+      content = Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: GlassCard(
+            margin: const EdgeInsets.symmetric(vertical: 40),
+            padding: const EdgeInsets.all(8),
+            child: content,
+          ),
+        ),
+      );
+    } else {
+      content = SafeArea(child: content);
+    }
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       body: Stack(
         children: [
           const LiquidBackground(),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 48),
-                  const Text('Login',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 40,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  const Text('Happy to see you again.',
-                      style: TextStyle(
-                          color: AppColors.textGray400, fontSize: 18)),
-                  const SizedBox(height: 40),
-                  _buildGoogleButton(),
-                  const SizedBox(height: 20),
-                  _buildDivider(),
-                  const SizedBox(height: 20),
-                  CustomTextField(
-                    controller: _emailController,
-                    hint: 'Email',
-                    prefixIcon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    errorText: _emailError,
-                  ),
-                  const SizedBox(height: 16),
-                  CustomTextField(
-                    controller: _passwordController,
-                    hint: 'Password',
-                    prefixIcon: Icons.lock_outline,
-                    obscureText: _obscurePassword,
-                    suffixIcon: _obscurePassword
-                        ? Icons.visibility_off
-                        : Icons.visibility,
-                    onSuffixTap: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                    errorText: _passwordError,
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => context.push('/forgot-password'),
-                      child: const Text('Forgot password?',
-                          style: TextStyle(color: AppColors.primary)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  CustomButton(
-                    text: _isLoading ? 'Logging in...' : 'Login',
-                    onPressed: _isLoading ? null : _handleLogin,
-                  ),
-                  const SizedBox(height: 28),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("Don't have an account? ",
-                          style: TextStyle(color: Colors.white70)),
-                      GestureDetector(
-                        onTap: () => context.push('/signup'),
-                        child: const Text('Sign Up',
-                            style: TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Center(
-                    child: TextButton.icon(
-                      icon: const Icon(Icons.phonelink_setup, size: 16),
-                      label: const Text('Setup child device'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.white60,
-                      ),
-                      onPressed: () => context.push('/child/pair'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          content,
         ],
       ),
     );
   }
 
   Widget _buildGoogleButton() {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return GestureDetector(
       onTap: _isGoogleLoading ? null : _handleGoogleSignIn,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
+          color: isLight
+              ? Colors.white.withValues(alpha: 0.92)
+              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          border: Border.all(
+              color: isLight
+                  ? const Color(0xFFCBD5E1)
+                  : Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.15)),
+          boxShadow: isLight
+              ? [
+                  BoxShadow(
+                      color: const Color(0xFF4F46E5).withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: Offset(0, 2))
+                ]
+              : [],
         ),
         child: _isGoogleLoading
-            ? const Center(
+            ? Center(
                 child: SizedBox(
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white)))
+                        strokeWidth: 2,
+                        color: Theme.of(context).colorScheme.onSurface)))
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _GoogleLogo(),
-                  const SizedBox(width: 12),
-                  const Text('Continue with Google',
+                  SizedBox(width: 12),
+                  Text('Continue with Google',
                       style: TextStyle(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 15,
                           fontWeight: FontWeight.w600)),
                 ],
@@ -235,13 +269,25 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildDivider() {
     return Row(
       children: [
-        Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.12))),
-        const Padding(
+        Expanded(
+            child: Divider(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.12))),
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Text('or',
-              style: TextStyle(color: AppColors.textGray400, fontSize: 13)),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 13)),
         ),
-        Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.12))),
+        Expanded(
+            child: Divider(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.12))),
       ],
     );
   }
@@ -253,7 +299,7 @@ class _GoogleLogo extends StatelessWidget {
     return Container(
       width: 22,
       height: 22,
-      decoration: const BoxDecoration(shape: BoxShape.circle),
+      decoration: BoxDecoration(shape: BoxShape.circle),
       child: CustomPaint(painter: _GoogleLogoPainter()),
     );
   }

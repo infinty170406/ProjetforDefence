@@ -28,41 +28,56 @@ class ChildMonitorService {
   Stream<String> watchDeviceStatus(String childId, {String? parentId}) => _db
       .doc(_childPath(childId, parentId: parentId))
       .snapshots()
-      .map((s) => (s.data()?['deviceStatus'] as String?) ?? 'OFFLINE');
+      .map((snapshot) =>
+          snapshot.data()?['deviceStatus'] as String? ?? 'OFFLINE');
 
   // ── GPS Location ──────────────────────────────────────────────────────────
 
-  Stream<Map<String, dynamic>?> watchLocation(String childId, {String? parentId}) => _db
-      .doc('${_childPath(childId, parentId: parentId)}/location/current')
-      .snapshots()
-      .map((s) => s.data());
+  Stream<Map<String, dynamic>?> watchLocation(String childId,
+          {String? parentId}) =>
+      _db
+          .doc('${_childPath(childId, parentId: parentId)}/location/current')
+          .snapshots()
+          .map((snapshot) => snapshot.data());
 
   // ── Alerts ────────────────────────────────────────────────────────────────
 
-  Stream<List<Map<String, dynamic>>> watchAlerts(String childId, {String? parentId}) => _db
-      .collection('${_childPath(childId, parentId: parentId)}/alerts/notifications/items')
+  Stream<
+      List<
+          Map<String,
+              dynamic>>> watchAlerts(String childId, {String? parentId}) => _db
+      .collection(
+          '${_childPath(childId, parentId: parentId)}/alerts/notifications/items')
       .orderBy('timestamp', descending: true)
-      .limit(50)
       .snapshots()
-      .map((q) => q.docs
-          .map((d) => {'id': d.id, ...d.data()})
+      .map((snapshot) => snapshot.docs
+          .map((doc) => <String, dynamic>{...doc.data(), 'id': doc.id})
           .toList());
 
   // ── Usage stats ───────────────────────────────────────────────────────────
-  
-  String _statsAppsPath(String childId, {String? parentId}) => '${_childPath(childId, parentId: parentId)}/alerts/usage/apps';
-  String _statsWebPath(String childId, {String? parentId}) => '${_childPath(childId, parentId: parentId)}/alerts/usage/websites';
 
-  Future<Map<String, dynamic>?> getTodayStats(String childId, {String? parentId}) async {
+  String _statsAppsPath(String childId, {String? parentId}) =>
+      '${_childPath(childId, parentId: parentId)}/alerts/usage/apps';
+  String _statsWebPath(String childId, {String? parentId}) =>
+      '${_childPath(childId, parentId: parentId)}/alerts/usage/websites';
+
+  Future<Map<String, dynamic>?> getTodayStats(String childId,
+      {String? parentId}) async {
     final today = _dateStr(DateTime.now());
-    final appSnap = await _db.doc('${_statsAppsPath(childId, parentId: parentId)}/$today').get();
-    final webSnap = await _db.doc('${_statsWebPath(childId, parentId: parentId)}/$today').get();
-    
+    final appSnap = await _db
+        .doc('${_statsAppsPath(childId, parentId: parentId)}/$today')
+        .get();
+    final webSnap = await _db
+        .doc('${_statsWebPath(childId, parentId: parentId)}/$today')
+        .get();
+
     final appData = appSnap.data() ?? {};
     final webData = webSnap.data() ?? {};
 
-    final appUsed = (appData['usedMinutes'] ?? appData['totalMinutes'] ?? 0) as int;
-    final webUsed = (webData['usedMinutes'] ?? webData['totalMinutes'] ?? 0) as int;
+    final appUsed =
+        (appData['usedMinutes'] ?? appData['totalMinutes'] ?? 0) as int;
+    final webUsed =
+        (webData['usedMinutes'] ?? webData['totalMinutes'] ?? 0) as int;
 
     return {
       'totalMinutes': appUsed + webUsed,
@@ -72,76 +87,94 @@ class ChildMonitorService {
     };
   }
 
-  Future<List<Map<String, dynamic>>> getWeekStats(String childId, {String? parentId}) async {
-    final appSnap = await _db
-        .collection(_statsAppsPath(childId, parentId: parentId))
-        .orderBy(FieldPath.documentId, descending: true)
-        .limit(7)
-        .get();
-    
+  Future<List<Map<String, dynamic>>> getWeekStats(String childId,
+      {String? parentId}) async {
+    final appSnap =
+        await _db.collection(_statsAppsPath(childId, parentId: parentId)).get();
+
     final stats = appSnap.docs.map((d) {
       final data = d.data();
       data['date'] = d.id;
       return data;
     }).toList();
-    return stats;
+
+    stats.sort((a, b) => b['date'].toString().compareTo(a['date'].toString()));
+    return stats.take(7).toList();
   }
 
-  Future<List<Map<String, dynamic>>> getMonthStats(String childId, {String? parentId}) async {
-    final appSnap = await _db
-        .collection(_statsAppsPath(childId, parentId: parentId))
-        .orderBy(FieldPath.documentId, descending: true)
-        .limit(30)
-        .get();
-    
+  Future<List<Map<String, dynamic>>> getMonthStats(String childId,
+      {String? parentId}) async {
+    final appSnap =
+        await _db.collection(_statsAppsPath(childId, parentId: parentId)).get();
+
     final stats = appSnap.docs.map((d) {
       final data = d.data();
       data['date'] = d.id;
       return data;
     }).toList();
-    return stats;
+
+    stats.sort((a, b) => b['date'].toString().compareTo(a['date'].toString()));
+    return stats.take(30).toList();
   }
 
   // ── App inventory ─────────────────────────────────────────────────────────
 
-  Future<List<String>> getInstalledApps(String childId, {String? parentId}) async {
-    final snap =
-        await _db.doc('${_childPath(childId, parentId: parentId)}/inventory/apps').get();
+  Future<List<String>> getInstalledApps(String childId,
+      {String? parentId}) async {
+    final snap = await _db
+        .doc('${_childPath(childId, parentId: parentId)}/inventory/apps')
+        .get();
     return List<String>.from(snap.data()?['installedPackages'] ?? []);
   }
 
-  Future<Map<String, dynamic>?> getAppDetails(String childId, String packageName, {String? parentId}) async {
+  Future<Map<String, dynamic>?> getAppDetails(
+      String childId, String packageName,
+      {String? parentId}) async {
     final snap = await _db
-        .doc('${_childPath(childId, parentId: parentId)}/inventory/apps/details/$packageName')
+        .doc(
+            '${_childPath(childId, parentId: parentId)}/inventory/apps/details/$packageName')
         .get();
     return snap.data();
   }
 
   // ── Rules & Geofences ───────────────────────────────────────────────────
 
-  Stream<Map<String, dynamic>> watchRules(String childId, {String? parentId}) => _db
-      .doc('${_childPath(childId, parentId: parentId)}/rules/active')
-      .snapshots()
-      .map((s) => s.data() ?? {});
+  Stream<Map<String, dynamic>> watchRules(String childId, {String? parentId}) =>
+      _db
+          .doc('${_childPath(childId, parentId: parentId)}/rules/active')
+          .snapshots()
+          .map((snapshot) => snapshot.data() ?? const <String, dynamic>{});
 
-  Stream<List<Map<String, dynamic>>> watchGeofences(String childId, {String? parentId}) {
-    final pid = parentId ?? _authParentId;
-    if (pid == null) return Stream.value([]);
+  Stream<List<Map<String, dynamic>>> watchGeofences(String childId,
+      {String? parentId}) {
+    final parent = parentId ?? _authParentId;
+    if (parent == null) return Stream.value(const []);
     return _db
-        .collection('parents/$pid/geofences')
+        .collection('parents')
+        .doc(parent)
+        .collection('geofences')
         .where('childId', isEqualTo: childId)
         .snapshots()
-        .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => <String, dynamic>{...doc.data(), 'id': doc.id})
+            .toList());
   }
 
   // ── Web & Paginated History ──────────────────────────────────────────────
 
-  Stream<List<Map<String, dynamic>>> watchWebHistory(String childId, {String? parentId}) => _db
-      .collection('${_childPath(childId, parentId: parentId)}/inventory/websites/history')
+  Stream<
+      List<
+          Map<String,
+              dynamic>>> watchWebHistory(String childId, {String? parentId}) => _db
+      .collection(
+          '${_childPath(childId, parentId: parentId)}/inventory/websites/history')
       .orderBy('timestamp', descending: true)
       .limit(50)
       .snapshots()
-      .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList());
+      .map((snapshot) => snapshot.docs
+          .map((doc) => <String, dynamic>{...doc.data(), 'id': doc.id})
+          .where((item) => !item['url'].toString().startsWith('browser://'))
+          .toList());
 
   Future<QuerySnapshot<Map<String, dynamic>>> getAlertsPaginated(
     String childId, {
@@ -150,7 +183,8 @@ class ChildMonitorService {
     DocumentSnapshot? startAfter,
   }) async {
     Query<Map<String, dynamic>> query = _db
-        .collection('${_childPath(childId, parentId: parentId)}/alerts/notifications/items')
+        .collection(
+            '${_childPath(childId, parentId: parentId)}/alerts/notifications/items')
         .orderBy('timestamp', descending: true)
         .limit(limit);
     if (startAfter != null) query = query.startAfterDocument(startAfter);
@@ -164,22 +198,33 @@ class ChildMonitorService {
     DocumentSnapshot? startAfter,
   }) async {
     Query<Map<String, dynamic>> query = _db
-        .collection('${_childPath(childId, parentId: parentId)}/inventory/websites/history')
+        .collection(
+            '${_childPath(childId, parentId: parentId)}/inventory/websites/history')
         .orderBy('timestamp', descending: true)
         .limit(limit);
     if (startAfter != null) query = query.startAfterDocument(startAfter);
-    return await query.get();
+    final snap = await query.get();
+    return snap;
   }
 
-  Stream<Map<String, dynamic>?> watchSingleChild(String childId, {String? parentId}) => _db
-      .doc(_childPath(childId, parentId: parentId))
-      .snapshots()
-      .map((s) => s.data());
+  Stream<Map<String, dynamic>?> watchSingleChild(String childId,
+      {String? parentId}) {
+    return _db
+        .doc(_childPath(childId, parentId: parentId))
+        .snapshots()
+        .map((snapshot) {
+      final data = snapshot.data();
+      return data == null
+          ? null
+          : <String, dynamic>{...data, 'id': snapshot.id};
+    });
+  }
 
   Future<List<Map<String, dynamic>>> getGeofences({String? parentId}) async {
     final pid = parentId ?? _authParentId;
     if (pid == null) return [];
-    final snap = await _db.collection('parents').doc(pid).collection('geofences').get();
+    final snap =
+        await _db.collection('parents').doc(pid).collection('geofences').get();
     return snap.docs.map((doc) {
       final data = doc.data();
       data['id'] = doc.id;
@@ -188,7 +233,8 @@ class ChildMonitorService {
   }
 
   Future<void> markAllAlertsRead(String childId, {String? parentId}) async {
-    final col = _db.collection('${_childPath(childId, parentId: parentId)}/alerts/notifications/items');
+    final col = _db.collection(
+        '${_childPath(childId, parentId: parentId)}/alerts/notifications/items');
     final snap = await col.where('read', isEqualTo: false).get();
     final batch = _db.batch();
     for (final doc in snap.docs) {

@@ -7,9 +7,17 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == parentId;
     }
 
-    // Helper: vérifie que c'est l'appareil enfant appairé à ce profil.
-    // Lit le champ childDeviceUid du document children/{childId}
-    // et le compare à l'UID de l'utilisateur authentifié (connexion anonyme).
+    // Helper "local": vérifie que l'appareil enfant est celui appairé,
+    // en utilisant DIRECTEMENT resource.data (pas de get() => pas de boucle).
+    // À utiliser UNIQUEMENT dans les règles du document children/{childId} lui-même.
+    function isChildDeviceLocal() {
+      return request.auth != null
+          && resource.data.childDeviceUid == request.auth.uid;
+    }
+
+    // Helper "externe": pour les sous-collections (rules, alerts, etc.)
+    // qui ont besoin d'aller chercher le childDeviceUid sur le doc parent enfant.
+    // Ce get() est sûr ici car la règle sur children/{childId} n'appelle plus get().
     function isChildDevice(parentId, childId) {
       return request.auth != null
           && get(/databases/$(database)/documents/parents/$(parentId)/children/$(childId)).data.childDeviceUid == request.auth.uid;
@@ -17,34 +25,41 @@ service cloud.firestore {
 
     // ── Données parent ───────────────────────────────────────────────────────
     match /parents/{parentId} {
-      allow read, write: if isParent(parentId);
+      allow read: if isParent(parentId);
+      // KYC and verification attributes are server-owned. A parent can still
+      // update its profile, but cannot self-approve identity or OTP checks.
+      allow create: if isParent(parentId)
+          && request.resource.data.kycStatus == 'NOT_STARTED';
+      allow update: if isParent(parentId)
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'kycStatus', 'kycValidatedAt', 'kycSubmittedAt', 'kycDocumentMeta',
+            'otpVerified', 'otpVerifiedAt'
+          ]);
+      allow delete: if isParent(parentId);
+
+      // ── Co-parents ──────────────────────────────────────────────────────────
+      match /co_parents/{coParentId} {
+        allow read: if isParent(parentId) || (request.auth != null && request.auth.uid == coParentId);
+        allow write: if isParent(parentId);
+      }
 
       // ── Enfants ─────────────────────────────────────────────────────────────
       match /children/{childId} {
         // Parent : accès complet
-
-        
         allow read, write: if isParent(parentId);
 
         // Appareil enfant : lecture de ses propres données
-        allow read: if isChildDevice(parentId, childId);
+        // (version "locale" : pas de get(), évite la dépendance circulaire)
+        allow read: if isChildDeviceLocal();
 
         // Appareil enfant : mise à jour limitée (heartbeat, statut, FCM token)
-        allow update: if isChildDevice(parentId, childId)
+        allow update: if isChildDeviceLocal()
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'deviceStatus', 'lastHeartbeat', 'fcmToken', 'lastTokenSync'
             ]);
 
-        // Appairage : un nouvel appareil peut s'appairer en définissant isLinked + childDeviceUid
-        allow update: if request.auth != null
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-              'isLinked', 'childDeviceUid', 'deviceStatus', 'lastHeartbeat'
-            ])
-            && request.resource.data.isLinked == true
-            && request.resource.data.childDeviceUid == request.auth.uid;
-
         // ── Règles (Rules Repository) ──────────────────────────────────────
-        match /rules/active {
+        match /rules/{ruleDoc} {
           // Parent : lecture et écriture complètes
           allow read, write: if isParent(parentId);
           // Appareil enfant : lecture uniquement de ses propres règles
@@ -52,16 +67,29 @@ service cloud.firestore {
         }
 
         // ── Alertes (Alert Repository) ───────────────────────────────────
-        match /alerts/{alertDoc=**} {
+        // Parent-facing notifications are server-created. A child device cannot
+        // create arbitrary documents that trigger FCM notifications.
+        match /alerts/notifications/items/{alertId} {
           allow read, write: if isParent(parentId);
-          // Appareil enfant : lecture ET écriture (stats d'usage, notifications)
-          allow read, write: if isChildDevice(parentId, childId);
+          allow read: if isChildDevice(parentId, childId);
         }
 
-        // ── Statistiques d'usage ─────────────────────────────────────────
-        match /usageStats/{statDoc} {
-          allow read: if isParent(parentId);
-          allow read, write: if isChildDevice(parentId, childId);
+        // The child can only sync bounded usage telemetry, never notifications.
+        match /alerts/usage/{kind}/{date} {
+          allow read, write: if isParent(parentId);
+          allow read: if isChildDevice(parentId, childId);
+          allow create: if isChildDevice(parentId, childId)
+            && kind in ['apps', 'websites']
+            && request.resource.data.keys().hasOnly([
+              'totalMinutes', 'usedMinutes', 'remainingMinutes', 'isLocked',
+              'apps', 'websites', 'lastSync', 'date', 'childId'
+            ]);
+          allow update: if isChildDevice(parentId, childId)
+            && kind in ['apps', 'websites']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'totalMinutes', 'usedMinutes', 'remainingMinutes', 'isLocked',
+              'apps', 'websites', 'lastSync', 'date', 'childId'
+            ]);
         }
 
         // ── Inventaire (Apps / Web history) ─────────────────────────────
@@ -77,6 +105,10 @@ service cloud.firestore {
           allow read: if isParent(parentId);
           allow read, write: if isChildDevice(parentId, childId);
         }
+
+        match /location_history/{locationId} {
+          allow read, write: if isParent(parentId) || isChildDevice(parentId, childId);
+        }
       }
 
       // ── Géofences ─────────────────────────────────────────────────────────
@@ -85,17 +117,40 @@ service cloud.firestore {
       }
 
       // ── Vérification OTP ──────────────────────────────────────────────────
+      // Les codes sont uniquement accessibles au backend Render (Firebase Admin).
       match /verification/{doc} {
-        allow read, write: if isParent(parentId);
+        allow read, write: if false;
       }
     }
 
-    // ── Appairage : recherche par invitationToken ─────────────────────────
-    // Permet à tout utilisateur authentifié (y compris anonymement) de chercher
-    // un document enfant via collectionGroup pour valider le code d'appairage.
-    match /{path=**}/children/{childId} {
-      allow read: if request.auth != null
-          && resource.data.invitationToken != null;
+    // ── Familles ─────────────────────────────────────────────────────────────
+    match /families/{familyId} {
+      allow read: if request.auth != null && request.auth.uid in resource.data.parents;
+      allow create: if request.auth != null
+          && request.resource.data.adminParentId == request.auth.uid
+          && request.auth.uid in request.resource.data.parents;
+      allow update, delete: if request.auth != null
+          && resource.data.adminParentId == request.auth.uid;
     }
+
+    // ── Subscriptions ────────────────────────────────────────────────────────
+    match /subscriptions/{userId} {
+      // Entitlements and payment receipts are exclusively written by Admin SDK
+      // after a provider webhook has been verified.
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+
+      match /payments/{paymentId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;
+      }
+    }
+
+    // ── Invitations co-parent ────────────────────────────────────────────────
+    match /parent_invites/{inviteCode} {
+      // Invitation documents are only accessible through Cloud Functions.
+      allow read, write: if false;
+    }
+
   }
 }

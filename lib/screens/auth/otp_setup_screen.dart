@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
 
-
 import '../../core/services/api_service.dart';
 
 class OtpSetupScreen extends StatefulWidget {
@@ -32,7 +31,9 @@ class _OtpSetupScreenState extends State<OtpSetupScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error sending OTP: $e')),
+          const SnackBar(
+            content: Text('Impossible d’envoyer le code. Veuillez réessayer.'),
+          ),
         );
       }
     }
@@ -110,47 +111,48 @@ class _OtpSetupScreenState extends State<OtpSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundDark,
       body: Stack(
         children: [
           const LiquidBackground(),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.onSurface),
                     onPressed: _goBack,
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
                   Center(
                     child: Column(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(20),
+                          padding: EdgeInsets.all(20),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.15),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.security,
+                          child: Icon(Icons.security,
                               color: AppColors.primary, size: 48),
                         ),
-                        const SizedBox(height: 24),
-                        const Text(
+                        SizedBox(height: 24),
+                        Text(
                           'Secure Your Account',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        const Text(
+                        SizedBox(height: 12),
+                        Text(
                           'A 6-digit code has been sent\nto your email address.\nEnter it to access your account.',
                           style: TextStyle(
-                            color: AppColors.textGray400,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 14,
                             height: 1.6,
                           ),
@@ -159,10 +161,9 @@ class _OtpSetupScreenState extends State<OtpSetupScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 40),
-                  // Demo code display
+                  SizedBox(height: 40),
                   Container(
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(16),
@@ -171,21 +172,24 @@ class _OtpSetupScreenState extends State<OtpSetupScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.email_outlined,
+                        Icon(Icons.email_outlined,
                             color: AppColors.primary, size: 24),
-                        const SizedBox(width: 12),
-                        const Expanded(
+                        SizedBox(width: 12),
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Check your inbox',
+                                'Consultez votre boîte e-mail',
                                 style: TextStyle(
-                                    color: AppColors.textGray400, fontSize: 12),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                    fontSize: 12),
                               ),
                               SizedBox(height: 4),
                               Text(
-                                'Code sent to email',
+                                'Code envoyé par e-mail',
                                 style: TextStyle(
                                   color: AppColors.primary,
                                   fontSize: 18,
@@ -197,7 +201,7 @@ class _OtpSetupScreenState extends State<OtpSetupScreen> {
                         ),
                         TextButton(
                           onPressed: _sendOtp,
-                          child: const Text('Resend',
+                          child: Text('Resend',
                               style: TextStyle(
                                   color: AppColors.primary,
                                   fontWeight: FontWeight.bold)),
@@ -205,16 +209,16 @@ class _OtpSetupScreenState extends State<OtpSetupScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
-                  const Text(
+                  SizedBox(height: 32),
+                  Text(
                     'Enter the 6-digit code',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: List.generate(6, (i) {
@@ -227,22 +231,25 @@ class _OtpSetupScreenState extends State<OtpSetupScreen> {
                           textAlign: TextAlign.center,
                           keyboardType: TextInputType.number,
                           maxLength: 1,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
                           decoration: InputDecoration(
                             counterText: '',
                             filled: true,
-                            fillColor: Colors.white.withValues(alpha: 0.07),
+                            fillColor: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.07),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide.none,
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
+                              borderSide: BorderSide(
                                   color: AppColors.primary, width: 2),
                             ),
                           ),
@@ -254,31 +261,35 @@ class _OtpSetupScreenState extends State<OtpSetupScreen> {
                       );
                     }),
                   ),
-                  const SizedBox(height: 36),
+                  SizedBox(height: 36),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _isVerifying ? null : _verify,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        foregroundColor:
+                            Theme.of(context).colorScheme.onSurface,
+                        padding: EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(50)),
                       ),
                       child: Text(
                         _isVerifying ? 'Verifying...' : 'Activate 2FA',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   Center(
                     child: TextButton(
                       onPressed: _goBack,
-                      child: const Text('← Back to Login',
-                          style: TextStyle(color: AppColors.textGray400)),
+                      child: Text('← Back to Login',
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)),
                     ),
                   ),
                 ],

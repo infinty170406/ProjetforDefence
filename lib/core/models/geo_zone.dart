@@ -1,4 +1,4 @@
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class GeoZone {
   final String? id;
@@ -27,9 +27,12 @@ class GeoZone {
       id: json['id']?.toString() ?? json['geofenceId']?.toString(),
       name: json['name'] ?? '',
       childId: json['childId'],
-      centerLatitude: (json['centerLatitude'] ?? json['latitude'] ?? 0.0).toDouble(),
-      centerLongitude: (json['centerLongitude'] ?? json['longitude'] ?? 0.0).toDouble(),
-      radiusMeters: (json['radiusMeters'] ?? json['radius'] ?? 100.0).toDouble(),
+      centerLatitude:
+          (json['centerLatitude'] ?? json['latitude'] ?? 0.0).toDouble(),
+      centerLongitude:
+          (json['centerLongitude'] ?? json['longitude'] ?? 0.0).toDouble(),
+      radiusMeters:
+          (json['radiusMeters'] ?? json['radius'] ?? 100.0).toDouble(),
       enabled: json['enabled'] ?? true,
     );
   }

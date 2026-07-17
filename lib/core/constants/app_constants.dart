@@ -21,7 +21,7 @@ class AppConstants {
   // Modes
   static const String modeCustom = 'CUSTOM';
   static const String modeStandard = 'STANDARD';
-  
+
   // Alert Types
   static const String typeSos = 'SOS';
   static const String typeApp = 'APP_LIMIT';
