@@ -38,6 +38,7 @@ class SubscriptionModel {
   }
 
   factory SubscriptionModel.fromMap(Map<String, dynamic> map) {
+    final planEnum = _planFromName(map['plan']);
     return SubscriptionModel(
       plan: map['plan'] ?? 'free',
       status: map['status'] ?? 'trialing',
@@ -51,9 +52,7 @@ class SubscriptionModel {
       trialUsed: map['trialUsed'] ?? false,
       childrenLimit: map['childrenLimit'] ?? 1,
       devicesLimit: map['devicesLimit'] ?? 1,
-      features: map['features'] is Map && (map['features'] as Map).isNotEmpty
-          ? Map<String, bool>.from(map['features'])
-          : PlanPermissions.plans[_planFromName(map['plan'])]!.features,
+      features: PlanPermissions.plans[planEnum]!.features,
     );
   }
 
