@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/child_monitor_service.dart';
@@ -30,14 +30,21 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen>
 
   LatLng _currentLocation = const LatLng(48.8566, 2.3522);
   bool _isLoading = true;
-  bool _autoFollow = true; // NEW: Auto-centering feature
+  bool _followChild = true; // Renamed from _autoFollow
+  bool _isProgrammaticMovement = false; // Used to detect manual user pans/swipes
   StreamSubscription? _childrenSubscription;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _locationSubscription;
+  Timer? _freshnessTimer;
+
   List<Child> _children = [];
   Child? _selectedChild;
   List<GeoZone> _safeZones = [];
   bool _isFirstLoad = true;
   String? _parentId;
   bool _isChildMode = false;
+
+  LatLng? _childPosition;
+  DateTime? _lastLocationUpdate;
 
   @override
   void initState() {
@@ -56,18 +63,70 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen>
       _parentId = widget.initialChild?['parentId'] as String?;
       if (_selectedChild?.lastLocation != null) {
         _currentLocation = _selectedChild!.lastLocation!;
+        _childPosition = _selectedChild!.lastLocation!;
       }
     }
 
     _initializeScreen();
+
+    // Periodically update freshness UI
+    _freshnessTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
     _childrenSubscription?.cancel();
+    _locationSubscription?.cancel();
+    _freshnessTimer?.cancel();
     _pulseController.dispose();
     _mapController?.dispose();
     super.dispose();
+  }
+
+  bool get _locationIsStale {
+    final updatedAt = _lastLocationUpdate;
+    if (updatedAt == null) {
+      return true;
+    }
+    return DateTime.now().difference(updatedAt) > const Duration(minutes: 2);
+  }
+
+  void _listenToChildLocation(String childId) {
+    _locationSubscription?.cancel();
+    final pId = _parentId;
+    if (pId == null || pId.isEmpty) return;
+
+    _locationSubscription = FirebaseFirestore.instance
+        .doc('parents/$pId/children/$childId')
+        .snapshots(includeMetadataChanges: true)
+        .listen((snapshot) {
+      if (!mounted) return;
+      final data = snapshot.data();
+      if (data == null) return;
+
+      final latitude = (data['lastLatitude'] as num?)?.toDouble() ?? 
+                       (data['latitude'] as num?)?.toDouble();
+      final longitude = (data['lastLongitude'] as num?)?.toDouble() ?? 
+                        (data['longitude'] as num?)?.toDouble();
+
+      if (latitude == null || longitude == null) {
+        return;
+      }
+
+      final nextPosition = LatLng(latitude, longitude);
+
+      setState(() {
+        _childPosition = nextPosition;
+        _lastLocationUpdate = (data['lastLocationUpdate'] as Timestamp?)?.toDate() ??
+                              (data['updatedAt'] as Timestamp?)?.toDate();
+      });
+
+      _moveCameraIfNecessary(nextPosition);
+    }, onError: (e) {
+      debugPrint("Error listening to child location: $e");
+    });
   }
 
   void _startRealTimeTracking() {
@@ -83,8 +142,9 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen>
             _children = [child];
             _selectedChild = child;
             if (child.lastLocation != null) {
+              _childPosition = child.lastLocation!;
               _currentLocation = child.lastLocation!;
-              if (_isFirstLoad || _autoFollow) {
+              if (_isFirstLoad || _followChild) {
                 _updateMapCamera();
                 _isFirstLoad = false;
               }
@@ -114,20 +174,25 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen>
               _selectedChild = _children[0];
             }
 
+            // Start location listener for the selected child
+            _listenToChildLocation(_selectedChild!.id);
+
             if (_selectedChild?.lastLocation != null) {
               final newLocation = _selectedChild!.lastLocation!;
 
-              // Force focus on first load or if auto-follow is ON
+              // Force focus on first load or if followChild is ON
               if (_isFirstLoad ||
-                  (_autoFollow &&
+                  (_followChild &&
                       (newLocation.latitude != _currentLocation.latitude ||
                           newLocation.longitude !=
                               _currentLocation.longitude))) {
                 _currentLocation = newLocation;
+                _childPosition = newLocation;
                 _updateMapCamera();
                 _isFirstLoad = false;
               } else {
                 _currentLocation = newLocation;
+                _childPosition = newLocation;
               }
             }
           }
@@ -141,7 +206,11 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen>
     try {
       final pairing = await StorageService().getChildPairing();
       _isChildMode = pairing['mode'] == 'child';
-      if (_isChildMode) _parentId = pairing['parentId'];
+      if (_isChildMode) {
+        _parentId = pairing['parentId'];
+      } else {
+        _parentId = FirestoreService().uid; // Parent mode: use current parent user's uid
+      }
 
       // 1. Init Location with timeout
       await _initLocation();
@@ -157,9 +226,10 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen>
   }
 
   void _updateMapCamera() {
-    if (_mapController != null && _selectedChild?.lastLocation != null) {
+    final targetPosition = _childPosition ?? _currentLocation;
+    if (_mapController != null) {
       _mapController!
-          .animateCamera(CameraUpdate.newLatLngZoom(_currentLocation, 14.0));
+          .animateCamera(CameraUpdate.newLatLngZoom(targetPosition, 16.0));
     }
   }
 
@@ -215,9 +285,11 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen>
       _selectedChild = child;
       if (child.lastLocation != null) {
         _currentLocation = child.lastLocation!;
+        _childPosition = child.lastLocation!;
         _updateMapCamera();
       }
     });
+    _listenToChildLocation(child.id);
     _loadSafeZones(child.id);
   }
 
@@ -265,6 +337,169 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen>
     );
   }
 
+  Set<Marker> get _markers {
+    final position = _childPosition;
+    if (position == null) {
+      return {};
+    }
+
+    return {
+      Marker(
+        markerId: const MarkerId('child-current-position'),
+        position: position,
+        infoWindow: InfoWindow(
+          title: _selectedChild?.displayName ?? 'Position actuelle',
+        ),
+      ),
+    };
+  }
+
+  Future<void> _moveCameraIfNecessary(LatLng position) async {
+    if (!_followChild || _mapController == null) {
+      return;
+    }
+
+    _isProgrammaticMovement = true;
+    await _mapController!.animateCamera(
+      CameraUpdate.newLatLng(position),
+    );
+  }
+
+  void _onCameraMove(CameraPosition position) {
+    if (!_isProgrammaticMovement) {
+      if (_followChild) {
+        setState(() {
+          _followChild = false;
+        });
+      }
+    }
+  }
+
+  void _onCameraIdle() {
+    _isProgrammaticMovement = false;
+  }
+
+  String _formatFreshness(DateTime? updatedAt) {
+    if (updatedAt == null) return "Aucune donnée de position";
+    final diff = DateTime.now().difference(updatedAt);
+    if (diff.inSeconds < 60) {
+      return "Mis à jour il y a ${diff.inSeconds} secondes";
+    } else if (diff.inMinutes < 60) {
+      return "Mis à jour il y a ${diff.inMinutes} minute${diff.inMinutes > 1 ? 's' : ''}";
+    } else {
+      return "Mis à jour il y a ${diff.inHours} heure${diff.inHours > 1 ? 's' : ''}";
+    }
+  }
+
+  Widget _buildFreshnessCard() {
+    if (_selectedChild == null || _childPosition == null) {
+      return const SizedBox.shrink();
+    }
+
+    final isStale = _locationIsStale;
+    final freshnessText = _formatFreshness(_lastLocationUpdate);
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Container(
+        margin: const EdgeInsets.only(left: 20, right: 90, bottom: 20),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isStale
+                ? AppColors.statusDanger.withOpacity(0.5)
+                : AppColors.primary.withOpacity(0.5),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  isStale ? Icons.warning_amber_rounded : Icons.gps_fixed,
+                  color: isStale ? AppColors.statusDanger : AppColors.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _selectedChild!.displayName,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const Spacer(),
+                if (_selectedChild!.batteryLevel != null) ...[
+                  Icon(
+                    _selectedChild!.batteryLevel! < 20
+                        ? Icons.battery_alert
+                        : Icons.battery_std,
+                    color: _selectedChild!.batteryLevel! < 20
+                        ? AppColors.statusDanger
+                        : Colors.green,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_selectedChild!.batteryLevel!.toInt()}%',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (isStale)
+              const Text(
+                "Position ancienne — appareil hors ligne ou GPS indisponible",
+                style: TextStyle(
+                  color: AppColors.statusDanger,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              )
+            else
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    freshnessText,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    "Précision : ±12 m",
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -279,7 +514,7 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen>
             child: GoogleMap(
               initialCameraPosition: CameraPosition(
                 target: _currentLocation,
-                zoom: 15.0,
+                zoom: 16.0,
               ),
               onMapCreated: (controller) {
                 _mapController = controller;
@@ -290,15 +525,7 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen>
               zoomControlsEnabled: false,
               mapToolbarEnabled: false,
               compassEnabled: false,
-              markers:
-                  _children.where((c) => c.lastLocation != null).map((child) {
-                return Marker(
-                  markerId: MarkerId(child.id),
-                  position: child.lastLocation!,
-                  infoWindow: InfoWindow(title: child.displayName),
-                  onTap: () => _onChildSwitched(child),
-                );
-              }).toSet(),
+              markers: _markers,
               circles: _safeZones
                   .where((z) =>
                       _selectedChild == null ||
@@ -314,6 +541,8 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen>
                   strokeWidth: 2,
                 );
               }).toSet(),
+              onCameraMove: _onCameraMove,
+              onCameraIdle: _onCameraIdle,
             ),
           ),
           SafeArea(
@@ -381,9 +610,9 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _buildHeaderButton(
-                            _autoFollow ? Icons.gps_fixed : Icons.gps_not_fixed,
-                            () => setState(() => _autoFollow = !_autoFollow),
-                            color: _autoFollow
+                            _followChild ? Icons.gps_fixed : Icons.gps_not_fixed,
+                            () => setState(() => _followChild = !_followChild),
+                            color: _followChild
                                 ? AppColors.primary
                                 : Theme.of(context)
                                     .colorScheme
@@ -404,6 +633,7 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen>
               ),
             ),
           ),
+          _buildFreshnessCard(),
           if (_isLoading)
             Container(
               color: Colors.black54,
@@ -411,14 +641,39 @@ class _RealTimeMapScreenState extends State<RealTimeMapScreen>
             ),
         ],
       ),
-      floatingActionButton: _isChildMode
-          ? null
-          : FloatingActionButton(
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'follow_child_fab',
+            onPressed: () {
+              setState(() => _followChild = true);
+              final position = _childPosition;
+              if (position != null) {
+                _moveCameraIfNecessary(position);
+              }
+            },
+            backgroundColor: _followChild ? AppColors.primary : Theme.of(context).cardColor,
+            child: Icon(
+              Icons.my_location,
+              color: _followChild ? Colors.white : AppColors.primary,
+            ),
+          ),
+          if (!_isChildMode) ...[
+            const SizedBox(height: 12),
+            FloatingActionButton(
+              heroTag: 'add_zone_fab',
               onPressed: _showAddZoneModal,
               backgroundColor: AppColors.primary,
-              child: Icon(Icons.add_location_alt_outlined,
-                  color: Theme.of(context).colorScheme.onSurface),
+              child: Icon(
+                Icons.add_location_alt_outlined,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
             ),
+          ],
+        ],
+      ),
     );
   }
 
