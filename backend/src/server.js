@@ -296,16 +296,60 @@ app.post('/api/v1/billing/checkout', requireUser, async (request, response, next
 
 app.post('/api/v1/billing/charge', requireUser, async (request, response, next) => {
   try {
-    const { plan, cycle, paymentMethod, payerAccount } = request.body ?? {};
+    const {
+      plan,
+      cycle,
+      paymentMethod,
+      payerAccount,
+      payerName,
+      payerEmail,
+      description,
+      idempotencyKey,
+    } = request.body ?? {};
+
     if (!['MTN_MOMO_CM', 'ORANGE_MONEY_CM'].includes(paymentMethod) || !/^237\d{9}$/.test(String(payerAccount))) {
       const error = new Error('Méthode ou numéro de paiement invalide.'); error.status = 400; throw error;
     }
+
     const definition = billingPlan(plan, cycle);
-    const data = await sharePay('/pay-in/charge', { method: 'POST', body: JSON.stringify({
-      amount: definition.amount, currency: 'XAF', paymentMethod, payerAccount,
-      merchantReference: `guardian:${request.user.uid}:${crypto.randomUUID()}`,
-      idempotencyKey: crypto.randomUUID(), description: `Abonnement ${plan}`,
-    }) });
+
+    const merchantReference =
+      `GUARDIAN-${Date.now()}-${crypto.randomUUID()}`;
+
+    const providerIdempotencyKey =
+      idempotencyKey || `guardian-${crypto.randomUUID()}`;
+
+    const chargePayload = {
+      amount: definition.amount,
+      currency: 'XAF',
+      paymentMethod,
+      payerAccount: String(payerAccount),
+
+      payerName:
+        String(payerName || request.user.name || 'Parent Guardian')
+          .trim()
+          .slice(0, 100),
+
+      payerEmail:
+        String(payerEmail || request.user.email || '')
+          .trim()
+          .slice(0, 160),
+
+      merchantReference,
+
+      idempotencyKey: providerIdempotencyKey,
+
+      description:
+        String(description || `Abonnement ${plan}`)
+          .trim()
+          .slice(0, 160),
+    };
+
+    const data = await sharePay('/pay-in/charge', {
+      method: 'POST',
+      body: JSON.stringify(chargePayload),
+    });
+
     const intent = await createPaymentIntent({ uid: request.user.uid, plan, cycle, type: 'CHARGE', data });
     return response.status(201).json({ reference: intent.reference, status: intent.status });
   } catch (error) { return next(error); }

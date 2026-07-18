@@ -37,6 +37,13 @@ class SharePayService {
         'cycle': _cycleForAmount(amount),
         'paymentMethod': paymentMethod,
         'payerAccount': payerAccount,
+        if (payerName != null) 'payerName': payerName,
+        if (payerEmail != null) 'payerEmail': payerEmail,
+        if (merchantReference != null)
+          'merchantReference': merchantReference,
+        if (description != null) 'description': description,
+        if (idempotencyKey != null)
+          'idempotencyKey': idempotencyKey,
       });
 
   Future<Map<String, dynamic>?> getPayInStatus(String reference) =>
