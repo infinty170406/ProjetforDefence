@@ -105,6 +105,9 @@ class FirestoreService {
 
   Future<void> deleteChild(String childId) => _childRepo.deleteChild(childId);
 
+  Future<Map<String, dynamic>> regeneratePairingInvitation(String childId) =>
+      _childRepo.regeneratePairingInvitation(childId);
+
   Future<void> linkChild(String childId) => _childRepo.linkChild(childId);
 
   Stream<String> watchDeviceStatus(String childId) =>

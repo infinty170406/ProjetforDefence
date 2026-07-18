@@ -400,6 +400,40 @@ const ALERT_TITLES = {
 const boundedString = (value, maxLength, fallback = '') =>
   typeof value === 'string' ? value.trim().slice(0, maxLength) : fallback;
 
+// Page de transition pour les liens d'appairage partagés par le parent.
+// Elle ouvre le schéma privé de l'application sans dépendre d'un domaine tiers.
+app.get('/pair', (request, response) => {
+  const token = boundedString(request.query?.code, 128);
+  if (!PAIRING_TOKEN_PATTERN.test(token)) {
+    return response.status(400).type('html').send(`<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lien invalide</title></head><body style="font-family:system-ui;padding:32px;max-width:560px;margin:auto">
+<h1>Lien d’appairage invalide</h1><p>Demandez au parent de générer un nouveau lien depuis l’application.</p>
+</body></html>`);
+  }
+
+  const deepLink = `theguardian://pair?code=${encodeURIComponent(token)}`;
+  const escapedDeepLink = deepLink
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+
+  return response
+    .status(200)
+    .set('Cache-Control', 'no-store')
+    .set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'")
+    .type('html')
+    .send(`<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ouvrir The Guardian Child</title>
+<style>body{font-family:system-ui;background:#07111f;color:#fff;padding:32px;max-width:560px;margin:auto;text-align:center}a{display:inline-block;margin-top:24px;padding:14px 22px;border-radius:12px;background:#4f7cff;color:#fff;text-decoration:none;font-weight:700}p{color:#cbd5e1;line-height:1.5}</style></head>
+<body><h1>Appairage de l’appareil enfant</h1><p>Ouvrez ce lien avec l’application The Guardian Child. Si rien ne se passe, touchez le bouton ci-dessous.</p>
+<a id="open-app" href="${escapedDeepLink}">Ouvrir l’application</a>
+<script>setTimeout(function(){window.location.href=${JSON.stringify(deepLink)}},250);</script>
+</body></html>`);
+});
+
 const finiteNumber = (value, min, max) =>
   typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
     ? value

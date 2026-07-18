@@ -5,6 +5,7 @@ import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/liquid_background.dart';
 import '../../core/widgets/custom_button.dart';
 import 'package:flutter/services.dart';
+import '../../core/services/pairing_link_service.dart';
 
 class ChildInstallLinkScreen extends StatelessWidget {
   final dynamic child;
@@ -17,7 +18,9 @@ class ChildInstallLinkScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayName = child?['displayName'] ?? 'your child';
     final token = child?['invitationToken'] ?? '---';
-    final link = 'https://the-guardian.app/child/pair?code=$token';
+    final link = PairingLinkService.isValidToken(token.toString())
+        ? PairingLinkService.buildPairingLink(token.toString())
+        : 'Lien indisponible : générez un nouveau jeton.';
 
     return Scaffold(
       body: Stack(

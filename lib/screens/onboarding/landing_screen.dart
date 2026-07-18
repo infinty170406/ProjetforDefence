@@ -1,9 +1,19 @@
+library guardian_landing;
+
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/models/app_state_manager.dart';
 import 'widgets/laptop_dashboard_mockup.dart';
 import 'widgets/smartphone_app_mockup.dart';
+
+part 'landing/navigation_hero.dart';
+part 'landing/product_sections.dart';
+part 'landing/conversion_sections.dart';
+part 'landing/components.dart';
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -14,1429 +24,268 @@ class LandingScreen extends StatefulWidget {
 
 class _LandingScreenState extends State<LandingScreen> {
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey _productKey = GlobalKey();
+  final GlobalKey _featuresKey = GlobalKey();
+  final GlobalKey _securityKey = GlobalKey();
+  final GlobalKey _pricingKey = GlobalKey();
+  final GlobalKey _faqKey = GlobalKey();
+
   bool _scrolled = false;
-  String _mockupTab = 'parent'; // 'parent' or 'child'
+  bool _mobileMenuOpen = false;
+  int _activeProductTab = 0;
   int? _expandedFaqIndex;
 
-  final List<Map<String, dynamic>> _features = [
-    {
-      'title': "Orchestrateur IA",
-      'description':
-          "Analyse en temps réel les comportements numériques pour détecter les risques sans espionner. Il génère des bilans bienveillants et des alertes contextuelles pour guider vos enfants.",
-      'icon': Icons.psychology,
-    },
-    {
-      'title': "Géolocalisation & Zones Scolaires",
-      'description':
-          "Suivez la position géographique de vos enfants et configurez des zones de sécurité géographiques (école, maison) avec alertes automatiques d'arrivée et de départ.",
-      'icon': Icons.map,
-    },
-    {
-      'title': "Limites de Temps d'Écran",
-      'description':
-          "Définissez des limites quotidiennes de temps d'écran globales ou par catégories d'applications (Réseaux Sociaux, Jeux). L'appareil se verrouille automatiquement dès que le quota est atteint.",
-      'icon': Icons.access_time_filled,
-    },
-    {
-      'title': "Blocage de Contenu Dynamique",
-      'description':
-          "Intercepte instantanément l'accès aux sites ou applications non autorisés (catégories sensibles comme les jeux d'argent, violence ou pornographie) grâce au moteur d'analyse réseau.",
-      'icon': Icons.lock,
-    },
-    {
-      'title': "Protection Native Inviolable",
-      'description':
-          "Intègre en profondeur les services système Android (AccessibilityService & DeviceAdmin) pour résister à toute désinstallation non autorisée, fermeture forcée ou contournement par VPN.",
-      'icon': Icons.shield,
-    },
+  static const List<_FeatureData> _features = [
+    _FeatureData(
+      icon: Icons.dashboard_customize_rounded,
+      eyebrow: 'VUE D’ENSEMBLE',
+      title: 'Un seul espace pour toute la famille',
+      description:
+          'Consultez les appareils, le temps d’écran, les alertes et la dernière position de chaque enfant depuis une vue claire et centralisée.',
+      accent: Color(0xFF6C4DFF),
+    ),
+    _FeatureData(
+      icon: Icons.schedule_rounded,
+      eyebrow: 'RÈGLES',
+      title: 'Des limites qui suivent votre quotidien',
+      description:
+          'Créez des horaires d’école, de sommeil et de loisirs, puis adaptez les règles par application ou par catégorie.',
+      accent: Color(0xFF20D7C5),
+    ),
+    _FeatureData(
+      icon: Icons.location_on_rounded,
+      eyebrow: 'LOCALISATION',
+      title: 'Des repères utiles, pas une surveillance permanente',
+      description:
+          'Retrouvez une position récente, configurez des zones de confiance et recevez une alerte lorsque cela est réellement utile.',
+      accent: Color(0xFF5DA9FF),
+    ),
+    _FeatureData(
+      icon: Icons.notifications_active_rounded,
+      eyebrow: 'ALERTES',
+      title: 'Les événements importants remontent en premier',
+      description:
+          'Guardian organise les alertes par niveau de priorité pour vous aider à agir vite sans être submergé par les notifications.',
+      accent: Color(0xFFFFA657),
+    ),
+    _FeatureData(
+      icon: Icons.auto_awesome_rounded,
+      eyebrow: 'ASSISTANT',
+      title: 'Une aide intelligente pour comprendre les usages',
+      description:
+          'Les tendances sont résumées avec des explications simples afin de favoriser le dialogue et des décisions adaptées à chaque enfant.',
+      accent: Color(0xFFC084FC),
+    ),
+    _FeatureData(
+      icon: Icons.devices_rounded,
+      eyebrow: 'MULTI-ÉCRANS',
+      title: 'La même expérience sur mobile et sur le web',
+      description:
+          'Les réglages et les informations restent synchronisés entre votre téléphone et votre espace parent sur ordinateur.',
+      accent: Color(0xFF34D399),
+    ),
   ];
 
-  final List<Map<String, dynamic>> _testimonials = [
-    {
-      'name': "Valérie M.",
-      'role': "Maman de Lucas (15 ans)",
-      'comment':
-          "Depuis que nous avons installé Guardian, les disputes à propos du temps d'écran ont totalement disparu. Lucas sait exactement de combien de temps il dispose, et l'Orchestrateur IA m'alerte s'il y a un réel problème.",
-      'avatar': "V",
-      'color': const Color(0xFF6366F1),
-    },
-    {
-      'name': "Stéphane T.",
-      'role': "Papa de Emma (12 ans)",
-      'comment':
-          "La fonction 'Zone Scolaire' est rassurante. Je reçois une notification discrète à son arrivée au collège. Le fait que l'application soit inviolable sur Android évite qu'elle ne la désactive par accident.",
-      'avatar': "S",
-      'color': const Color(0xFF0EA5E9),
-    },
-    {
-      'name': "Isabelle D.",
-      'role': "Maman de Léa (14 ans) et Théo (9 ans)",
-      'comment':
-          "J'apprécie l'Orchestrateur IA qui n'est pas un bête outil d'espionnage mais propose une supervision intelligente. C'est parfait pour accompagner mes enfants vers l'autonomie en toute sécurité.",
-      'avatar': "I",
-      'color': const Color(0xFF10B981),
-    },
-  ];
-
-  final List<Map<String, String>> _faqs = [
-    {
-      'q': "Comment fonctionne l'Orchestrateur IA ?",
-      'a':
-          "L'Orchestrateur IA analyse en arrière-plan l'activité des applications et la sécurité globale de l'appareil de votre enfant. Plutôt que de simplement bloquer et fliquer de manière aveugle, il détecte les anomalies ou les usages abusifs, et envoie des alertes claires ainsi que des conseils d'accompagnement sur le dashboard parent."
-    },
-    {
-      'q': "Mon enfant peut-il désinstaller ou contourner l'application ?",
-      'a':
-          "Non. Grâce à l'utilisation des APIs natives du système Android (telles que le gestionnaire d'administration de l'appareil 'DeviceAdmin' et le service d'accessibilité 'AccessibilityService'), Guardian se verrouille au cœur du système. Toute tentative de désinstallation, de modification du GPS ou de contournement nécessite le mot de passe parental."
-    },
-    {
-      'q': "Quelles sont les fonctionnalités de blocage disponibles ?",
-      'a':
-          "Guardian propose le blocage dynamique par catégories de sites web (par exemple, les jeux d'argent, le contenu adulte, ou la violence), la restriction d'applications spécifiques, et le blocage complet de l'appareil selon des tranches horaires (mode école, heure du coucher) ou suite à un dépassement du temps autorisé."
-    },
-    {
-      'q': "La géolocalisation fonctionne-t-elle en arrière-plan ?",
-      'a':
-          "Oui, la géolocalisation suit en temps réel la position de l'appareil de manière optimisée pour préserver la batterie. Vous pouvez définir des zones géographiques de confiance (par exemple 'École' ou 'Maison') et être notifié automatiquement dès que votre enfant y pénètre ou en sort."
-    },
-    {
-      'q': "Quels types d'appareils sont supportés ?",
-      'a':
-          "Notre application est optimisée pour les smartphones et tablettes des enfants sous Android (avec intégration native poussée) et propose une console de gestion web (Orchestrateur Dashboard) accessible aux parents depuis n'importe quel ordinateur ou smartphone."
-    }
+  static const List<_FaqData> _faqs = [
+    _FaqData(
+      question: 'À quoi sert exactement la version web de Guardian ?',
+      answer:
+          'La version web donne au parent une vue plus large de son dashboard mobile. Elle est pensée pour gérer plusieurs enfants, consulter les tendances, configurer les règles et analyser les alertes plus confortablement depuis un ordinateur.',
+    ),
+    _FaqData(
+      question: 'Mes réglages sont-ils synchronisés avec l’application mobile ?',
+      answer:
+          'Oui. Le même compte parent permet de retrouver les profils, règles, appareils et alertes sur les deux interfaces. Une modification effectuée sur le web est destinée à être répercutée sur les appareils associés.',
+    ),
+    _FaqData(
+      question: 'Guardian permet-il de définir des horaires différents ?',
+      answer:
+          'Oui. Vous pouvez préparer des plages pour l’école, les devoirs, les loisirs ou le sommeil, puis appliquer des exceptions selon les applications autorisées et les besoins de l’enfant.',
+    ),
+    _FaqData(
+      question: 'Quelles informations de localisation sont présentées ?',
+      answer:
+          'L’espace parent peut afficher la dernière position disponible, l’état de synchronisation et les zones de confiance configurées. L’objectif est de fournir des repères utiles avec une présentation transparente des autorisations nécessaires.',
+    ),
+    _FaqData(
+      question: 'Puis-je gérer plusieurs enfants depuis le même compte ?',
+      answer:
+          'Oui. Le dashboard est conçu pour regrouper plusieurs profils et permettre de passer rapidement de la vue familiale aux détails d’un enfant.',
+    ),
   ];
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(() {
-      if (_scrollController.offset > 50) {
-        if (!_scrolled) {
-          setState(() {
-            _scrolled = true;
-          });
-        }
-      } else {
-        if (_scrolled) {
-          setState(() {
-            _scrolled = false;
-          });
-        }
-      }
-    });
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final next = _scrollController.offset > 24;
+    if (next != _scrolled && mounted) {
+      setState(() => _scrolled = next);
+    }
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
     super.dispose();
   }
 
-  void _scrollToSection(double offset) {
-    _scrollController.animateTo(
-      offset,
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeInOut,
+  Future<void> _scrollTo(GlobalKey key) async {
+    setState(() => _mobileMenuOpen = false);
+    final sectionContext = key.currentContext;
+    if (sectionContext == null) return;
+    await Scrollable.ensureVisible(
+      sectionContext,
+      duration: const Duration(milliseconds: 650),
+      curve: Curves.easeOutCubic,
+      alignment: 0.03,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final isMobile = width < 1000;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = _LandingColors(isDark);
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF020617) : const Color(0xFFF4F6FF),
-      body: Stack(
-        children: [
-          Positioned(
-            top: -200,
-            left: -200,
-            child: Container(
-              width: 600,
-              height: 600,
-              decoration: BoxDecoration(
-                color: const Color(0xFF4F46E5).withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            top: 400,
-            right: -300,
-            child: Container(
-              width: 700,
-              height: 700,
-              decoration: BoxDecoration(
-                color: const Color(0xFF14B8A6).withValues(alpha: 0.06),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          SingleChildScrollView(
-            controller: _scrollController,
-            child: Column(
-              children: [
-                const SizedBox(height: 120),
-                _buildHero(isMobile, width),
-                _buildStatsSection(isMobile),
-                _buildFeaturesSection(isMobile),
-                _buildWhyUsSection(isMobile),
-                _buildTestimonialsSection(isMobile),
-                _buildPricingSection(isMobile),
-                _buildFaqSection(isMobile),
-                _buildCtaSection(isMobile),
-                _buildFooter(isMobile),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: _buildNavBar(isMobile),
-          ),
-        ],
-      ),
-    );
-  }
+      backgroundColor: colors.background,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final isCompact = width < 780;
+          final isTablet = width >= 780 && width < 1120;
 
-  Widget _buildNavBar(bool isMobile) {
-    final stateManager = context.watch<AppStateManager>();
-    final isDark = stateManager.themeMode == ThemeMode.dark ||
-        (stateManager.themeMode == ThemeMode.system &&
-            Theme.of(context).brightness == Brightness.dark);
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 12 : 32, vertical: _scrolled ? 16 : 24),
-      decoration: BoxDecoration(
-        color: _scrolled
-            ? (isDark
-                ? const Color(0xFF020617).withValues(alpha: 0.85)
-                : Colors.white.withValues(alpha: 0.85))
-            : Colors.transparent,
-        border: Border(
-          bottom: BorderSide(
-            color: _scrolled
-                ? (isDark
-                    ? const Color(0xFF1E293B).withValues(alpha: 0.4)
-                    : const Color(0xFFE2E8F0).withValues(alpha: 0.4))
-                : Colors.transparent,
-          ),
-        ),
-      ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          return Stack(
             children: [
-              InkWell(
-                onTap: () => _scrollToSection(0),
-                child: Row(
+              Positioned.fill(child: _AmbientBackground(colors: colors)),
+              SingleChildScrollView(
+                controller: _scrollController,
+                child: Column(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.asset(
-                        'assets/logo.png',
-                        width: 36,
-                        height: 36,
-                        fit: BoxFit.contain,
+                    SizedBox(height: isCompact ? 92 : 112),
+                    _HeroSection(
+                      colors: colors,
+                      isCompact: isCompact,
+                      isTablet: isTablet,
+                      onPrimary: () => context.push('/signup'),
+                      onSecondary: () => _scrollTo(_productKey),
+                    ),
+                    _TrustStrip(colors: colors, isCompact: isCompact),
+                    _SectionAnchor(
+                      key: _productKey,
+                      child: _ProductShowcase(
+                        colors: colors,
+                        isCompact: isCompact,
+                        activeTab: _activeProductTab,
+                        onTabChanged: (index) {
+                          setState(() => _activeProductTab = index);
+                        },
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Text(
-                      "Guardian",
-                      style: TextStyle(
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        fontFamily: 'Outfit',
+                    _ContinuitySection(
+                      colors: colors,
+                      isCompact: isCompact,
+                      isTablet: isTablet,
+                    ),
+                    _SectionAnchor(
+                      key: _featuresKey,
+                      child: _FeaturesSection(
+                        colors: colors,
+                        isCompact: isCompact,
+                        features: _features,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4F46E5).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
+                    _DailyJourneySection(
+                      colors: colors,
+                      isCompact: isCompact,
+                    ),
+                    _SectionAnchor(
+                      key: _securityKey,
+                      child: _SecuritySection(
+                        colors: colors,
+                        isCompact: isCompact,
                       ),
-                      child: const Text(
-                        "v2.1",
-                        style: TextStyle(
-                          color: Color(0xFF818CF8),
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    ),
+                    _SectionAnchor(
+                      key: _pricingKey,
+                      child: _PricingSection(
+                        colors: colors,
+                        isCompact: isCompact,
+                        onStart: () => context.push('/signup'),
                       ),
+                    ),
+                    _SectionAnchor(
+                      key: _faqKey,
+                      child: _FaqSection(
+                        colors: colors,
+                        isCompact: isCompact,
+                        faqs: _faqs,
+                        expandedIndex: _expandedFaqIndex,
+                        onToggle: (index) {
+                          setState(() {
+                            _expandedFaqIndex =
+                                _expandedFaqIndex == index ? null : index;
+                          });
+                        },
+                      ),
+                    ),
+                    _FinalCta(
+                      colors: colors,
+                      isCompact: isCompact,
+                      onStart: () => context.push('/signup'),
+                      onLogin: () => context.push('/login/parent'),
+                    ),
+                    _Footer(
+                      colors: colors,
+                      isCompact: isCompact,
+                      onProduct: () => _scrollTo(_productKey),
+                      onFeatures: () => _scrollTo(_featuresKey),
+                      onSecurity: () => _scrollTo(_securityKey),
+                      onPricing: () => _scrollTo(_pricingKey),
+                      onFaq: () => _scrollTo(_faqKey),
                     ),
                   ],
                 ),
               ),
-              if (!isMobile)
-                Row(
-                  children: [
-                    _buildNavLink(
-                        "Fonctionnalités", () => _scrollToSection(800), isDark),
-                    _buildNavLink(
-                        "Pourquoi Nous", () => _scrollToSection(1700), isDark),
-                    _buildNavLink(
-                        "Témoignages", () => _scrollToSection(2400), isDark),
-                    _buildNavLink(
-                        "Tarifs", () => _scrollToSection(3100), isDark),
-                    _buildNavLink("FAQ", () => _scrollToSection(3900), isDark),
-                  ],
-                ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      isDark
-                          ? Icons.light_mode_outlined
-                          : Icons.dark_mode_outlined,
-                      color: isDark ? Colors.amber : const Color(0xFF475569),
-                    ),
-                    tooltip: isDark
-                        ? "Activer le mode clair"
-                        : "Activer le mode sombre",
-                    onPressed: () {
-                      stateManager.setThemeMode(
-                          isDark ? ThemeMode.light : ThemeMode.dark);
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () => context.push('/login/parent'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4F46E5),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30)),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      "Espace Parent",
-                      style: TextStyle(
-                          fontFamily: 'Outfit',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavLink(String text, VoidCallback onTap, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 28),
-      child: InkWell(
-        onTap: onTap,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Outfit',
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHero(bool isMobile, double width) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1280),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 12 : 32, vertical: 40),
-          child: Column(
-            children: [
-              if (isMobile) ...[
-                FadeInUp(child: _buildHeroText(isMobile)),
-                const SizedBox(height: 40),
-                FadeInUp(
-                    delay: const Duration(milliseconds: 200),
-                    child: _buildInteractiveMockupArea()),
-              ] else ...[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      flex: 5,
-                      child: FadeInUp(child: _buildHeroText(isMobile)),
-                    ),
-                    const SizedBox(width: 140),
-                    Expanded(
-                      flex: 5,
-                      child: FadeInUp(
-                          delay: const Duration(milliseconds: 200),
-                          child: _buildInteractiveMockupArea()),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeroText(bool isMobile) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Column(
-      crossAxisAlignment:
-          isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.auto_awesome, color: Color(0xFF4F46E5), size: 14),
-              SizedBox(width: 8),
-              Text(
-                "Contrôle Parental Nouvelle Génération",
-                style: TextStyle(
-                  color: Color(0xFF4F46E5),
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Outfit',
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          "Sécurité Système Native\n& IA Bienveillante",
-          textAlign: isMobile ? TextAlign.center : TextAlign.start,
-          style: TextStyle(
-            color: isDark ? Colors.white : const Color(0xFF0F172A),
-            fontSize: 48,
-            fontWeight: FontWeight.w900,
-            fontFamily: 'Outfit',
-            height: 1.1,
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          "Découvrez Guardian, le contrôle parental intelligent et inviolable pour accompagner vos enfants en toute sécurité. Doté d'un Orchestrateur IA bienveillant et d'une sécurité système robuste.",
-          textAlign: isMobile ? TextAlign.center : TextAlign.start,
-          style: TextStyle(
-            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
-            fontSize: 16,
-            height: 1.6,
-            fontFamily: 'Outfit',
-          ),
-        ),
-        const SizedBox(height: 36),
-        Row(
-          mainAxisAlignment:
-              isMobile ? MainAxisAlignment.center : MainAxisAlignment.start,
-          children: [
-            ElevatedButton(
-              onPressed: () => _scrollToSection(isMobile ? 550 : 0),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4F46E5),
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30)),
-                elevation: 0,
-              ),
-              child: const Text("Découvrir la démo",
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(width: 16),
-            OutlinedButton(
-              onPressed: () => context.push('/login/parent'),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF4F46E5)),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30)),
-              ),
-              child: const Text("Console Parent",
-                  style: TextStyle(
-                      color: Color(0xFF4F46E5), fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInteractiveMockupArea() {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildMockupTabButton('parent', "Console Laptop (Parent)"),
-              _buildMockupTabButton('child', "Application Smartphone (Enfant)"),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        Center(
-          child: SizedBox(
-            height: 480,
-            child: FittedBox(
-              fit: BoxFit.contain,
-              child: _mockupTab == 'parent'
-                  ? const LaptopDashboardMockup()
-                  : const SmartphoneAppMockup(),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMockupTabButton(String tab, String label) {
-    final active = _mockupTab == tab;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _mockupTab = tab;
-        });
-      },
-      borderRadius: BorderRadius.circular(30),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: active ? const Color(0xFF4F46E5) : Colors.transparent,
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active ? Colors.white : const Color(0xFF475569),
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Outfit',
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatsSection(bool isMobile) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1200),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 12 : 32, vertical: 60),
-          child: Wrap(
-            spacing: 24,
-            runSpacing: 24,
-            alignment: WrapAlignment.center,
-            children: [
-              AnimatedHoverCard(
-                  child: _buildStatCard(
-                      "Moteur IA Actif", "Analyse sémantique & contextuelle")),
-              AnimatedHoverCard(
-                  child: _buildStatCard(
-                      "Sécurité Native", "100% inviolable sur Android")),
-              AnimatedHoverCard(
-                  child: _buildStatCard(
-                      "Temps Réel", "Position & notifications GPS")),
-              AnimatedHoverCard(
-                  child: _buildStatCard(
-                      "Accompagnement", "Lien parent-enfant renforcé")),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String title, String desc) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      width: 220,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0F172A) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark
-              ? const Color(0xFF1E293B)
-              : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Outfit',
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            desc,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-              fontSize: 11,
-              fontFamily: 'Outfit',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeaturesSection(bool isMobile) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      width: double.infinity,
-      color: isDark ? const Color(0xFF0B0F19) : Colors.white,
-      padding:
-          EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 80),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: Column(
-            children: [
-              const Text(
-                "FONCTIONNALITÉS CLÉS",
-                style: TextStyle(
-                    color: Color(0xFF4F46E5),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.5),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                "Une protection intelligente & complète",
-                style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Outfit',
-                ),
-              ),
-              const SizedBox(height: 48),
-              Wrap(
-                spacing: 24,
-                runSpacing: 24,
-                alignment: WrapAlignment.center,
-                children: _features
-                    .map((f) => AnimatedHoverCard(child: _buildFeatureCard(f)))
-                    .toList(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFeatureCard(Map<String, dynamic> f) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      width: 320,
-      height: 220,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark
-              ? const Color(0xFF334155)
-              : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF4F46E5).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(f['icon'] as IconData,
-                color: const Color(0xFF4F46E5), size: 20),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            f['title'] as String,
-            style: TextStyle(
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Outfit',
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            f['description'] as String,
-            style: TextStyle(
-              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
-              fontSize: 11,
-              height: 1.5,
-              fontFamily: 'Outfit',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWhyUsSection(bool isMobile) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1200),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 12 : 32, vertical: 80),
-          child: Column(
-            children: [
-              const Text(
-                "POURQUOI NOUS REJOINDRE ?",
-                style: TextStyle(
-                    color: Color(0xFF14B8A6),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.5),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                "Une armure inviolable au cœur du système",
-                style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Outfit',
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: 700,
-                child: Text(
-                  "Contrairement aux autres solutions facilement contournables, Guardian utilise les outils d'administration système natifs. L'enfant ne peut ni contourner par VPN, ni forcer l'arrêt, ni désinstaller l'application sans votre mot de passe parental. Le filtrage DNS fonctionne 24h/24, assurant une protection sans faille.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: isDark
-                        ? const Color(0xFF94A3B8)
-                        : const Color(0xFF475569),
-                    fontSize: 14,
-                    height: 1.6,
-                    fontFamily: 'Outfit',
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTestimonialsSection(bool isMobile) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      width: double.infinity,
-      color: isDark ? const Color(0xFF0F172A) : Colors.white,
-      padding:
-          EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 80),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: Column(
-            children: [
-              const Text(
-                "TÉMOIGNAGES",
-                style: TextStyle(
-                    color: Color(0xFF4F46E5),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.5),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                "Ce que disent les parents",
-                style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Outfit',
-                ),
-              ),
-              const SizedBox(height: 48),
-              Wrap(
-                spacing: 24,
-                runSpacing: 24,
-                alignment: WrapAlignment.center,
-                children: _testimonials
-                    .map((t) =>
-                        AnimatedHoverCard(child: _buildTestimonialCard(t)))
-                    .toList(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTestimonialCard(Map<String, dynamic> t) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      width: 320,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark
-              ? const Color(0xFF334155)
-              : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                    color: t['color'] as Color, shape: BoxShape.circle),
-                child: Center(
-                  child: Text(t['avatar'] as String,
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    t['name'] as String,
-                    style: TextStyle(
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Outfit',
-                    ),
-                  ),
-                  Text(t['role'] as String,
-                      style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            t['comment'] as String,
-            style: TextStyle(
-              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
-              fontSize: 11,
-              height: 1.6,
-              fontStyle: FontStyle.italic,
-              fontFamily: 'Outfit',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPricingSection(bool isMobile) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      width: double.infinity,
-      color: isDark ? const Color(0xFF020617) : const Color(0xFFF4F6FF),
-      padding:
-          EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 80),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: Column(
-            children: [
-              const Text(
-                "TARIFS",
-                style: TextStyle(
-                  color: Color(0xFF4F46E5),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
-                  fontFamily: 'Outfit',
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                "Des plans adaptés à toutes les familles",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Outfit',
-                ),
-              ),
-              const SizedBox(height: 48),
-              Wrap(
-                spacing: 24,
-                runSpacing: 24,
-                alignment: WrapAlignment.center,
-                children: [
-                  _buildPricingCard(
-                    title: "Starter",
-                    price: "0 FCFA",
-                    period: "À vie",
-                    desc:
-                        "L'essentiel pour débuter et protéger un premier appareil.",
-                    features: [
-                      "1 appareil protégé",
-                      "Suivi GPS basique",
-                      "Limites de temps d'écran",
-                      "Filtre DNS de base",
-                    ],
-                    buttonText: "Commencer gratuitement",
-                    isPopular: false,
-                    isDark: isDark,
-                  ),
-                  _buildPricingCard(
-                    title: "Premium",
-                    price: "3 250 FCFA",
-                    period: "/ mois",
-                    desc:
-                        "La protection complète assistée par intelligence artificielle.",
-                    features: [
-                      "Jusqu'à 3 appareils protégés",
-                      "Géolocalisation & zones illimitées",
-                      "Moteur IA intelligent actif",
-                      "Blocage d'applications & web",
-                      "Alertes d'inviolabilité natives",
-                    ],
-                    buttonText: "Essai gratuit 7 jours",
-                    isPopular: true,
-                    isDark: isDark,
-                  ),
-                  _buildPricingCard(
-                    title: "Famille",
-                    price: "6 500 FCFA",
-                    period: "/ mois",
-                    desc:
-                        "La tranquillité d'esprit absolue pour les grandes fratries.",
-                    features: [
-                      "Appareils illimités",
-                      "Tableau de bord multi-parents",
-                      "Rapports IA hebdomadaires",
-                      "Support client VIP prioritaire",
-                      "Sauvegarde cloud sécurisée",
-                    ],
-                    buttonText: "Sélectionner Famille",
-                    isPopular: false,
-                    isDark: isDark,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPricingCard({
-    required String title,
-    required String price,
-    required String period,
-    required String desc,
-    required List<String> features,
-    required String buttonText,
-    required bool isPopular,
-    required bool isDark,
-  }) {
-    final cardBg = isDark
-        ? (isPopular ? const Color(0xFF0F172A) : const Color(0xFF0B0F19))
-        : Colors.white;
-    final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
-    final textSecondary =
-        isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
-    final borderColor = isPopular
-        ? const Color(0xFF4F46E5)
-        : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0));
-
-    return AnimatedHoverCard(
-      child: Container(
-        width: 320,
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(
-            color: borderColor,
-            width: isPopular ? 2.5 : 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isPopular
-                  ? const Color(0xFF4F46E5).withValues(alpha: 0.15)
-                  : Colors.black.withValues(alpha: 0.03),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (isPopular) ...[
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF4F46E5), Color(0xFF14B8A6)],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  "LE PLUS POPULAIRE",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 8,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            Text(
-              title,
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Outfit',
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  price,
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 36,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'Outfit',
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  period,
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              desc,
-              style: TextStyle(
-                color: textSecondary,
-                fontSize: 12,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 24),
-            ...features.map((f) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.check_circle_outline,
-                          color: Color(0xFF14B8A6), size: 16),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          f,
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                )),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: isPopular
-                  ? ElevatedButton(
-                      onPressed: () => context.push('/login/parent'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4F46E5),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24)),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        buttonText,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            fontFamily: 'Outfit'),
-                      ),
-                    )
-                  : OutlinedButton(
-                      onPressed: () => context.push('/login/parent'),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(
-                          color: Color(0xFF4F46E5),
-                        ),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24)),
-                      ),
-                      child: Text(
-                        buttonText,
-                        style: const TextStyle(
-                          color: Color(0xFF4F46E5),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          fontFamily: 'Outfit',
-                        ),
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFaqSection(bool isMobile) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1200),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 12 : 32, vertical: 80),
-          child: Column(
-            children: [
-              const Text(
-                "FAQ",
-                style: TextStyle(
-                    color: Color(0xFF14B8A6),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.5),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                "Questions Fréquentes",
-                style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Outfit',
-                ),
-              ),
-              const SizedBox(height: 48),
-              Container(
-                width: 700,
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: isDark
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                ),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _faqs.length,
-                  separatorBuilder: (context, index) => Divider(
-                    color: isDark
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                  itemBuilder: (context, index) {
-                    final faq = _faqs[index];
-                    final isExpanded = _expandedFaqIndex == index;
-                    return InkWell(
-                      onTap: () {
-                        setState(() {
-                          _expandedFaqIndex = isExpanded ? null : index;
-                        });
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  faq['q']!,
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? Colors.white
-                                        : const Color(0xFF0F172A),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Outfit',
-                                  ),
-                                ),
-                                Icon(
-                                  isExpanded
-                                      ? Icons.expand_less
-                                      : Icons.expand_more,
-                                  color: isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : Colors.grey,
-                                ),
-                              ],
-                            ),
-                            if (isExpanded) ...[
-                              const SizedBox(height: 12),
-                              Text(
-                                faq['a']!,
-                                style: TextStyle(
-                                  color: isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : const Color(0xFF64748B),
-                                  fontSize: 12,
-                                  height: 1.6,
-                                  fontFamily: 'Outfit',
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    );
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: _NavigationBar(
+                  colors: colors,
+                  compact: isCompact,
+                  scrolled: _scrolled,
+                  menuOpen: _mobileMenuOpen,
+                  onToggleMenu: () {
+                    setState(() => _mobileMenuOpen = !_mobileMenuOpen);
                   },
+                  onProduct: () => _scrollTo(_productKey),
+                  onFeatures: () => _scrollTo(_featuresKey),
+                  onSecurity: () => _scrollTo(_securityKey),
+                  onPricing: () => _scrollTo(_pricingKey),
+                  onFaq: () => _scrollTo(_faqKey),
+                  onLogin: () => context.push('/login/parent'),
+                  onSignup: () => context.push('/signup'),
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCtaSection(bool isMobile) {
-    return Container(
-      width: double.infinity,
-      color: const Color(0xFF0F172A),
-      padding:
-          EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 80),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: Column(
-            children: [
-              const Text(
-                "Prêt à protéger vos enfants ?",
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                "Configurez Guardian en quelques minutes et accédez au dashboard complet.",
-                style: TextStyle(color: Colors.grey, fontSize: 14),
-              ),
-              const SizedBox(height: 36),
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  ElevatedButton(
-                    onPressed: () => context.push('/login/parent'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4F46E5),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 28, vertical: 20),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30)),
-                      elevation: 0,
-                    ),
-                    child: const Text("Accéder Console Parent",
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                  OutlinedButton(
-                    onPressed: () => context.push('/login/admin'),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.white),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 28, vertical: 20),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30)),
-                    ),
-                    child: const Text("Accéder Console Administrateur",
-                        style: TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFooter(bool isMobile) {
-    return Container(
-      width: double.infinity,
-      color: const Color(0xFF090B16),
-      padding:
-          EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32, vertical: 40),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                "© 2026 Guardian Parental Control. Tous droits réservés.",
-                style: TextStyle(color: Colors.grey, fontSize: 11),
-              ),
-              const Row(
-                children: [
-                  Text("Mentions Légales",
-                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
-                  SizedBox(width: 20),
-                  Text("Politique de Confidentialité",
-                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
-                ],
-              ),
-            ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 }
 
-class AnimatedHoverCard extends StatefulWidget {
+class _SectionAnchor extends StatelessWidget {
+  const _SectionAnchor({required super.key, required this.child});
+
   final Widget child;
-  const AnimatedHoverCard({required this.child, super.key});
 
   @override
-  State<AnimatedHoverCard> createState() => _AnimatedHoverCardState();
-}
-
-class _AnimatedHoverCardState extends State<AnimatedHoverCard> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        transform: Matrix4.identity()..translate(0.0, _isHovered ? -8.0 : 0.0),
-        child: widget.child,
-      ),
-    );
-  }
-}
-
-class FadeInUp extends StatelessWidget {
-  final Widget child;
-  final Duration delay;
-  final Duration duration;
-
-  const FadeInUp({
-    required this.child,
-    this.delay = Duration.zero,
-    this.duration = const Duration(milliseconds: 800),
-    super.key,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: Future.delayed(delay),
-      builder: (context, snapshot) {
-        final show = snapshot.connectionState == ConnectionState.done ||
-            delay == Duration.zero;
-        return TweenAnimationBuilder<double>(
-          tween: Tween<double>(begin: 0.0, end: show ? 1.0 : 0.0),
-          duration: duration,
-          curve: Curves.easeOutCubic,
-          builder: (context, value, child) {
-            return Opacity(
-              opacity: value,
-              child: Transform.translate(
-                offset: Offset(0.0, (1.0 - value) * 30.0),
-                child: child,
-              ),
-            );
-          },
-          child: child,
-        );
-      },
-    );
-  }
+  Widget build(BuildContext context) => child;
 }

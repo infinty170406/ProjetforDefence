@@ -44,10 +44,35 @@
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme"
                 />
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- Lien privé ouvert par la page de transition Render. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="theguardian"
+                    android:host="pair" />
+            </intent-filter>
+
+            <!-- Le lien HTTPS peut également être proposé directement à l'app. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="guardian-secure-api.onrender.com"
+                    android:pathPrefix="/pair" />
+            </intent-filter>
+
             <!-- Permet de gérer le clic sur les notifications FCM -->
             <intent-filter>
                 <action android:name="FLUTTER_NOTIFICATION_CLICK" />

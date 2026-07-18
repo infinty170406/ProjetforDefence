@@ -1,95 +1,166 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="/">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#6C4DFF">
+  <meta name="color-scheme" content="light dark">
 
-  <!-- Primary Meta Tags -->
-  <title>Guardian | Contrôle Parental IA & Protection Native Inviolable</title>
-  <meta name="title" content="Guardian | Contrôle Parental IA & Protection Native Inviolable" />
-  <meta name="description" content="Découvrez Guardian, le contrôle parental nouvelle génération pour Android et iOS. Doté d'un Orchestrateur IA bienveillant et d'une sécurité système 100% inviolable." />
-  <meta name="keywords" content="controle parental, securite enfants, filtrage web, temps d'ecran, geolocalisation, protection telephone, orchestrateur ia, android parent, protection inviolable" />
-  <meta name="author" content="Guardian Parental Control" />
-  <meta name="robots" content="index, follow" />
+  <title>Guardian | Espace parent mobile et web</title>
+  <meta name="title" content="Guardian | Espace parent mobile et web">
+  <meta name="description" content="Retrouvez le dashboard parent Guardian sur mobile et sur le web : profils enfants, temps d’écran, règles, localisation et alertes dans un seul espace.">
+  <meta name="author" content="Guardian">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://guardian-parentalcontrol.com/">
 
-  <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://guardian-parentalcontrol.com/" />
-  <meta property="og:title" content="Guardian | Contrôle Parental IA & Protection Native Inviolable" />
-  <meta property="og:description" content="Découvrez Guardian, le contrôle parental nouvelle génération pour Android et iOS. Doté d'un Orchestrateur IA bienveillant et d'une sécurité système 100% inviolable." />
-  <meta property="og:image" content="https://guardian-parentalcontrol.com/assets/og-image.jpg" />
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://guardian-parentalcontrol.com/">
+  <meta property="og:title" content="Guardian | Le centre de contrôle de votre famille">
+  <meta property="og:description" content="Commencez sur mobile et continuez sur le web. Gérez les profils, règles, alertes et appareils de votre famille depuis un espace parent unifié.">
+  <meta property="og:image" content="https://guardian-parentalcontrol.com/assets/assets/laptop_dashboard_display.png">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:site_name" content="Guardian">
 
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image" />
-  <meta property="twitter:url" content="https://guardian-parentalcontrol.com/" />
-  <meta property="twitter:title" content="Guardian | Contrôle Parental IA & Protection Native Inviolable" />
-  <meta property="twitter:description" content="Découvrez Guardian, le contrôle parental nouvelle génération pour Android et iOS. Doté d'un Orchestrateur IA bienveillant et d'une sécurité système 100% inviolable." />
-  <meta property="twitter:image" content="https://guardian-parentalcontrol.com/assets/og-image.jpg" />
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Guardian | Le centre de contrôle de votre famille">
+  <meta name="twitter:description" content="Votre dashboard parent Guardian, synchronisé entre mobile et web.">
+  <meta name="twitter:image" content="https://guardian-parentalcontrol.com/assets/assets/laptop_dashboard_display.png">
 
-  <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="the_guardian">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Guardian">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
-
+  <link rel="icon" type="image/png" href="favicon.png">
   <link rel="manifest" href="manifest.json">
 
-  <!-- Preconnect Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <!-- Schema.org JSON-LD structured data -->
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "Guardian",
-      "operatingSystem": "Android, WebConsole",
       "applicationCategory": "ParentalControlApplication",
-      "offers": {
-        "@type": "Offer",
-        "price": "0.00",
-        "priceCurrency": "EUR"
-      },
-      "description": "Guardian est un contrôle parental nouvelle génération intelligent et inviolable, doté d'un Orchestrateur IA bienveillant et d'une géolocalisation précise.",
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.9",
-        "reviewCount": "124"
-      }
+      "operatingSystem": "Android, Web",
+      "description": "Guardian permet aux parents de retrouver leurs profils, règles, alertes, appareils et informations familiales depuis une application mobile et un dashboard web synchronisé.",
+      "url": "https://guardian-parentalcontrol.com/"
     }
   </script>
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #030712;
+    }
+
+    #guardian-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 25% 20%, rgba(108, 77, 255, .22), transparent 34%),
+        radial-gradient(circle at 80% 35%, rgba(32, 215, 197, .14), transparent 30%),
+        #030712;
+      color: #fff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      transition: opacity .28s ease, visibility .28s ease;
+    }
+
+    #guardian-loader.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .guardian-loader-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      text-align: center;
+    }
+
+    .guardian-loader-mark {
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #6C4DFF, #20D7C5);
+      box-shadow: 0 18px 50px rgba(108, 77, 255, .34);
+      font-size: 28px;
+    }
+
+    .guardian-loader-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -.02em;
+    }
+
+    .guardian-loader-text {
+      margin-top: -10px;
+      color: #9FAAC0;
+      font-size: 13px;
+    }
+
+    .guardian-loader-progress {
+      width: 180px;
+      height: 4px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .08);
+    }
+
+    .guardian-loader-progress::after {
+      content: "";
+      display: block;
+      width: 46%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #6C4DFF, #20D7C5);
+      animation: guardian-loading 1.15s ease-in-out infinite alternate;
+    }
+
+    @keyframes guardian-loading {
+      from { transform: translateX(-12%); }
+      to { transform: translateX(128%); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .guardian-loader-progress::after { animation: none; width: 100%; }
+    }
+  </style>
+
+  <!-- La clé Maps doit être restreinte au domaine et aux APIs nécessaires. -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDqJtH6hpF1i1ct9qHzKsqHh4wzMwZTzfw"></script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <div id="guardian-loader" role="status" aria-live="polite" aria-label="Chargement de Guardian">
+    <div class="guardian-loader-card">
+      <div class="guardian-loader-mark" aria-hidden="true">◈</div>
+      <div class="guardian-loader-title">Guardian</div>
+      <div class="guardian-loader-text">Préparation de votre espace familial…</div>
+      <div class="guardian-loader-progress" aria-hidden="true"></div>
+    </div>
+  </div>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <noscript>
+    Guardian nécessite JavaScript pour afficher le dashboard parent.
+  </noscript>
+
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      const loader = document.getElementById('guardian-loader');
+      if (!loader) return;
+      loader.classList.add('is-hidden');
+      window.setTimeout(() => loader.remove(), 320);
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

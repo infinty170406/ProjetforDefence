@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
 import '../../core/widgets/custom_button.dart';
+import '../../core/services/firestore_service.dart';
+import '../../core/services/pairing_link_service.dart';
 
 class InstallLinkGenerationScreen extends StatefulWidget {
   final dynamic child;
@@ -19,25 +21,43 @@ class _InstallLinkGenerationScreenState
   bool _generating = false;
   String? _generatedLink;
   String? _token;
+  Map<String, dynamic>? _childWithFreshToken;
 
   Future<void> _generatePairingLink() async {
     setState(() => _generating = true);
     try {
-      // The invitationToken is already generated at child creation in ChildRepository.
-      final token = widget.child?['invitationToken'] ?? 'ERROR';
-
-      if (token == 'ERROR') {
-        throw Exception('Invitation token not found for this profile.');
+      final childId = widget.child?['id']?.toString() ??
+          widget.child?['childId']?.toString();
+      if (childId == null || childId.isEmpty) {
+        throw StateError('Child identifier not found.');
       }
 
-      final link = 'https://the-guardian.app/child/pair?code=$token';
-      setState(() {
-        _token = token;
-        _generatedLink = link;
-        _generating = false;
-      });
+      // Toujours créer un nouveau jeton. L'ancien peut être expiré ou avoir
+      // déjà été copié depuis un écran resté ouvert plus de 48 heures.
+      final invitation =
+          await FirestoreService().regeneratePairingInvitation(childId);
+      final token = PairingLinkService.extractToken(
+        invitation['invitationToken']?.toString(),
+      );
+      if (token == null) {
+        throw StateError('The generated pairing token is invalid.');
+      }
+
+      final link = PairingLinkService.buildPairingLink(token);
+      final original = widget.child is Map
+          ? Map<String, dynamic>.from(widget.child as Map)
+          : <String, dynamic>{'id': childId};
+      original['invitationToken'] = token;
+      original['invitationExpiresAt'] = invitation['invitationExpiresAt'];
+
+      if (mounted) {
+        setState(() {
+          _token = token;
+          _generatedLink = link;
+          _childWithFreshToken = original;
+        });
+      }
     } catch (e) {
-      setState(() => _generating = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -45,6 +65,8 @@ class _InstallLinkGenerationScreenState
               backgroundColor: AppColors.statusDanger),
         );
       }
+    } finally {
+      if (mounted) setState(() => _generating = false);
     }
   }
 
@@ -204,7 +226,7 @@ class _InstallLinkGenerationScreenState
                       child: CustomButton(
                         text: 'View Instructions',
                         onPressed: () => context.push('/child/link-instr',
-                            extra: widget.child),
+                            extra: _childWithFreshToken ?? widget.child),
                       ),
                     ),
                 ],

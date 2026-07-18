@@ -18,6 +18,7 @@ import 'core/repositories/alert_repository.dart';
 import 'core/repositories/stats_repository.dart';
 import 'core/services/child_enforcement_service.dart';
 import 'core/services/storage_service.dart';
+import 'core/services/pairing_link_service.dart';
 import 'core/premium/entitlement_service.dart';
 import 'screens/settings/pin_lock_screen.dart';
 
@@ -95,8 +96,30 @@ Future<void> _startChildEnforcementIfNeeded() async {
   }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PairingLinkService.instance.initialize((token) {
+        final encoded = Uri.encodeQueryComponent(token);
+        AppRouter.router.go('/child/pair?code=$encoded');
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    unawaited(PairingLinkService.instance.dispose());
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

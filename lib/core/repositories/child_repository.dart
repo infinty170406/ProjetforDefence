@@ -179,6 +179,39 @@ class ChildRepository {
     await batch.commit();
   }
 
+  Future<Map<String, dynamic>> regeneratePairingInvitation(
+    String childId,
+  ) async {
+    final childRef = _childrenCol.doc(childId);
+    final token = _newPairingToken();
+    final expiresAt = Timestamp.fromDate(
+      DateTime.now().add(const Duration(hours: 48)),
+    );
+
+    await _db.runTransaction((transaction) async {
+      final snapshot = await transaction.get(childRef);
+      if (!snapshot.exists) {
+        throw StateError('Child profile not found.');
+      }
+
+      final data = snapshot.data() as Map<String, dynamic>?;
+      if (data?['isLinked'] == true) {
+        throw StateError('This child device is already paired.');
+      }
+
+      transaction.update(childRef, {
+        'invitationToken': token,
+        'invitationExpiresAt': expiresAt,
+        'pairingLinkUpdatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+
+    return {
+      'invitationToken': token,
+      'invitationExpiresAt': expiresAt,
+    };
+  }
+
   Future<void> deleteChild(String childId) async {
     await _childrenCol.doc(childId).delete();
   }

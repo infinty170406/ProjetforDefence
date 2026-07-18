@@ -7,8 +7,8 @@ import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/child_enforcement_service.dart';
-import '../../core/services/api_service.dart';
-import '../../core/services/api_config.dart';
+import '../../core/services/guardian_api.dart';
+import '../../core/services/pairing_link_service.dart';
 
 class ChildPairingScreen extends StatefulWidget {
   final String? initialCode;
@@ -26,18 +26,23 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
   @override
   void initState() {
     super.initState();
-    _codeController = TextEditingController(text: widget.initialCode);
-    if (widget.initialCode != null && widget.initialCode!.length >= 32) {
-      // Auto-trigger pairing if code is valid
+    final initialToken = PairingLinkService.extractToken(widget.initialCode);
+    _codeController = TextEditingController(text: initialToken ?? widget.initialCode);
+    if (initialToken != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _handlePairing());
     }
   }
 
   Future<void> _handlePairing() async {
-    final code = _codeController.text.trim();
-    if (code.length < 32 || code.length > 128) {
-      setState(() => _error = 'Please open the complete pairing link.');
+    final code = PairingLinkService.extractToken(_codeController.text);
+    if (code == null) {
+      setState(() => _error =
+          'Lien ou jeton invalide. Ouvrez le lien complet envoyé par le parent.');
       return;
+    }
+
+    if (_codeController.text != code) {
+      _codeController.text = code;
     }
 
     if (!await StorageService().getPrivacyAccepted()) {
@@ -64,9 +69,9 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
       }
 
       // ── Step 2: consume the one-time token server-side ───────────────────
-      final result = await ApiService().postWithAuth(
-        ApiConfig.pairDevice,
-        {'token': code},
+      final result = await GuardianApi.post(
+        '/api/v1/device/pair',
+        body: {'token': code},
       );
       final parentId = result['parentId'] as String?;
       final childId = result['childId'] as String?;
@@ -82,8 +87,21 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
         context.go('/child/dashboard',
             extra: {'id': childId, 'parentId': parentId});
       }
-    } catch (e) {
-      setState(() => _error = 'Connection error. Please try again.');
+    } on GuardianApiException catch (error) {
+      final message = switch (error.statusCode) {
+        400 => 'Le jeton d’appairage est mal formé.',
+        404 => 'Ce lien est invalide ou ne correspond à aucun enfant.',
+        410 => 'Ce lien a expiré. Générez un nouveau lien depuis l’app parent.',
+        412 => 'Ce lien a déjà été utilisé ou l’appareil est déjà associé.',
+        401 => 'L’authentification de l’appareil enfant a échoué.',
+        _ => error.message,
+      };
+      if (mounted) setState(() => _error = message);
+    } catch (error) {
+      if (mounted) {
+        setState(() => _error =
+            'Connexion impossible. Vérifiez Internet puis réessayez.');
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -130,7 +148,7 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
                       children: [
                         TextField(
                           controller: _codeController,
-                          maxLength: 128,
+                          maxLength: 256,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: AppColors.primary,
@@ -148,9 +166,10 @@ class _ChildPairingScreenState extends State<ChildPairingScreen> {
                                     .withValues(alpha: 0.1)),
                             border: InputBorder.none,
                           ),
-                          onChanged: (val) {
-                            if (val.length == 6) {
-                              FocusScope.of(context).unfocus();
+                          onChanged: (value) {
+                            final token = PairingLinkService.extractToken(value);
+                            if (token != null && _error != null) {
+                              setState(() => _error = null);
                             }
                           },
                         ),
