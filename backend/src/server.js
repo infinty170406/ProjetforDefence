@@ -58,9 +58,63 @@ const subscriptionDocument = (uid) => db.doc(`subscriptions/${uid}`);
 const paymentIntentDocument = (reference) => db.doc(`payment_intents/${reference}`);
 
 const plans = {
-  guardian_plus: { childrenLimit: 3, devicesLimit: 3, monthly: 1950, annual: 18000 },
-  guardian_premium: { childrenLimit: 999, devicesLimit: 999, monthly: 3250, annual: 30000 },
-  guardian_family: { childrenLimit: 999, devicesLimit: 999, monthly: 4500, annual: 42000 },
+  guardian_plus: {
+    childrenLimit: 3,
+    devicesLimit: 3,
+    monthly: 1950,
+    annual: 18000,
+    features: {
+      realTimeLocation: true,
+      geofencing: true,
+      screenTime: true,
+      appManagement: true,
+      aiReports: true,
+      cyberbullyingDetection: false,
+      webDashboard: true,
+      prioritySupport: false,
+      cloudBackup: false,
+      advancedAi: false,
+      familyManagement: false,
+    }
+  },
+  guardian_premium: {
+    childrenLimit: 999,
+    devicesLimit: 999,
+    monthly: 3250,
+    annual: 30000,
+    features: {
+      realTimeLocation: true,
+      geofencing: true,
+      screenTime: true,
+      appManagement: true,
+      aiReports: true,
+      cyberbullyingDetection: true,
+      webDashboard: true,
+      prioritySupport: true,
+      cloudBackup: true,
+      advancedAi: true,
+      familyManagement: false,
+    }
+  },
+  guardian_family: {
+    childrenLimit: 999,
+    devicesLimit: 999,
+    monthly: 4500,
+    annual: 42000,
+    features: {
+      realTimeLocation: true,
+      geofencing: true,
+      screenTime: true,
+      appManagement: true,
+      aiReports: true,
+      cyberbullyingDetection: true,
+      webDashboard: true,
+      prioritySupport: true,
+      cloudBackup: true,
+      advancedAi: true,
+      familyManagement: true,
+    }
+  },
 };
 
 const billingPlan = (plan, cycle) => {
@@ -392,6 +446,7 @@ app.get('/api/v1/billing/payments/:reference', requireUser, async (request, resp
           trialUsed: true,
           childrenLimit: definition.childrenLimit,
           devicesLimit: definition.devicesLimit,
+          features: definition.features || {},
           startDate: now.toDate().toISOString(),
           endDate: Timestamp.fromMillis(now.toMillis() + definition.durationDays * 86400000).toDate().toISOString(),
           updatedAt: FieldValue.serverTimestamp(),
@@ -438,6 +493,7 @@ app.post('/api/v1/billing/webhooks/sharepay', async (request, response, next) =>
       transaction.set(subscriptionRef, {
         plan: intent.plan, status: 'active', billingCycle: intent.cycle, trialUsed: true,
         childrenLimit: definition.childrenLimit, devicesLimit: definition.devicesLimit,
+        features: definition.features || {},
         startDate: now.toDate().toISOString(),
         endDate: Timestamp.fromMillis(now.toMillis() + definition.durationDays * 86400000).toDate().toISOString(),
         updatedAt: FieldValue.serverTimestamp(),
