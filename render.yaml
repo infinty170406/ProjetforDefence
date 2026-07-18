@@ -23,3 +23,15 @@ services:
         sync: false
       - key: ALLOWED_ORIGINS
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        sync: false
+      - key: SHAREPAY_API_KEY
+        sync: false
+      - key: SHAREPAY_WEBHOOK_SECRET
+        sync: false
+      - key: BILLING_SUCCESS_URL
+        sync: false
+      - key: BILLING_CANCEL_URL
+        sync: false

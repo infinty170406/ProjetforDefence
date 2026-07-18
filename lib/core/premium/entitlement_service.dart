@@ -38,14 +38,27 @@ class EntitlementService extends ChangeNotifier {
             DateTime.now().isAfter(currentSubscription.endDate))) {
       return false;
     }
+
+    // Explicitly fallback to local plan permissions to ensure features are unlocked
+    // based on the active plan type, even if Firestore features map is empty or misconfigured.
+    final planDef = PlanPermissions.plans[activePlan];
+    if (planDef != null && (planDef.features[featureKey] ?? false)) {
+      return true;
+    }
+
     return currentSubscription.features[featureKey] ?? false;
   }
 
   int getLimit(String limitType) {
+    final planDef = PlanPermissions.plans[activePlan];
     if (limitType == 'children') {
-      return currentSubscription.childrenLimit;
+      return planDef != null
+          ? planDef.childrenLimit
+          : currentSubscription.childrenLimit;
     } else if (limitType == 'devices') {
-      return currentSubscription.devicesLimit;
+      return planDef != null
+          ? planDef.devicesLimit
+          : currentSubscription.devicesLimit;
     }
     return 1;
   }

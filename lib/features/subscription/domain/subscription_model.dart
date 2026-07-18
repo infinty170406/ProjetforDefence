@@ -52,7 +52,12 @@ class SubscriptionModel {
       trialUsed: map['trialUsed'] ?? false,
       childrenLimit: map['childrenLimit'] ?? 1,
       devicesLimit: map['devicesLimit'] ?? 1,
-      features: PlanPermissions.plans[planEnum]!.features,
+      features: {
+        ...?PlanPermissions.plans[planEnum]?.features,
+        ...Map<String, dynamic>.from(map['features'] ?? {}).map(
+          (k, v) => MapEntry(k, v == true),
+        ),
+      },
     );
   }
 

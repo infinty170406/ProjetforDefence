@@ -13,18 +13,45 @@ class SubscriptionService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Stream<SubscriptionModel> watchSubscription() {
-    final user = _auth.currentUser;
-    if (user == null) {
-      return Stream.value(SubscriptionModel.freeTrial(DateTime.now()));
+    final controller = StreamController<SubscriptionModel>();
+    StreamSubscription<User?>? authSub;
+    StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? docSub;
+
+    void updateDocSubscription(User? user) {
+      docSub?.cancel();
+      if (user == null) {
+        controller.add(SubscriptionModel.freeTrial(DateTime.now()));
+      } else {
+        docSub = _db.collection('subscriptions').doc(user.uid).snapshots().listen(
+          (doc) {
+            if (!doc.exists) {
+              controller.add(SubscriptionModel.freeTrial(DateTime.now()));
+            } else {
+              controller.add(SubscriptionModel.fromMap(doc.data()!));
+            }
+          },
+          onError: (err) {
+            controller.addError(err);
+          },
+        );
+      }
     }
 
-    return _db.collection('subscriptions').doc(user.uid).snapshots().map((doc) {
-      if (!doc.exists) {
-        // Provisioning is performed by the authenticated backend, never here.
-        return SubscriptionModel.freeTrial(DateTime.now());
-      }
-      return SubscriptionModel.fromMap(doc.data()!);
-    });
+    authSub = _auth.authStateChanges().listen(
+      (user) {
+        updateDocSubscription(user);
+      },
+      onError: (err) {
+        controller.addError(err);
+      },
+    );
+
+    controller.onCancel = () {
+      authSub?.cancel();
+      docSub?.cancel();
+    };
+
+    return controller.stream;
   }
 
   Future<SubscriptionModel> getSubscription() async {
