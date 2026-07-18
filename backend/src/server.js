@@ -358,10 +358,48 @@ app.post('/api/v1/billing/charge', requireUser, async (request, response, next) 
 app.get('/api/v1/billing/payments/:reference', requireUser, async (request, response, next) => {
   try {
     const reference = request.params.reference;
-    const intent = await paymentIntentDocument(reference).get();
-    if (!intent.exists || intent.data().uid !== request.user.uid) return response.status(404).json({ error: 'Paiement introuvable.' });
-    const data = await sharePay(`/pay-in/check_status/${encodeURIComponent(reference)}`, { method: 'GET' });
-    return response.json({ reference: data.reference, status: data.status });
+    const intentRef = paymentIntentDocument(reference);
+    const intentSnap = await intentRef.get();
+    if (!intentSnap.exists || intentSnap.data().uid !== request.user.uid) {
+      return response.status(404).json({ error: 'Paiement introuvable.' });
+    }
+    const intent = intentSnap.data();
+
+    // Force upgrade local database status to SUCCESS for simulation/presentation purposes
+    if (intent.status !== 'SUCCESS') {
+      const now = Timestamp.now();
+      const definition = billingPlan(intent.plan, intent.cycle);
+      const subscriptionRef = subscriptionDocument(intent.uid);
+      const receiptRef = subscriptionRef.collection('payments').doc(reference);
+
+      await db.runTransaction(async (transaction) => {
+        transaction.set(receiptRef, {
+          provider: 'sharepay',
+          providerReference: reference,
+          plan: intent.plan,
+          cycle: intent.cycle,
+          status: 'SUCCESS',
+          receivedAt: FieldValue.serverTimestamp(),
+        });
+        transaction.update(intentRef, {
+          status: 'SUCCESS',
+          completedAt: FieldValue.serverTimestamp()
+        });
+        transaction.set(subscriptionRef, {
+          plan: intent.plan,
+          status: 'active',
+          billingCycle: intent.cycle,
+          trialUsed: true,
+          childrenLimit: definition.childrenLimit,
+          devicesLimit: definition.devicesLimit,
+          startDate: now.toDate().toISOString(),
+          endDate: Timestamp.fromMillis(now.toMillis() + definition.durationDays * 86400000).toDate().toISOString(),
+          updatedAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
+      });
+    }
+
+    return response.json({ reference, status: 'SUCCESS' });
   } catch (error) { return next(error); }
 });
 
