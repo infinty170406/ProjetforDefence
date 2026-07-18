@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'api_config.dart';
 
 class GuardianApiException implements Exception {
   GuardianApiException({
@@ -18,11 +19,6 @@ class GuardianApiException implements Exception {
 }
 
 class GuardianApi {
-  static const String baseUrl = String.fromEnvironment(
-    'GUARDIAN_API_BASE_URL',
-    defaultValue: 'https://guardian-secure-api.onrender.com',
-  );
-
   static Future<Map<String, dynamic>> post(
     String path, {
     Map<String, dynamic>? body,
@@ -49,7 +45,7 @@ class GuardianApi {
 
     final response = await http
         .post(
-          Uri.parse('$baseUrl$path'),
+          Uri.parse('${ApiConfig.baseUrl}$path'),
           headers: {
             'Authorization': 'Bearer $idToken',
             'Content-Type': 'application/json',

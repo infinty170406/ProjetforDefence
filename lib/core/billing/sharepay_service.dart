@@ -16,7 +16,7 @@ class SharePayService {
     String? cancelUrl,
     String? merchantReference,
   }) =>
-      ApiService().post(ApiConfig.billingCheckout, {
+      ApiService().post(ApiConfig.billingCheckoutUrl, {
         'plan': _planForAmount(amount),
         'cycle': _cycleForAmount(amount),
       });
@@ -32,7 +32,7 @@ class SharePayService {
     String? description,
     String? idempotencyKey,
   }) =>
-      ApiService().post(ApiConfig.billingCharge, {
+      ApiService().post(ApiConfig.billingChargeUrl, {
         'plan': _planForAmount(amount),
         'cycle': _cycleForAmount(amount),
         'paymentMethod': paymentMethod,
@@ -40,7 +40,7 @@ class SharePayService {
       });
 
   Future<Map<String, dynamic>?> getPayInStatus(String reference) =>
-      ApiService().get(ApiConfig.billingPaymentStatus(reference));
+      ApiService().get(ApiConfig.billingPaymentStatusUrl(reference));
 
   Future<Map<String, dynamic>?> createTransfer({
     required int amount,

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/pairing_link_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/liquid_background.dart';
@@ -518,9 +519,44 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
 
   Future<void> _showShareDialog() async {
     final displayName = widget.child?['displayName'] ?? 'Child';
-    final token = widget.child?['invitationToken'] ?? '---';
+    final childId = widget.child?['id']?.toString() ??
+        widget.child?['childId']?.toString();
+
+    if (childId == null || childId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profil enfant introuvable.')),
+      );
+      return;
+    }
+
+    String token;
+    try {
+      // Un lien affiché dans une ancienne fiche peut être expiré. Le partage
+      // crée donc toujours un jeton neuf valable 48 heures.
+      final invitation =
+          await FirestoreService().regeneratePairingInvitation(childId);
+      final generatedToken = PairingLinkService.extractToken(
+        invitation['invitationToken']?.toString(),
+      );
+      if (generatedToken == null) {
+        throw StateError('Jeton généré invalide.');
+      }
+      token = generatedToken;
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Impossible de générer le lien : $error'),
+          backgroundColor: AppColors.statusDanger,
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    final pairingLink = PairingLinkService.buildPairingLink(token);
     final shareText =
-        "Hello! To start monitoring $displayName, please install 'The Guardian Child' app and use this pairing link: https://the-guardian.app/child/pair?code=$token\n\nInvitation Code: $token";
+        "Hello! To start monitoring $displayName, please install 'The Guardian Child' app and use this pairing link: $pairingLink\n\nInvitation Code: $token";
 
     showModalBottomSheet(
       context: context,

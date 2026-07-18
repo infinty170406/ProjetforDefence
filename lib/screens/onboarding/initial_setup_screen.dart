@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/liquid_background.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/services/firestore_service.dart';
+import '../../core/services/pairing_link_service.dart';
 import '../../features/subscription/domain/subscription_model.dart';
 import '../../features/subscription/services/subscription_service.dart';
 
@@ -87,18 +88,12 @@ class _InitialSetupScreenState extends State<InitialSetupScreen> {
     }
   }
 
-  void _startPairingSimulation() async {
+  Future<void> _startPairingSimulation() async {
     setState(() {
-      // Generate code like 847-512
-      final code1 =
-          (100 + (999 - 100) * (DateTime.now().millisecond % 10) / 10).toInt();
-      final code2 =
-          (100 + (999 - 100) * (DateTime.now().microsecond % 10) / 10).toInt();
-      _linkageCode = '$code1-$code2';
+      _isLoading = true;
+      _linkageCode = '';
     });
 
-    // Create the child profile in DB so a real link code is stored or matched
-    setState(() => _isLoading = true);
     try {
       final age = int.tryParse(_childAgeController.text) ?? 10;
       final childData = await FirestoreService().createChild(
@@ -108,23 +103,29 @@ class _InitialSetupScreenState extends State<InitialSetupScreen> {
         relation: _childRelation,
       );
 
-      // Extract invitation token
-      final token = childData['invitationToken'] as String?;
-      if (token != null && token.length == 6) {
-        setState(() {
-          _linkageCode = '${token.substring(0, 3)}-${token.substring(3)}';
-        });
+      final token = PairingLinkService.extractToken(
+        childData['invitationToken']?.toString(),
+      );
+      if (token == null) {
+        throw StateError('Le serveur n’a pas renvoyé de jeton valide.');
       }
-    } catch (e) {
-      // Ignore and use default code
+
+      if (mounted) {
+        setState(() => _linkageCode = token);
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Échec de génération du lien : $error')),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _copyPairingLink() {
-    final cleanToken = _linkageCode.replaceAll('-', '');
-    final pairingLink = 'https://the-guardian.app/child/pair?code=$cleanToken';
+    final pairingLink = PairingLinkService.buildPairingLink(_linkageCode);
     Clipboard.setData(ClipboardData(text: pairingLink));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -682,11 +683,15 @@ class _InitialSetupScreenState extends State<InitialSetupScreen> {
               border: Border.all(color: AppColors.primary.withOpacity(0.2)),
             ),
             child: Text(
-              _linkageCode.isNotEmpty ? _linkageCode : 'Génération...',
+              _linkageCode.isNotEmpty
+                  ? PairingLinkService.formatTokenForDisplay(_linkageCode)
+                  : 'Génération...',
+              textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 36,
+                fontSize: 18,
+                height: 1.35,
                 fontWeight: FontWeight.w900,
-                letterSpacing: 2,
+                letterSpacing: 1.2,
                 color: AppColors.primary,
               ),
             ),

@@ -38,16 +38,16 @@ class ApiService extends ChangeNotifier {
       },
     ));
 
-    if (kDebugMode) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        logPrint: (obj) => debugPrint(obj.toString()),
-      ));
-    }
-
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
+        // Sécurité supplémentaire : toute route de paiement est réécrite vers
+        // Render, même si un ancien appel contient encore une URL locale ou si
+        // le client Dio a été initialisé avec une ancienne baseUrl.
+        if (ApiConfig.isBillingRequest(options.path)) {
+          options.baseUrl = ApiConfig.productionBaseUrl;
+          options.path = ApiConfig.billingPathFrom(options.path);
+        }
+
         if (_accessToken != null) {
           debugPrint(
               'API_LOG: Adding Auth Header (Length: ${_accessToken!.length})');
@@ -55,6 +55,8 @@ class ApiService extends ChangeNotifier {
         } else {
           debugPrint('API_LOG: Request WITHOUT Auth Header');
         }
+
+        debugPrint('API_LOG: ${options.method} ${options.uri}');
         return handler.next(options);
       },
       onError: (DioException e, handler) {
@@ -89,6 +91,14 @@ class ApiService extends ChangeNotifier {
         ));
       },
     ));
+
+    if (kDebugMode) {
+      _dio.interceptors.add(LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+        logPrint: (obj) => debugPrint(obj.toString()),
+      ));
+    }
   }
 
   void setAccessToken(String token) {
